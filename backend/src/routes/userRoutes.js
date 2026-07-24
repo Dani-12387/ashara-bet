@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const bcrypt = require('bcryptjs'); // Add this import for password hashing
 const { protect } = require('../middleware/authMiddleware');
 const User = require('../models/User');
 
@@ -56,7 +57,7 @@ router.put('/profile', protect, async (req, res) => {
   }
 });
 
-// Get user balance
+// Get user balance (deprecated - use /wallet instead)
 router.get('/balance', protect, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -70,7 +71,21 @@ router.get('/balance', protect, async (req, res) => {
   }
 });
 
-// Add these endpoints
+// NEW: Get user wallet (complete wallet info)
+router.get('/wallet', protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    res.json({
+      balance: user.wallet?.balance || 0,
+      bonusBalance: user.wallet?.bonusBalance || 0,
+      lockedBalance: user.wallet?.lockedBalance || 0
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get user stats
 router.get('/stats', protect, async (req, res) => {
   try {
     // Mock data - replace with actual database queries
@@ -86,6 +101,7 @@ router.get('/stats', protect, async (req, res) => {
   }
 });
 
+// Change password
 router.post('/change-password', protect, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
@@ -108,4 +124,5 @@ router.post('/change-password', protect, async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
 module.exports = router;
