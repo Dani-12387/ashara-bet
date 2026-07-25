@@ -11,11 +11,20 @@ connectDB();
 
 const app = express();
 
+// ===== HEALTH CHECK (CRITICAL FOR RENDER) =====
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    message: 'Server is running',
+    timestamp: new Date().toISOString(),
+    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+  });
+});
+
 // Debug: Log when MongoDB connects
 mongoose.connection.on('connected', () => {
   console.log('✅ MongoDB Connected Successfully');
   console.log('📊 Database Name:', mongoose.connection.name);
-  console.log('🔗 Connection URL:', mongoose.connection.client.s.url);
 });
 
 mongoose.connection.on('error', (err) => {
@@ -38,12 +47,8 @@ const depositRoutes = require("./routes/depositRoutes");
 const adminTransactionRoutes = require("./routes/adminTransactionRoutes");
 const withdrawalRoutes = require("./routes/withdrawalRoutes");
 const adminWithdrawalRoutes = require("./routes/adminWithdrawalRoutes");
-
-// Match routes
 const matchRoutes = require('./routes/matches');
 const adminMatchRoutes = require('./routes/adminMatches');
-
-// ===== ADD BET ROUTES =====
 const betRoutes = require('./routes/betRoutes');
 
 // Test route to check database connection
@@ -51,8 +56,8 @@ app.get("/api/test-db", async (req, res) => {
   try {
     const Match = require('./models/Match');
     const count = await Match.countDocuments();
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Database connected successfully',
       databaseName: mongoose.connection.name,
       matchCount: count,
@@ -60,9 +65,9 @@ app.get("/api/test-db", async (req, res) => {
     });
   } catch (error) {
     console.error('Test DB error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 });
@@ -71,7 +76,7 @@ app.get("/api/test-db", async (req, res) => {
 app.post("/api/test-create-match", async (req, res) => {
   try {
     const Match = require('./models/Match');
-    
+
     const testMatch = new Match({
       sport: 'FOOTBALL',
       league: 'Test Premier League',
@@ -85,20 +90,20 @@ app.post("/api/test-create-match", async (req, res) => {
         away: 4.00
       }
     });
-    
+
     const savedMatch = await testMatch.save();
     console.log('✅ Test match created:', savedMatch);
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       message: 'Test match created successfully',
-      match: savedMatch 
+      match: savedMatch
     });
   } catch (error) {
     console.error('❌ Error creating test match:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 });
@@ -116,28 +121,24 @@ app.use("/api/user", userRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/deposits", depositRoutes);
 app.use("/api/admin", adminTransactionRoutes);
-
-// Match routes
 app.use('/api', matchRoutes);
 app.use('/api', adminMatchRoutes);
-
-// ===== BET ROUTES =====
 app.use('/api/bets', betRoutes);
 
 // ===== ERROR HANDLING =====
 // 404 handler
 app.use((req, res) => {
-  res.status(404).json({ 
-    success: false, 
-    message: `Route not found: ${req.method} ${req.url}` 
+  res.status(404).json({
+    success: false,
+    message: `Route not found: ${req.method} ${req.url}`
   });
 });
 
 // Global error handler
 app.use((err, req, res, next) => {
   console.error('❌ Global error handler:', err);
-  res.status(500).json({ 
-    success: false, 
+  res.status(500).json({
+    success: false,
     message: 'Internal server error',
     error: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
@@ -145,13 +146,14 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+// ===== START SERVER =====
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📡 API endpoints:`);
-  console.log(`   - http://localhost:${PORT}/api/matches`);
-  console.log(`   - http://localhost:${PORT}/api/admin/matches (admin only)`);
-  console.log(`   - http://localhost:${PORT}/api/test-db (test connection)`);
-  console.log(`   - http://localhost:${PORT}/api/bets/place (place bet)`);
-  console.log(`   - http://localhost:${PORT}/api/bets/history (bet history)`);
-  console.log(`   - http://localhost:${PORT}/api/bets/admin/all (admin - all bets)`);
+  console.log(`   - /api/matches`);
+  console.log(`   - /api/bets/place`);
+  console.log(`   - /api/bets/history`);
+  console.log(`   - /api/auth/login`);
+  console.log(`   - /api/auth/register`);
+  console.log(`   - /health (health check)`);
 });
