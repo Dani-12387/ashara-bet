@@ -18,6 +18,9 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // ✅ ADD THIS - API URL from environment variable
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
   const { username, email, phone, password, confirmPassword } = formData;
 
   const handleChange = (e) => {
@@ -58,7 +61,6 @@ const Register = () => {
       return false;
     }
 
-    // Simple password validation - just minimum 6 characters
     if (password.length < 6) {
       setError('Password must be at least 6 characters');
       return false;
@@ -84,17 +86,17 @@ const Register = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post('/api/auth/register', {
+      // ✅ FIXED: Use API_URL
+      const response = await axios.post(`${API_URL}/api/auth/register`, {
         username,
         email,
-        phone,  // Include phone number in registration
+        phone,
         password
       });
 
       if (response.data.success) {
         setSuccess('Registration successful! Redirecting to login...');
         
-        // Clear form
         setFormData({
           username: '',
           email: '',
@@ -103,12 +105,12 @@ const Register = () => {
           confirmPassword: ''
         });
 
-        // Redirect to login after 2 seconds
         setTimeout(() => {
           navigate('/login');
         }, 2000);
       }
     } catch (err) {
+      console.error('Registration error:', err);
       setError(err.response?.data?.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
@@ -119,11 +121,8 @@ const Register = () => {
     navigate('/');
   };
 
-  // Format phone number as user types
   const formatPhoneNumber = (value) => {
-    // Remove all non-digits
     const cleaned = value.replace(/\D/g, '');
-    // Limit to 10 digits
     const limited = cleaned.slice(0, 10);
     return limited;
   };
@@ -139,19 +138,16 @@ const Register = () => {
   return (
     <div className="register-container">
       <div className="register-box">
-        {/* Home Button */}
         <button className="home-button" onClick={goToHome}>
           ← Back to Home
         </button>
 
-        {/* Logo */}
         <div className="register-logo" onClick={goToHome}>
           AsharaBet
         </div>
 
         <h2>Create Account</h2>
 
-        {/* Error Message */}
         {error && (
           <div className="error-message">
             <span className="error-icon">⚠️</span>
@@ -159,7 +155,6 @@ const Register = () => {
           </div>
         )}
 
-        {/* Success Message */}
         {success && (
           <div className="success-message">
             <span className="success-icon">✅</span>
@@ -168,7 +163,6 @@ const Register = () => {
         )}
 
         <form onSubmit={handleSubmit}>
-          {/* Username Field */}
           <div className="form-group">
             <label htmlFor="username">
               <span className="label-icon">👤</span>
@@ -194,7 +188,6 @@ const Register = () => {
             )}
           </div>
 
-          {/* Email Field */}
           <div className="form-group">
             <label htmlFor="email">
               <span className="label-icon">📧</span>
@@ -220,7 +213,6 @@ const Register = () => {
             )}
           </div>
 
-          {/* Phone Number Field - NEW */}
           <div className="form-group">
             <label htmlFor="phone">
               <span className="label-icon">📱</span>
@@ -251,7 +243,6 @@ const Register = () => {
             <small className="phone-hint">Ethiopian phone number (09 or 07 followed by 8 digits)</small>
           </div>
 
-          {/* Password Field */}
           <div className="form-group">
             <label htmlFor="password">
               <span className="label-icon">🔒</span>
@@ -277,7 +268,6 @@ const Register = () => {
                 {showPassword ? '👁️' : '👁️‍🗨️'}
               </button>
             </div>
-            {/* Simple password length indicator */}
             {password && (
               <div className={`password-length ${password.length >= 6 ? 'valid' : 'invalid'}`}>
                 <div className="length-bar">
@@ -295,7 +285,6 @@ const Register = () => {
             )}
           </div>
 
-          {/* Confirm Password Field */}
           <div className="form-group">
             <label htmlFor="confirmPassword">
               <span className="label-icon">🔒</span>
@@ -329,7 +318,6 @@ const Register = () => {
             )}
           </div>
 
-          {/* Simple Password Requirements */}
           <div className="simple-requirements">
             <ul>
               <li className={password.length >= 6 ? 'met' : ''}>
@@ -339,7 +327,6 @@ const Register = () => {
             </ul>
           </div>
 
-          {/* Submit Button */}
           <button 
             type="submit" 
             className="register-submit-btn"
@@ -355,12 +342,10 @@ const Register = () => {
             )}
           </button>
 
-          {/* Login Link */}
           <p className="login-link">
             Already have an account? <Link to="/login">Sign In</Link>
           </p>
 
-          {/* Terms */}
           <p className="terms-text">
             By creating an account, you agree to our{' '}
             <a href="/terms" onClick={(e) => { e.preventDefault(); alert('Terms of Service - Coming soon'); }}>Terms of Service</a> and{' '}
