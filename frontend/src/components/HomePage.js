@@ -26,6 +26,9 @@ const HomePage = () => {
   const [showTelegramPopup, setShowTelegramPopup] = useState(false);
   const dropdownRef = useRef(null);
 
+  // ✅ API URL from environment variable
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
   const sports = [
     { id: 'FOOTBALL', name: 'Football', icon: '⚽' },
     { id: 'BASKETBALL', name: 'Basketball', icon: '🏀' },
@@ -266,7 +269,7 @@ const HomePage = () => {
     try {
       const token = localStorage.getItem('token');
       if (token) {
-        const response = await axios.get('http://localhost:5000/api/user/balance', {
+        const response = await axios.get(`${API_URL}/api/user/balance`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setBalance(response.data.balance || 0);
@@ -274,7 +277,7 @@ const HomePage = () => {
     } catch (error) {
       console.error('Error fetching balance:', error);
     }
-  }, []);
+  }, [API_URL]);
 
   // Fetch matches
   const fetchMatches = useCallback(async () => {
@@ -286,7 +289,7 @@ const HomePage = () => {
       if (selectedLeague) params.append('league', selectedLeague);
       if (dateFilter !== 'all') params.append('date', dateFilter);
 
-      const response = await axios.get(`http://localhost:5000/api/matches?${params}`, {
+      const response = await axios.get(`${API_URL}/api/matches?${params}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       
@@ -305,7 +308,7 @@ const HomePage = () => {
       console.error('Error fetching matches:', error);
       setLoading(false);
     }
-  }, [selectedSport, selectedLeague, dateFilter]);
+  }, [selectedSport, selectedLeague, dateFilter, API_URL]);
 
   // Handle resize for mobile detection
   useEffect(() => {
@@ -438,7 +441,7 @@ const HomePage = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post('http://localhost:5000/api/bets/place', {
+      const response = await axios.post(`${API_URL}/api/bets/place`, {
         bets: betSlip,
         totalStake: totalStake,
         totalOdds: parseFloat(calculateTotalOdds())
