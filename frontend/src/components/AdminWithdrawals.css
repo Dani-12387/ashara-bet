@@ -1,0 +1,280 @@
+.admin-withdrawals {
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.withdrawals-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.withdrawals-header h1 {
+  color: #2e7d32;
+  font-size: 28px;
+  margin: 0;
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  padding: 8px 16px;
+  border: 2px solid #2e7d32;
+  background: white;
+  color: #2e7d32;
+  border-radius: 30px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.filter-btn.active {
+  background: #2e7d32;
+  color: white;
+}
+
+.filter-btn:hover {
+  background: #e8f5e9;
+}
+
+.withdrawals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 20px;
+}
+
+.withdrawal-card {
+  background: white;
+  border-radius: 15px;
+  padding: 20px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  border-left: 5px solid;
+  transition: transform 0.3s;
+}
+
+.withdrawal-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+}
+
+.withdrawal-card.pending {
+  border-left-color: #ff9800;
+}
+
+.withdrawal-card.approved {
+  border-left-color: #2196f3;
+}
+
+.withdrawal-card.completed {
+  border-left-color: #4caf50;
+}
+
+.withdrawal-card.rejected {
+  border-left-color: #f44336;
+}
+
+.card-header {
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.user-info h3 {
+  color: #333;
+  font-size: 18px;
+  margin: 0 0 5px 0;
+}
+
+.withdrawal-id {
+  font-size: 12px;
+  color: #999;
+  background: #f5f5f5;
+  padding: 3px 8px;
+  border-radius: 12px;
+}
+
+.contact-section {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 15px;
+  border-left: 3px solid #2e7d32;
+}
+
+.contact-section h4,
+.withdrawal-details h4 {
+  color: #2e7d32;
+  margin-bottom: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.withdrawal-details {
+  margin-bottom: 15px;
+}
+
+.info-row {
+  display: flex;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.info-row .label {
+  width: 110px;
+  color: #666;
+  font-weight: 500;
+}
+
+.info-row .value {
+  flex: 1;
+  color: #333;
+}
+
+.info-row .value.amount {
+  font-weight: 700;
+  color: #2e7d32;
+}
+
+.info-row .value.email {
+  color: #0066cc;
+  word-break: break-all;
+}
+
+.info-row.rejection {
+  background: #ffebee;
+  padding: 8px;
+  border-radius: 5px;
+  margin-top: 10px;
+}
+
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.status-pending {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.status-approved {
+  background: #cce5ff;
+  color: #004085;
+}
+
+.status-completed {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-rejected {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.card-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.approve-btn,
+.reject-btn,
+.complete-btn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.approve-btn {
+  background: #2196f3;
+  color: white;
+}
+
+.approve-btn:hover:not(:disabled) {
+  background: #1976d2;
+}
+
+.complete-btn {
+  background: #4caf50;
+  color: white;
+}
+
+.complete-btn:hover:not(:disabled) {
+  background: #388e3c;
+}
+
+.reject-btn {
+  background: #f44336;
+  color: white;
+}
+
+.reject-btn:hover:not(:disabled) {
+  background: #d32f2f;
+}
+
+.approve-btn:disabled,
+.reject-btn:disabled,
+.complete-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.no-withdrawals {
+  text-align: center;
+  padding: 50px;
+  background: white;
+  border-radius: 15px;
+  color: #999;
+  font-size: 16px;
+}
+
+.loading-spinner {
+  text-align: center;
+  padding: 50px;
+  color: #2e7d32;
+  font-size: 18px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .withdrawals-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .withdrawals-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .info-row {
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .info-row .label {
+    width: auto;
+  }
+
+  .card-actions {
+    flex-direction: column;
+  }
+}

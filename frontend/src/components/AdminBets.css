@@ -1,0 +1,515 @@
+.admin-bets {
+  padding: 20px;
+  background: #0d1117;
+  min-height: 100vh;
+  color: #e6edf3;
+}
+
+.bets-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.bets-header h1 {
+  margin: 0;
+  color: #fff;
+  font-size: 24px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.pending-count {
+  background: rgba(245, 159, 0, 0.15);
+  color: #f59f00;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  background: #161b22;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 15px;
+  text-align: center;
+}
+
+.stat-card h3 {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0 0 5px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-number {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.stat-card.total .stat-number { color: #58a6ff; }
+.stat-card.pending .stat-number { color: #f59f00; }
+.stat-card.won .stat-number { color: #2ea043; }
+.stat-card.lost .stat-number { color: #f85149; }
+.stat-card.profit .stat-number.positive { color: #2ea043; }
+.stat-card.profit .stat-number.negative { color: #f85149; }
+
+.filters-bar {
+  margin-bottom: 20px;
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  padding: 8px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  border-radius: 6px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+.filter-btn.active {
+  background: #2e7d32;
+  color: white;
+  border-color: #2e7d32;
+}
+
+.bets-table-container {
+  background: #161b22;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  overflow: auto;
+}
+
+.bets-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+}
+
+.bets-table th {
+  background: rgba(255, 255, 255, 0.02);
+  padding: 12px 16px;
+  text-align: left;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.bets-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  vertical-align: middle;
+}
+
+.bet-row:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.bet-row.won {
+  background: rgba(46, 160, 67, 0.05);
+}
+
+.bet-row.lost {
+  background: rgba(248, 81, 73, 0.05);
+}
+
+.bet-row.cancelled {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.username {
+  font-weight: 600;
+  color: #fff;
+}
+
+.user-email {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.selections-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sel-count {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.pending-badge {
+  background: rgba(245, 159, 0, 0.15);
+  color: #f59f00;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+}
+
+.expand-btn {
+  background: none;
+  border: none;
+  color: #58a6ff;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.expand-btn:hover {
+  background: rgba(88, 166, 255, 0.1);
+}
+
+.potential-win {
+  color: #2ea043;
+}
+
+.status-badge {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.status-pending {
+  background: rgba(245, 159, 0, 0.15);
+  color: #f59f00;
+}
+
+.status-won {
+  background: rgba(46, 160, 67, 0.15);
+  color: #2ea043;
+}
+
+.status-lost {
+  background: rgba(248, 81, 73, 0.15);
+  color: #f85149;
+}
+
+.status-cancelled {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.pending-text {
+  font-size: 12px;
+  color: #f59f00;
+}
+
+.settled-info {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* Expanded Row */
+.expanded-row {
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.expanded-row td {
+  padding: 16px 20px;
+}
+
+.expanded-selections h4 {
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0 0 12px 0;
+  font-size: 14px;
+}
+
+.selections-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+.selection-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 12px 16px;
+  transition: all 0.2s;
+}
+
+.selection-card:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.selection-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.selection-number {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.sel-badge {
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.sel-won {
+  background: rgba(46, 160, 67, 0.15);
+  color: #2ea043;
+}
+
+.sel-lost {
+  background: rgba(248, 81, 73, 0.15);
+  color: #f85149;
+}
+
+.sel-pending {
+  background: rgba(245, 159, 0, 0.15);
+  color: #f59f00;
+}
+
+.selection-body {
+  margin-bottom: 10px;
+}
+
+.sel-match-name {
+  font-weight: 500;
+  color: #fff;
+  margin: 0 0 4px 0;
+  font-size: 14px;
+}
+
+.sel-detail {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0;
+  flex-wrap: wrap;
+}
+
+.sel-market {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.sel-bet-type {
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.sel-odds {
+  color: #58a6ff;
+  font-weight: 600;
+}
+
+.selection-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.sel-btn-won,
+.sel-btn-lost {
+  flex: 1;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sel-btn-won {
+  background: rgba(46, 160, 67, 0.15);
+  color: #2ea043;
+}
+
+.sel-btn-won:hover:not(:disabled) {
+  background: rgba(46, 160, 67, 0.25);
+}
+
+.sel-btn-lost {
+  background: rgba(248, 81, 73, 0.15);
+  color: #f85149;
+}
+
+.sel-btn-lost:hover:not(:disabled) {
+  background: rgba(248, 81, 73, 0.25);
+}
+
+.sel-btn-won:disabled,
+.sel-btn-lost:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.selection-result {
+  text-align: center;
+  padding: 6px 0;
+  font-weight: 600;
+  font-size: 13px;
+  color: #2ea043;
+}
+
+.no-data {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.3);
+  padding: 40px !important;
+}
+
+.loading-spinner {
+  text-align: center;
+  padding: 40px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .filter-buttons {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+  }
+  .filter-btn {
+    white-space: nowrap;
+  }
+  .bets-table-container {
+    overflow-x: auto;
+  }
+  .bets-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .header-actions {
+    justify-content: space-between;
+  }
+  .selections-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Add to AdminBets.css */
+
+.ticket-id-display {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: #58a6ff;
+  background: rgba(88, 166, 255, 0.05);
+  padding: 2px 10px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.ticket-id {
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* Update table header for ticket ID column */
+.bets-table th:nth-child(2) {
+  min-width: 100px;
+}
+
+/* Add to AdminBets.css */
+
+.ticket-search {
+  margin-top: 12px;
+  width: 100%;
+}
+
+.ticket-search-input {
+  width: 100%;
+  max-width: 400px;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  color: #e6edf3;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.ticket-search-input:focus {
+  outline: none;
+  border-color: #58a6ff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.ticket-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.ticket-id-display {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: #58a6ff;
+  background: rgba(88, 166, 255, 0.05);
+  padding: 2px 10px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.ticket-id {
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .ticket-search-input {
+    max-width: 100%;
+  }
+}

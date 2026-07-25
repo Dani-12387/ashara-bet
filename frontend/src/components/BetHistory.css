@@ -1,0 +1,565 @@
+/* ============================================================
+   BET HISTORY - MODERN & ATTRACTIVE
+   ============================================================ */
+
+.bet-history {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+  color: #e6edf3;
+  min-height: 100vh;
+  background: #0d1117;
+}
+
+/* ===== HEADER ===== */
+.bet-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.back-home-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+
+.back-home-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.bet-history-header h1 {
+  color: #fff;
+  font-size: 28px;
+  margin: 0;
+}
+
+.total-bets {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px 14px;
+  border-radius: 20px;
+}
+
+/* ===== FILTERS ROW ===== */
+.filters-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  padding: 8px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  border-radius: 20px;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.filter-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+.filter-btn.active {
+  background: #2e7d32;
+  color: white;
+  border-color: #2e7d32;
+}
+
+/* ===== TICKET SEARCH ===== */
+.ticket-search-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+
+.ticket-search-input {
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  color: #e6edf3;
+  font-size: 14px;
+  min-width: 220px;
+  transition: all 0.2s;
+}
+
+.ticket-search-input:focus {
+  outline: none;
+  border-color: #58a6ff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.ticket-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.clear-search-btn {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px;
+}
+
+.clear-search-btn:hover {
+  color: #fff;
+}
+
+/* ===== SEARCH RESULTS ===== */
+.search-results-info {
+  margin-bottom: 16px;
+  padding: 8px 14px;
+  background: rgba(88, 166, 255, 0.05);
+  border: 1px solid rgba(88, 166, 255, 0.1);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+}
+
+/* ===== BETS LIST ===== */
+.bets-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ===== BET CARD ===== */
+.bet-card {
+  background: #161b22;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 16px 20px;
+  border-left: 4px solid #f59f00;
+  transition: all 0.2s;
+}
+
+.bet-card:hover {
+  border-color: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.bet-card.won {
+  border-left-color: #2ea043;
+  background: rgba(46, 160, 67, 0.03);
+}
+
+.bet-card.lost {
+  border-left-color: #f85149;
+  background: rgba(248, 81, 73, 0.03);
+}
+
+.bet-card.pending {
+  border-left-color: #f59f00;
+}
+
+.bet-card.cancelled {
+  border-left-color: rgba(255, 255, 255, 0.15);
+}
+
+/* ===== BET CARD HEADER ===== */
+.bet-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.bet-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bet-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bet-ticket-id {
+  font-size: 14px;
+  font-weight: 600;
+  color: #58a6ff;
+  font-family: 'Courier New', monospace;
+}
+
+.bet-date {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.print-ticket-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.print-ticket-btn:hover {
+  color: #58a6ff;
+  background: rgba(88, 166, 255, 0.08);
+}
+
+/* ===== STATUS BADGE ===== */
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-pending {
+  background: rgba(245, 159, 0, 0.15);
+  color: #f59f00;
+}
+
+.status-won {
+  background: rgba(46, 160, 67, 0.15);
+  color: #2ea043;
+}
+
+.status-lost {
+  background: rgba(248, 81, 73, 0.15);
+  color: #f85149;
+}
+
+.status-cancelled {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* ===== SELECTIONS SUMMARY ===== */
+.bet-selections-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.selections-count {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.pending-selections-badge {
+  background: rgba(245, 159, 0, 0.15);
+  color: #f59f00;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  margin-left: 8px;
+}
+
+.expand-toggle {
+  background: none;
+  border: none;
+  color: #58a6ff;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.expand-toggle:hover {
+  background: rgba(88, 166, 255, 0.08);
+}
+
+/* ===== SELECTIONS DETAILS ===== */
+.selections-details {
+  margin: 12px 0 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.selection-detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.selection-detail-item:last-child {
+  border-bottom: none;
+}
+
+.selection-detail-match {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.match-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.match-market {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.selection-detail-status {
+  flex-shrink: 0;
+}
+
+.sel-status {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sel-won {
+  background: rgba(46, 160, 67, 0.15);
+  color: #2ea043;
+}
+
+.sel-lost {
+  background: rgba(248, 81, 73, 0.15);
+  color: #f85149;
+}
+
+.sel-pending {
+  background: rgba(245, 159, 0, 0.15);
+  color: #f59f00;
+}
+
+/* ===== BET SUMMARY ===== */
+.bet-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.summary-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.summary-value {
+  font-size: 16px;
+  color: #fff;
+  font-weight: 600;
+}
+
+.summary-item.potential .summary-value {
+  color: #2ea043;
+}
+
+/* ===== ADMIN NOTES ===== */
+.admin-notes {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 6px;
+  font-size: 12px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.notes-label {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.notes-text {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* ===== NO BETS ===== */
+.no-bets {
+  text-align: center;
+  padding: 60px 20px;
+  background: rgba(255, 255, 255, 0.01);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.no-bets-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.no-bets p {
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 4px;
+}
+
+.no-bets span {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.2);
+}
+
+/* ===== LOADING ===== */
+.loading-spinner {
+  text-align: center;
+  padding: 60px 20px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .bet-history-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .header-left {
+    flex-wrap: wrap;
+  }
+
+  .bet-history-header h1 {
+    font-size: 24px;
+  }
+
+  .filters-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-buttons {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+  }
+
+  .filter-btn {
+    white-space: nowrap;
+    font-size: 12px;
+    padding: 6px 14px;
+  }
+
+  .ticket-search-container {
+    width: 100%;
+  }
+
+  .ticket-search-input {
+    width: 100%;
+    min-width: auto;
+  }
+
+  .bet-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .bet-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .bet-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .header-left {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .selection-detail-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+}
+
+@media (max-width: 480px) {
+  .bet-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .bet-card {
+    padding: 12px 14px;
+  }
+
+  .bet-selections-summary {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .back-home-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .match-name {
+    font-size: 13px;
+  }
+
+  .summary-value {
+    font-size: 14px;
+  }
+
+  .bet-ticket-id {
+    font-size: 12px;
+  }
+}

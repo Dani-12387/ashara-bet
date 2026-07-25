@@ -1,0 +1,506 @@
+.register-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #e8f5e9 0%, #ffffff 100%);
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.register-box {
+  background: white;
+  padding: 40px;
+  border-radius: 30px;
+  box-shadow: 0 20px 40px rgba(46, 125, 50, 0.15);
+  width: 100%;
+  max-width: 500px;
+  position: relative;
+  border: 1px solid rgba(46, 125, 50, 0.1);
+  animation: slideUp 0.5s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.home-button {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: #e8f5e9;
+  border: none;
+  color: #2e7d32;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 8px 16px;
+  border-radius: 30px;
+  transition: all 0.3s;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  z-index: 1;
+}
+
+.home-button:hover {
+  background: #2e7d32;
+  color: white;
+  transform: translateX(-3px);
+  box-shadow: 0 5px 15px rgba(46, 125, 50, 0.3);
+}
+
+.register-logo {
+  font-size: 32px;
+  font-weight: 800;
+  color: #2e7d32;
+  text-align: center;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-shadow: 2px 2px 4px rgba(46, 125, 50, 0.1);
+  padding-top: 20px;
+}
+
+.register-logo:hover {
+  transform: scale(1.05);
+}
+
+.register-box h2 {
+  color: #333;
+  font-size: 28px;
+  text-align: center;
+  margin-bottom: 5px;
+  font-weight: 700;
+}
+
+.subtitle {
+  text-align: center;
+  color: #666;
+  margin-bottom: 30px;
+  font-size: 14px;
+}
+
+/* Form Groups */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: #2e7d32;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.label-icon {
+  font-size: 16px;
+}
+
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-wrapper input {
+  width: 100%;
+  padding: 15px;
+  border: 2px solid #e8f5e9;
+  border-radius: 15px;
+  font-size: 15px;
+  transition: all 0.3s;
+  background: #f8f9fa;
+  padding-right: 45px;
+}
+
+.input-wrapper input:focus {
+  outline: none;
+  border-color: #2e7d32;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(46, 125, 50, 0.1);
+}
+
+.input-wrapper input.error {
+  border-color: #dc3545;
+  background: #fff5f5;
+}
+
+.input-wrapper input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.input-valid {
+  position: absolute;
+  right: 45px;
+  color: #2e7d32;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  color: #666;
+  padding: 5px;
+  border-radius: 50%;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.password-toggle:hover {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+/* Input Hints */
+.input-hint {
+  font-size: 12px;
+  color: #ff9800;
+  margin-top: 5px;
+  padding: 4px 12px;
+  background: #fff3e0;
+  border-radius: 20px;
+  display: inline-block;
+}
+
+/* Password Length Indicator */
+.password-length {
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 10px;
+  background: #f8f9fa;
+}
+
+.password-length.valid {
+  color: #2e7d32;
+}
+
+.password-length.invalid {
+  color: #ff9800;
+}
+
+.length-bar {
+  height: 4px;
+  background: #e0e0e0;
+  border-radius: 2px;
+  margin-bottom: 5px;
+  overflow: hidden;
+}
+
+.length-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ff9800, #2e7d32);
+  transition: width 0.3s ease;
+}
+
+.length-text {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Password Match */
+.password-match-error {
+  margin-top: 5px;
+  font-size: 12px;
+  color: #dc3545;
+  padding: 4px 12px;
+  background: #f8d7da;
+  border-radius: 20px;
+  display: inline-block;
+}
+
+.password-match-success {
+  margin-top: 5px;
+  font-size: 12px;
+  color: #2e7d32;
+  padding: 4px 12px;
+  background: #d4edda;
+  border-radius: 20px;
+  display: inline-block;
+}
+
+/* Simple Requirements */
+.simple-requirements {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 15px;
+  margin-bottom: 20px;
+  border: 1px solid #e8f5e9;
+}
+
+.simple-requirements p {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2e7d32;
+  margin-bottom: 10px;
+}
+
+.simple-requirements ul {
+  list-style: none;
+  padding: 0;
+}
+
+.simple-requirements li {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.simple-requirements li.met {
+  color: #2e7d32;
+}
+
+.simple-requirements li span {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 12px;
+}
+
+.simple-requirements li.met span {
+  background: #2e7d32;
+  color: white;
+}
+
+.simple-requirements li:not(.met) span {
+  background: #ddd;
+  color: #666;
+}
+
+/* Messages */
+.error-message,
+.success-message {
+  padding: 15px;
+  border-radius: 15px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  animation: shake 0.5s ease;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+.error-message {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.success-message {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.error-icon,
+.success-icon {
+  font-size: 18px;
+}
+
+/* Submit Button */
+.register-submit-btn {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin: 20px 0 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  box-shadow: 0 10px 20px rgba(46, 125, 50, 0.2);
+}
+
+.register-submit-btn:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 15px 30px rgba(46, 125, 50, 0.3);
+}
+
+.register-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255,255,255,0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Links */
+.login-link {
+  text-align: center;
+  margin: 15px 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.login-link a {
+  color: #2e7d32;
+  text-decoration: none;
+  font-weight: 700;
+  margin-left: 5px;
+  transition: all 0.3s;
+}
+
+.login-link a:hover {
+  color: #1b5e20;
+  text-decoration: underline;
+}
+
+.terms-text {
+  text-align: center;
+  font-size: 12px;
+  color: #999;
+  line-height: 1.5;
+}
+
+.terms-text a {
+  color: #2e7d32;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.terms-text a:hover {
+  text-decoration: underline;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .register-box {
+    padding: 30px 20px;
+  }
+
+  .register-logo {
+    font-size: 28px;
+  }
+
+  .register-box h2 {
+    font-size: 24px;
+  }
+
+  .input-wrapper input {
+    padding: 12px;
+    padding-right: 40px;
+  }
+}
+
+@media (max-width: 480px) {
+  .register-box {
+    padding: 25px 15px;
+  }
+
+  .home-button {
+    top: 10px;
+    left: 10px;
+    padding: 5px 12px;
+    font-size: 12px;
+  }
+
+  .register-logo {
+    font-size: 24px;
+    padding-top: 15px;
+  }
+
+  .form-group label {
+    font-size: 13px;
+  }
+
+  .register-submit-btn {
+    padding: 14px;
+    font-size: 15px;
+  }
+}
+
+/* Phone Number Field Specific Styles */
+.phone-hint {
+  display: block;
+  font-size: 11px;
+  color: #666;
+  margin-top: 5px;
+  padding-left: 5px;
+}
+
+/* Adjust form group for better spacing */
+.form-group {
+  margin-bottom: 20px;
+}
+
+/* Make sure all inputs have consistent styling */
+.form-group input[type="tel"] {
+  width: 100%;
+  padding: 15px;
+  border: 2px solid #e8f5e9;
+  border-radius: 15px;
+  font-size: 15px;
+  transition: all 0.3s;
+  background: #f8f9fa;
+  padding-right: 45px;
+}
+
+.form-group input[type="tel"]:focus {
+  outline: none;
+  border-color: #2e7d32;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(46, 125, 50, 0.1);
+}
+
+.form-group input[type="tel"].error {
+  border-color: #dc3545;
+  background: #fff5f5;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .phone-hint {
+    font-size: 10px;
+  }
+  
+  .form-group input[type="tel"] {
+    padding: 12px;
+    padding-right: 40px;
+  }
+}

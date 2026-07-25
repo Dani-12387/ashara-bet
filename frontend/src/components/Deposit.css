@@ -1,0 +1,732 @@
+/* ============================================================
+   DEPOSIT PAGE - MODERN & ATTRACTIVE
+   ============================================================ */
+
+/* ===== CONTAINER ===== */
+.deposit-container {
+  max-width: 1100px;
+  margin: 20px auto;
+  padding: 0 20px 40px;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #f8faf8;
+  min-height: 100vh;
+}
+
+/* ===== HEADER ===== */
+.deposit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0 20px;
+  border-bottom: 2px solid rgba(46, 125, 50, 0.1);
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-left h1 {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1b5e20;
+  margin: 0;
+}
+
+.back-btn {
+  background: none;
+  border: 2px solid #2e7d32;
+  color: #2e7d32;
+  padding: 8px 18px;
+  border-radius: 25px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.back-btn:hover {
+  background: #2e7d32;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
+}
+
+.header-right .balance-display {
+  background: linear-gradient(135deg, #2e7d32, #00c853);
+  color: white;
+  padding: 10px 24px;
+  border-radius: 30px;
+  font-size: 14px;
+  box-shadow: 0 4px 15px rgba(46, 125, 50, 0.25);
+}
+
+.balance-display strong {
+  font-size: 18px;
+}
+
+/* ===== MESSAGES ===== */
+.success-message,
+.error-message {
+  padding: 14px 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.success-message {
+  background: #e8f5e9;
+  color: #1b5e20;
+  border-left: 4px solid #2e7d32;
+}
+
+.error-message {
+  background: #ffebee;
+  color: #c62828;
+  border-left: 4px solid #c62828;
+}
+
+/* ===== STEP SECTIONS ===== */
+.step-section {
+  background: white;
+  border-radius: 16px;
+  padding: 24px 28px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s;
+}
+
+.step-section:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #2e7d32, #00c853);
+  color: white;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.step-header h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0;
+}
+
+/* ===== BANK GRID ===== */
+.bank-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+}
+
+.bank-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: #fafafa;
+  position: relative;
+}
+
+.bank-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+.bank-card.selected {
+  background: white;
+  border-width: 2px;
+  box-shadow: 0 4px 16px rgba(46, 125, 50, 0.15);
+}
+
+.bank-card .selected-check {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #2e7d32;
+  color: white;
+  font-size: 10px;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-weight: 600;
+}
+
+.bank-logo-wrapper {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.bank-logo-img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
+.bank-card h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2d3748;
+  text-align: center;
+  margin: 0;
+}
+
+/* ===== BANK DETAILS ===== */
+.bank-details-section {
+  border-left: 4px solid #2e7d32;
+}
+
+.bank-details-card {
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 20px;
+  background: #fafafa;
+}
+
+.bank-details-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 16px;
+}
+
+.bank-detail-logo {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
+.bank-details-header h4 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #2d3748;
+  margin: 0;
+}
+
+.branch-text {
+  font-size: 13px;
+  color: #666;
+  margin: 0;
+}
+
+.bank-details-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: white;
+  border-radius: 8px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.detail-label {
+  font-size: 13px;
+  color: #888;
+  font-weight: 500;
+}
+
+.detail-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.account-number-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.account-number {
+  font-family: 'Courier New', monospace;
+  font-size: 16px;
+  letter-spacing: 0.5px;
+  color: #1b5e20;
+}
+
+.copy-btn {
+  background: #2e7d32;
+  color: white;
+  border: none;
+  padding: 4px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.copy-btn:hover {
+  background: #1b5e20;
+  transform: scale(1.05);
+}
+
+.bank-details-footer {
+  margin-top: 14px;
+  padding: 12px 16px;
+  background: #fff3cd;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #856404;
+}
+
+/* ===== FORM ===== */
+.deposit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 5px;
+}
+
+.form-group input,
+.form-group select {
+  padding: 10px 14px;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 14px;
+  transition: all 0.3s;
+  background: white;
+  color: #2d3748;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  border-color: #2e7d32;
+  box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
+  outline: none;
+}
+
+.form-group input::placeholder {
+  color: #aaa;
+}
+
+.form-group small {
+  font-size: 12px;
+  color: #888;
+  margin-top: 4px;
+}
+
+.input-with-icon {
+  position: relative;
+}
+
+.input-with-icon .input-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+}
+
+.input-with-icon input {
+  padding-left: 40px;
+}
+
+.full-width {
+  grid-column: 1 / -1;
+}
+
+/* ===== FILE UPLOAD ===== */
+.file-upload-area {
+  border: 2px dashed #2e7d32;
+  border-radius: 12px;
+  padding: 30px;
+  text-align: center;
+  background: #f1f8e9;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+}
+
+.file-upload-area:hover {
+  background: #e8f5e9;
+  border-color: #1b5e20;
+}
+
+.file-input {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  top: 0;
+  left: 0;
+  cursor: pointer;
+}
+
+.upload-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.upload-icon {
+  font-size: 36px;
+}
+
+.upload-content p {
+  font-size: 14px;
+  font-weight: 500;
+  color: #2d3748;
+  margin: 0;
+}
+
+.upload-content small {
+  font-size: 12px;
+  color: #888;
+}
+
+.image-preview-wrapper {
+  margin-top: 12px;
+}
+
+.image-preview {
+  position: relative;
+  max-width: 200px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid #2e7d32;
+}
+
+.image-preview img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.remove-image {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #c62828;
+  color: white;
+  border: 2px solid white;
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+}
+
+.remove-image:hover {
+  transform: scale(1.1);
+}
+
+/* ===== SUBMIT BUTTON ===== */
+.submit-btn {
+  padding: 14px 28px;
+  border-radius: 12px;
+  border: none;
+  font-size: 16px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #2e7d32, #00c853);
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.submit-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(46, 125, 50, 0.3);
+}
+
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ===== SPINNER ===== */
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ===== RECENT DEPOSITS ===== */
+.recent-deposits {
+  background: white;
+  border-radius: 16px;
+  padding: 24px 28px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  margin-top: 20px;
+}
+
+.recent-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.recent-header h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0;
+}
+
+.recent-count {
+  font-size: 13px;
+  color: #888;
+  background: #f0f0f0;
+  padding: 2px 14px;
+  border-radius: 20px;
+}
+
+.deposits-table-wrapper {
+  overflow-x: auto;
+}
+
+.deposits-table-wrapper table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.deposits-table-wrapper th {
+  text-align: left;
+  padding: 12px 16px;
+  background: #f1f8e9;
+  color: #1b5e20;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.deposits-table-wrapper td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 14px;
+}
+
+.deposits-table-wrapper tr:hover td {
+  background: #fafafa;
+}
+
+/* ===== STATUS BADGE ===== */
+.status-badge {
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.status-pending {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.status-approved {
+  background: #e8f5e9;
+  color: #1b5e20;
+}
+
+.status-rejected {
+  background: #ffebee;
+  color: #c62828;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .deposit-container {
+    padding: 0 12px 30px;
+  }
+
+  .deposit-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .header-left h1 {
+    font-size: 22px;
+  }
+
+  .header-right .balance-display {
+    font-size: 13px;
+    padding: 8px 16px;
+  }
+
+  .step-section {
+    padding: 18px 16px;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .bank-grid {
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  }
+
+  .bank-details-header {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .detail-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .account-number-wrapper {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .deposits-table-wrapper td,
+  .deposits-table-wrapper th {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-left {
+    flex-wrap: wrap;
+  }
+
+  .header-left h1 {
+    font-size: 18px;
+  }
+
+  .back-btn {
+    padding: 6px 14px;
+    font-size: 12px;
+  }
+
+  .bank-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .bank-card {
+    padding: 12px 8px;
+  }
+
+  .bank-logo-wrapper {
+    width: 48px;
+    height: 48px;
+  }
+
+  .bank-logo-img {
+    width: 32px;
+    height: 32px;
+  }
+
+  .bank-card h4 {
+    font-size: 11px;
+  }
+
+  .file-upload-area {
+    padding: 20px;
+  }
+
+  .upload-icon {
+    font-size: 28px;
+  }
+
+  .upload-content p {
+    font-size: 12px;
+  }
+
+  .submit-btn {
+    font-size: 14px;
+    padding: 12px;
+  }
+
+  .recent-deposits {
+    padding: 16px;
+  }
+}
+

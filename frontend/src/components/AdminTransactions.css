@@ -1,0 +1,386 @@
+.admin-transactions {
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.transactions-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.transactions-header h1 {
+  color: #2e7d32;
+  font-size: 28px;
+  margin: 0;
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  padding: 8px 16px;
+  border: 2px solid #2e7d32;
+  background: white;
+  color: #2e7d32;
+  border-radius: 30px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.filter-btn.active {
+  background: #2e7d32;
+  color: white;
+}
+
+.filter-btn:hover {
+  background: #e8f5e9;
+}
+
+.transactions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+}
+
+.transaction-card {
+  background: white;
+  border-radius: 15px;
+  padding: 20px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  border-left: 5px solid;
+  transition: transform 0.3s;
+}
+
+.transaction-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+}
+
+.transaction-card.pending {
+  border-left-color: #ff9800;
+}
+
+.transaction-card.approved {
+  border-left-color: #4caf50;
+}
+
+.transaction-card.rejected {
+  border-left-color: #f44336;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.card-header h3 {
+  color: #333;
+  font-size: 18px;
+  margin: 0;
+}
+
+.transaction-id {
+  font-size: 12px;
+  color: #999;
+  background: #f5f5f5;
+  padding: 3px 8px;
+  border-radius: 12px;
+}
+
+.card-body {
+  margin-bottom: 15px;
+}
+
+.info-row {
+  display: flex;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.info-row .label {
+  width: 90px;
+  color: #666;
+  font-weight: 500;
+}
+
+.info-row .value {
+  flex: 1;
+  color: #333;
+}
+
+.info-row .value.amount {
+  font-weight: 700;
+  color: #2e7d32;
+}
+
+.info-row.rejection {
+  background: #ffebee;
+  padding: 8px;
+  border-radius: 5px;
+  margin-top: 10px;
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-badge.status-pending {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.status-badge.status-approved {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-badge.status-rejected {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.screenshot-section {
+  margin: 15px 0;
+  text-align: center;
+}
+
+.view-screenshot-btn {
+  background: #f8f9fa;
+  border: 2px solid #2e7d32;
+  color: #2e7d32;
+  padding: 8px 16px;
+  border-radius: 30px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  width: 100%;
+}
+
+.view-screenshot-btn:hover {
+  background: #2e7d32;
+  color: white;
+}
+
+.card-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.approve-btn, .reject-btn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.approve-btn {
+  background: #4caf50;
+  color: white;
+}
+
+.approve-btn:hover:not(:disabled) {
+  background: #388e3c;
+  transform: translateY(-2px);
+}
+
+.reject-btn {
+  background: #f44336;
+  color: white;
+}
+
+.reject-btn:hover:not(:disabled) {
+  background: #d32f2f;
+  transform: translateY(-2px);
+}
+
+.approve-btn:disabled, .reject-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 15px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  padding: 15px 20px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #2e7d32;
+  color: white;
+  border-radius: 15px 15px 0 0;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.modal-body {
+  padding: 20px;
+  text-align: center;
+}
+
+.screenshot-image {
+  max-width: 100%;
+  max-height: 70vh;
+  border-radius: 8px;
+}
+
+.no-transactions {
+  text-align: center;
+  padding: 50px;
+  background: white;
+  border-radius: 15px;
+  color: #999;
+  font-size: 16px;
+}
+
+.loading-spinner {
+  text-align: center;
+  padding: 50px;
+  color: #2e7d32;
+  font-size: 18px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .transactions-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .transactions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card-actions {
+    flex-direction: column;
+  }
+}
+
+
+/* Contact Section */
+.contact-section {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 15px;
+  border-left: 3px solid #2e7d32;
+}
+
+.contact-section h4 {
+  color: #2e7d32;
+  margin-bottom: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.transaction-details h4 {
+  color: #2e7d32;
+  margin: 15px 0 10px 0;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.info-row .value.email {
+  color: #0066cc;
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.info-row .value.phone {
+  color: #2e7d32;
+  font-weight: 500;
+}
+
+/* Update card body padding */
+.card-body {
+  padding: 0;
+}
+
+/* User info in header */
+.user-info {
+  flex: 1;
+}
+
+.user-info h3 {
+  margin-bottom: 5px;
+}
+
+/* Screenshot info in modal */
+.screenshot-info {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  text-align: left;
+  border-left: 4px solid #2e7d32;
+}
+
+.screenshot-info p {
+  margin: 5px 0;
+  color: #333;
+  font-size: 14px;
+}
+
+.screenshot-info strong {
+  color: #2e7d32;
+  width: 80px;
+  display: inline-block;
+}
