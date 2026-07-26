@@ -31,20 +31,43 @@ const MyAccount = () => {
     fetchUserProfile();
   }, []);
 
-  // ✅ FIXED: Use API_URL
+  // ✅ FIXED: Use API_URL and handle response format
   const fetchUserProfile = async () => {
     try {
       const token = localStorage.getItem('token');
+      console.log('Fetching profile with token:', token ? 'Token exists' : 'No token');
+      
       const response = await axios.get(`${API_URL}/api/user/profile`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
+      console.log('Profile response:', response.data);
+      
       if (response.data.success) {
         setUser(response.data.user);
+      } else {
+        // If success is false but user data might be in a different format
+        if (response.data.user) {
+          setUser(response.data.user);
+        } else {
+          // Try to get user from response directly
+          setUser(response.data);
+        }
       }
       setLoading(false);
     } catch (error) {
       console.error('Error fetching profile:', error);
+      
+      // Try to get user from localStorage as fallback
+      const userData = localStorage.getItem('user');
+      if (userData) {
+        try {
+          setUser(JSON.parse(userData));
+        } catch (e) {
+          console.error('Error parsing user from localStorage:', e);
+        }
+      }
+      
       setLoading(false);
     }
   };
@@ -57,15 +80,22 @@ const MyAccount = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       
+      console.log('Balance response:', response.data);
+      
+      // Handle different response formats
+      let balanceData = response.data;
       if (response.data.success) {
-        setUser(prevUser => ({
-          ...prevUser,
-          wallet: {
-            ...prevUser?.wallet,
-            balance: response.data.balance
-          }
-        }));
+        balanceData = response.data;
       }
+      
+      setUser(prevUser => ({
+        ...prevUser,
+        wallet: {
+          balance: balanceData.balance || 0,
+          bonusBalance: balanceData.bonusBalance || 0,
+          lockedBalance: balanceData.lockedBalance || 0
+        }
+      }));
     } catch (error) {
       console.error('Error fetching balance:', error);
     }
@@ -120,10 +150,12 @@ const MyAccount = () => {
           confirmPassword: ''
         });
         
-        // Clear success message after 3 seconds
         setTimeout(() => setSuccessMessage(''), 3000);
+      } else {
+        setErrorMessage(response.data.message || 'Failed to change password');
       }
     } catch (error) {
+      console.error('Password change error:', error);
       setErrorMessage(error.response?.data?.message || 'Failed to change password');
     }
   };
@@ -193,7 +225,7 @@ const MyAccount = () => {
       {/* Account Info Card */}
       <div className="simple-info-card">
         <div className="simple-avatar">
-          {user?.username?.charAt(0).toUpperCase()}
+          {user?.username?.charAt(0).toUpperCase() || '?'}
         </div>
         
         <div className="simple-details">
