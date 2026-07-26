@@ -26,6 +26,9 @@ const Deposit = () => {
   const [selectedBank, setSelectedBank] = useState(null);
   const [showBankDetails, setShowBankDetails] = useState(false);
 
+  // ✅ API URL from environment variable
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
   // Bank account details with logos - TeleBirr FIRST (Recommended)
   const bankDetails = [
     {
@@ -73,10 +76,11 @@ const Deposit = () => {
     fetchRecentDeposits();
   }, [navigate]);
 
+  // ✅ FIXED: Use API_URL
   const fetchRecentDeposits = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('/api/deposits/recent', {
+      const response = await axios.get(`${API_URL}/api/deposits/recent`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setRecentDeposits(response.data || []);
@@ -114,6 +118,7 @@ const Deposit = () => {
     setShowBankDetails(true);
   };
 
+  // ✅ FIXED: Use API_URL
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -141,7 +146,7 @@ const Deposit = () => {
       formDataToSend.append('notes', formData.notes);
       formDataToSend.append('screenshot', selectedFile);
 
-      const response = await axios.post('/api/deposits/create', formDataToSend, {
+      const response = await axios.post(`${API_URL}/api/deposits/create`, formDataToSend, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -163,6 +168,7 @@ const Deposit = () => {
         fetchRecentDeposits();
       }
     } catch (error) {
+      console.error('Deposit error:', error);
       setErrorMessage(error.response?.data?.message || 'Failed to submit deposit request');
     } finally {
       setLoading(false);
@@ -199,7 +205,11 @@ const Deposit = () => {
           </button>
           <h1>💰 Deposit Funds</h1>
         </div>
-        
+        <div className="header-right">
+          <span className="balance-display">
+            Balance: <strong>ETB {user?.wallet?.balance?.toFixed(2) || '0.00'}</strong>
+          </span>
+        </div>
       </div>
 
       {/* Messages */}
