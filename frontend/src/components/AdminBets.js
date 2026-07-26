@@ -21,18 +21,22 @@ const AdminBets = () => {
   const [expandedBets, setExpandedBets] = useState({});
   const [ticketSearch, setTicketSearch] = useState('');
 
+  // ✅ API URL from environment variable
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
   useEffect(() => {
     fetchBets();
     fetchStats();
   }, [filter]);
 
+  // ✅ FIXED: Use API_URL
   const fetchBets = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
       const url = filter === 'all' 
-        ? 'http://localhost:5000/api/bets/admin/all' 
-        : `http://localhost:5000/api/bets/admin/all?status=${filter}`;
+        ? `${API_URL}/api/bets/admin/all` 
+        : `${API_URL}/api/bets/admin/all?status=${filter}`;
       
       const response = await axios.get(url, {
         headers: { Authorization: `Bearer ${token}` }
@@ -46,13 +50,24 @@ const AdminBets = () => {
     }
   };
 
+  // ✅ FIXED: Use API_URL
   const fetchStats = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/bets/admin/stats', {
+      const response = await axios.get(`${API_URL}/api/bets/admin/stats`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setStats(response.data.stats);
+      setStats(response.data.stats || {
+        total: 0,
+        pending: 0,
+        won: 0,
+        lost: 0,
+        cancelled: 0,
+        totalStake: 0,
+        totalWon: 0,
+        totalLost: 0,
+        profit: 0
+      });
     } catch (error) {
       console.error('Error fetching stats:', error);
     }
@@ -81,7 +96,7 @@ const AdminBets = () => {
     return ticketId.toLowerCase().includes(ticketSearch.toLowerCase());
   });
 
-  // Mark individual selection
+  // ✅ FIXED: Use API_URL
   const handleSelectionStatus = async (betId, selectionIndex, status) => {
     const confirmMsg = status === 'won' 
       ? `✅ Mark selection as WON?`
@@ -93,7 +108,7 @@ const AdminBets = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.put(
-        `http://localhost:5000/api/bets/admin/${betId}/selection/${selectionIndex}`,
+        `${API_URL}/api/bets/admin/${betId}/selection/${selectionIndex}`,
         { status },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -132,7 +147,7 @@ const AdminBets = () => {
   const getStatusBadge = (status) => {
     const badges = {
       pending: { class: 'status-pending', text: '⏳ Pending' },
-      won: { class: 'status-won', text: '✅ Won' },
+      won: { class: 'status-won', text: '🏆 Won' },
       lost: { class: 'status-lost', text: '❌ Lost' },
       cancelled: { class: 'status-cancelled', text: '🚫 Cancelled' }
     };
@@ -142,7 +157,7 @@ const AdminBets = () => {
 
   const getSelectionStatusBadge = (status) => {
     if (status === 'won') {
-      return <span className="sel-badge sel-won">✅ Won</span>;
+      return <span className="sel-badge sel-won">🏆 Won</span>;
     } else if (status === 'lost') {
       return <span className="sel-badge sel-lost">❌ Lost</span>;
     } else {
@@ -220,7 +235,7 @@ const AdminBets = () => {
             className={`filter-btn ${filter === 'won' ? 'active' : ''}`}
             onClick={() => setFilter('won')}
           >
-            ✅ Won ({stats.won})
+            🏆 Won ({stats.won})
           </button>
           <button 
             className={`filter-btn ${filter === 'lost' ? 'active' : ''}`}
@@ -340,7 +355,7 @@ const AdminBets = () => {
                                     <p className="sel-detail">
                                       <span className="sel-market">{sel.market}</span>
                                       <span className="sel-bet-type">{sel.betType}</span>
-                                      <span className="sel-odds">@ {sel.odds}</span>
+                                      <span className="sel-odds"> {sel.odds}</span>
                                     </p>
                                   </div>
                                   {sel.status === 'pending' && bet.status === 'pending' && (
@@ -350,7 +365,7 @@ const AdminBets = () => {
                                         onClick={() => handleSelectionStatus(bet._id, idx, 'won')}
                                         disabled={processingId === `${bet._id}-${idx}`}
                                       >
-                                        ✅ Won
+                                        🏆 Won
                                       </button>
                                       <button 
                                         className="sel-btn-lost"
@@ -363,7 +378,7 @@ const AdminBets = () => {
                                   )}
                                   {sel.status !== 'pending' && (
                                     <div className="selection-result">
-                                      {sel.status === 'won' ? '✅ Won' : '❌ Lost'}
+                                      {sel.status === 'won' ? '🏆 Won' : '❌ Lost'}
                                     </div>
                                   )}
                                 </div>
