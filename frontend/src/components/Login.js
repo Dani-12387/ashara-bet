@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom'; // Make sure Link is imported
+import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import './Login.css';
 
@@ -11,13 +11,23 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
+  // ✅ ADD THIS - API URL from environment variable
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
+    if (!email || !password) {
+      setError('Please fill in all fields');
+      setLoading(false);
+      return;
+    }
+
     try {
-      const response = await axios.post('/api/auth/login', {
+      // ✅ FIXED: Use API_URL
+      const response = await axios.post(`${API_URL}/api/auth/login`, {
         email,
         password
       });
@@ -29,6 +39,9 @@ const Login = () => {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(user));
         
+        // Set login timestamp for Telegram notification
+        localStorage.setItem('loginTimestamp', Date.now().toString());
+        
         // Role-based redirection
         if (user.role === 'admin') {
           navigate('/admin/dashboard');
@@ -37,7 +50,8 @@ const Login = () => {
         }
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
+      console.error('Login error:', err);
+      setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
@@ -57,7 +71,7 @@ const Login = () => {
         
         {/* Logo */}
         <div className="login-logo" onClick={goToHome}>
-          ⚽ AsharaBet
+          ⚡ AsharaBet
         </div>
         
         <h2>Welcome Back</h2>
@@ -85,6 +99,7 @@ const Login = () => {
                 required
                 placeholder="Enter your email"
                 disabled={loading}
+                autoFocus
               />
               {email && <span className="input-valid">✓</span>}
             </div>
@@ -142,8 +157,6 @@ const Login = () => {
             Don't have an account? <Link to="/register">Sign up</Link>
           </p>
         </form>
-        
-        
       </div>
     </div>
   );
