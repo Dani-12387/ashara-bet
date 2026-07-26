@@ -11,6 +11,9 @@ const MyAccount = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
+  // ✅ API URL from environment variable
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
   // Password form state
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -28,10 +31,11 @@ const MyAccount = () => {
     fetchUserProfile();
   }, []);
 
+  // ✅ FIXED: Use API_URL
   const fetchUserProfile = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('/api/user/profile', {
+      const response = await axios.get(`${API_URL}/api/user/profile`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -42,6 +46,28 @@ const MyAccount = () => {
     } catch (error) {
       console.error('Error fetching profile:', error);
       setLoading(false);
+    }
+  };
+
+  // ✅ FIXED: Use API_URL
+  const fetchWalletBalance = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/api/user/balance`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data.success) {
+        setUser(prevUser => ({
+          ...prevUser,
+          wallet: {
+            ...prevUser?.wallet,
+            balance: response.data.balance
+          }
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching balance:', error);
     }
   };
 
@@ -59,6 +85,7 @@ const MyAccount = () => {
     });
   };
 
+  // ✅ FIXED: Use API_URL
   const handleChangePassword = async (e) => {
     e.preventDefault();
     setSuccessMessage('');
@@ -77,7 +104,7 @@ const MyAccount = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post('/api/user/change-password', {
+      const response = await axios.post(`${API_URL}/api/user/change-password`, {
         currentPassword: passwordData.currentPassword,
         newPassword: passwordData.newPassword
       }, {
@@ -107,6 +134,10 @@ const MyAccount = () => {
     navigate('/');
   };
 
+  const formatCurrency = (amount) => {
+    return `ETB ${parseFloat(amount || 0).toFixed(2)}`;
+  };
+
   if (loading) {
     return <div className="simple-loading">Loading...</div>;
   }
@@ -115,7 +146,7 @@ const MyAccount = () => {
     <div className="simple-account-container">
       {/* Header */}
       <div className="simple-header">
-        <h1>My Account</h1>
+        <h1>👤 My Account</h1>
         <button className="simple-home-btn" onClick={() => navigate('/')}>
           ← Back to Home
         </button>
@@ -133,6 +164,31 @@ const MyAccount = () => {
           <span>⚠️</span> {errorMessage}
         </div>
       )}
+
+      {/* Balance Card */}
+      <div className="simple-balance-card">
+        <div className="balance-header">
+          <span className="balance-icon">💰</span>
+          <span className="balance-label">Your Balance</span>
+        </div>
+        <div className="balance-amount">{formatCurrency(user?.wallet?.balance || 0)}</div>
+        <div className="balance-details">
+          <div className="balance-detail-item">
+            <span className="detail-label">Bonus Balance</span>
+            <span className="detail-value">{formatCurrency(user?.wallet?.bonusBalance || 0)}</span>
+          </div>
+          <div className="balance-detail-item">
+            <span className="detail-label">Locked Balance</span>
+            <span className="detail-value">{formatCurrency(user?.wallet?.lockedBalance || 0)}</span>
+          </div>
+        </div>
+        <button 
+          className="simple-refresh-balance-btn"
+          onClick={fetchWalletBalance}
+        >
+          🔄 Refresh Balance
+        </button>
+      </div>
 
       {/* Account Info Card */}
       <div className="simple-info-card">
@@ -154,6 +210,11 @@ const MyAccount = () => {
           <div className="simple-row">
             <span className="simple-label">Phone:</span>
             <span className="simple-value">{user?.phone || 'Not set'}</span>
+          </div>
+
+          <div className="simple-row">
+            <span className="simple-label">Role:</span>
+            <span className="simple-value role-badge">{user?.role || 'User'}</span>
           </div>
         </div>
 
