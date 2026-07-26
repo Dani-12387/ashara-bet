@@ -15,6 +15,9 @@ const UserManagement = () => {
   const [historyData, setHistoryData] = useState([]);
   const [historyType, setHistoryType] = useState('');
   
+  // ✅ API URL from environment variable
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  
   // Balance form state
   const [balanceData, setBalanceData] = useState({
     balance: 0,
@@ -54,7 +57,7 @@ const UserManagement = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/admin/users', {
+      const response = await axios.get(`${API_URL}/api/admin/users`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       console.log('Fetched users:', response.data);
@@ -121,7 +124,7 @@ const UserManagement = () => {
         return;
       }
 
-      const response = await axios.post('http://localhost:5000/api/admin/users', formData, {
+      const response = await axios.post(`${API_URL}/api/admin/users`, formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -148,7 +151,7 @@ const UserManagement = () => {
         delete updateData.password;
       }
 
-      const response = await axios.put(`http://localhost:5000/api/admin/users/${selectedUser._id}`, updateData, {
+      const response = await axios.put(`${API_URL}/api/admin/users/${selectedUser._id}`, updateData, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -171,7 +174,7 @@ const UserManagement = () => {
       const token = localStorage.getItem('token');
       
       const response = await axios.post(
-        `http://localhost:5000/api/admin/users/${selectedUser._id}/balance`,
+        `${API_URL}/api/admin/users/${selectedUser._id}/balance`,
         balanceData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -196,7 +199,7 @@ const UserManagement = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.delete(`http://localhost:5000/api/admin/users/${userId}`, {
+      const response = await axios.delete(`${API_URL}/api/admin/users/${userId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -216,7 +219,7 @@ const UserManagement = () => {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.put(`http://localhost:5000/api/admin/users/${userId}/status`, 
+      const response = await axios.put(`${API_URL}/api/admin/users/${userId}/status`, 
         { status: newStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -239,7 +242,7 @@ const UserManagement = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post(`http://localhost:5000/api/admin/users/${userId}/reset-password`, {}, {
+      const response = await axios.post(`${API_URL}/api/admin/users/${userId}/reset-password`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -256,7 +259,7 @@ const UserManagement = () => {
   const handleVerifyKYC = async (userId) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.put(`http://localhost:5000/api/admin/users/${userId}/verify-kyc`, {}, {
+      const response = await axios.put(`${API_URL}/api/admin/users/${userId}/verify-kyc`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -274,7 +277,7 @@ const UserManagement = () => {
   const handleViewHistory = async (userId, type) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`http://localhost:5000/api/admin/users/${userId}/history?type=${type}`, {
+      const response = await axios.get(`${API_URL}/api/admin/users/${userId}/history?type=${type}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
