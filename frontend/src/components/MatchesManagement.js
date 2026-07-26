@@ -14,6 +14,9 @@ const MatchesManagement = () => {
     dateTo: ''
   });
 
+  // ✅ API URL from environment variable
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
   // All 20 betting markets configuration for admin
   const allMarkets = {
     result: { label: 'Result', key: 'result' },
@@ -79,6 +82,7 @@ const MatchesManagement = () => {
     fetchMatches();
   }, [filters]);
 
+  // ✅ FIXED: Use API_URL
   const fetchMatches = async () => {
     try {
       setLoading(true);
@@ -89,7 +93,7 @@ const MatchesManagement = () => {
       if (filters.dateFrom) params.append('dateFrom', filters.dateFrom);
       if (filters.dateTo) params.append('dateTo', filters.dateTo);
 
-      const response = await axios.get(`http://localhost:5000/api/admin/matches?${params}`, {
+      const response = await axios.get(`${API_URL}/api/admin/matches?${params}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMatches(response.data.matches || []);
@@ -101,11 +105,12 @@ const MatchesManagement = () => {
     }
   };
 
+  // ✅ FIXED: Use API_URL
   const handleDelete = async (matchId) => {
     if (!window.confirm('Are you sure you want to delete this match?')) return;
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`http://localhost:5000/api/admin/matches/${matchId}`, {
+      await axios.delete(`${API_URL}/api/admin/matches/${matchId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       alert('Match deleted successfully');
@@ -116,6 +121,7 @@ const MatchesManagement = () => {
     }
   };
 
+  // ✅ FIXED: Use API_URL
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -145,12 +151,12 @@ const MatchesManagement = () => {
       console.log('Saving match with markets:', data.markets);
 
       if (editingMatch) {
-        await axios.put(`http://localhost:5000/api/admin/matches/${editingMatch._id}`, data, {
+        await axios.put(`${API_URL}/api/admin/matches/${editingMatch._id}`, data, {
           headers: { Authorization: `Bearer ${token}` }
         });
         alert('Match updated successfully');
       } else {
-        await axios.post('http://localhost:5000/api/admin/matches', data, {
+        await axios.post(`${API_URL}/api/admin/matches`, data, {
           headers: { Authorization: `Bearer ${token}` }
         });
         alert('Match created successfully');
