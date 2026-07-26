@@ -6,25 +6,29 @@ const AdminTransactions = () => {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(null);
-  const [filter, setFilter] = useState('pending'); // 'pending', 'all', 'approved', 'rejected'
+  const [filter, setFilter] = useState('pending');
   const [processingId, setProcessingId] = useState(null);
+
+  // ✅ API URL from environment variable
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
   useEffect(() => {
     fetchTransactions();
   }, [filter]);
 
+  // ✅ FIXED: Use API_URL
   const fetchTransactions = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      let url = '/api/admin/transactions';
+      let url = `${API_URL}/api/admin/transactions`;
       if (filter !== 'all') {
         url += `?status=${filter}`;
       }
       const response = await axios.get(url, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setTransactions(response.data);
+      setTransactions(response.data.transactions || response.data || []);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching transactions:', error);
@@ -32,6 +36,7 @@ const AdminTransactions = () => {
     }
   };
 
+  // ✅ FIXED: Use API_URL
   const handleApprove = async (transactionId) => {
     if (!window.confirm('Are you sure you want to approve this deposit? User balance will be updated.')) {
       return;
@@ -41,7 +46,7 @@ const AdminTransactions = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
-        `/api/admin/transactions/${transactionId}/approve`,
+        `${API_URL}/api/admin/transactions/${transactionId}/approve`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -51,12 +56,14 @@ const AdminTransactions = () => {
         fetchTransactions();
       }
     } catch (error) {
+      console.error('Approve error:', error);
       alert(error.response?.data?.message || 'Failed to approve deposit');
     } finally {
       setProcessingId(null);
     }
   };
 
+  // ✅ FIXED: Use API_URL
   const handleReject = async (transactionId) => {
     const reason = prompt('Please enter reason for rejection:');
     if (!reason) return;
@@ -65,7 +72,7 @@ const AdminTransactions = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
-        `/api/admin/transactions/${transactionId}/reject`,
+        `${API_URL}/api/admin/transactions/${transactionId}/reject`,
         { reason },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -75,6 +82,7 @@ const AdminTransactions = () => {
         fetchTransactions();
       }
     } catch (error) {
+      console.error('Reject error:', error);
       alert(error.response?.data?.message || 'Failed to reject deposit');
     } finally {
       setProcessingId(null);
@@ -161,7 +169,7 @@ const AdminTransactions = () => {
               </div>
               
               <div className="card-body">
-                {/* Contact Information Section - NEW */}
+                {/* Contact Information Section */}
                 <div className="contact-section">
                   <h4>📞 User Contact</h4>
                   <div className="info-row">
@@ -254,9 +262,12 @@ const AdminTransactions = () => {
                 <p><strong>Amount:</strong> ETB {transactions.find(t => t.screenshot === selectedImage)?.amount}</p>
               </div>
               <img 
-                src={`http://localhost:5000/uploads/${selectedImage}`} 
+                src={`${API_URL}/uploads/${selectedImage}`} 
                 alt="Transaction Screenshot"
                 className="screenshot-image"
+                onError={(e) => {
+                  e.target.src = 'https://via.placeholder.com/400x300?text=Image+Not+Found';
+                }}
               />
             </div>
           </div>
