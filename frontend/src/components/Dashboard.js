@@ -17,6 +17,9 @@ const Dashboard = () => {
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [error, setError] = useState(null);
 
+  // ✅ ADD THIS - API URL from environment variable
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
   useEffect(() => {
     fetchDashboardData();
   }, []);
@@ -28,14 +31,13 @@ const Dashboard = () => {
       
       const token = localStorage.getItem('token');
       
-      // Fetch users - handle different response formats
+      // ✅ FIXED: Use API_URL
       let totalUsers = 0;
       try {
-        const usersResponse = await axios.get('/api/admin/users', {
+        const usersResponse = await axios.get(`${API_URL}/api/admin/users`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         
-        // Check if response is an array or has data property
         if (Array.isArray(usersResponse.data)) {
           totalUsers = usersResponse.data.length;
         } else if (usersResponse.data && Array.isArray(usersResponse.data.users)) {
@@ -43,7 +45,6 @@ const Dashboard = () => {
         } else if (usersResponse.data && usersResponse.data.data && Array.isArray(usersResponse.data.data)) {
           totalUsers = usersResponse.data.data.length;
         } else if (typeof usersResponse.data === 'object' && usersResponse.data !== null) {
-          // If it's an object with user data
           const userKeys = ['users', 'data', 'results', 'items'];
           for (const key of userKeys) {
             if (usersResponse.data[key] && Array.isArray(usersResponse.data[key])) {
@@ -58,14 +59,13 @@ const Dashboard = () => {
         console.log('Users API not available:', e.message);
       }
 
-      // Fetch transactions
+      // ✅ FIXED: Use API_URL
       let transactionsData = [];
       try {
-        const transactionsResponse = await axios.get('/api/admin/transactions', {
+        const transactionsResponse = await axios.get(`${API_URL}/api/admin/transactions`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         
-        // Handle different response formats
         if (Array.isArray(transactionsResponse.data)) {
           transactionsData = transactionsResponse.data;
         } else if (transactionsResponse.data && Array.isArray(transactionsResponse.data.transactions)) {
@@ -79,7 +79,6 @@ const Dashboard = () => {
         console.log('Transactions API not available:', e.message);
       }
 
-      // Calculate stats from transactions
       const deposits = transactionsData.filter(t => 
         t.paymentMethod || t.type === 'deposit' || t.type === 'DEPOSIT' || t.type === 'Deposit'
       );
@@ -104,7 +103,6 @@ const Dashboard = () => {
         .filter(t => t.status === 'approved' || t.status === 'APPROVED' || t.status === 'completed' || t.status === 'COMPLETED')
         .reduce((sum, t) => sum + (t.amount || 0), 0);
 
-      // Today's deposits
       const today = new Date().toDateString();
       const todayDeposits = deposits.filter(t => {
         const date = new Date(t.createdAt);
@@ -122,7 +120,6 @@ const Dashboard = () => {
         todayDeposits: todayDeposits || 0
       });
       
-      // Set recent transactions
       setRecentTransactions(transactionsData.slice(0, 10));
 
     } catch (error) {
@@ -190,7 +187,6 @@ const Dashboard = () => {
     <div className="dashboard">
       <h1 className="dashboard-title">Admin Dashboard</h1>
       
-      {/* Stats Cards */}
       <div className="stats-container">
         <div className="stat-card">
           <h3>Total Users</h3>
@@ -217,7 +213,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Stats Row */}
       <div className="stats-row">
         <div className="stat-small">
           <span>Approved Deposits:</span>
@@ -233,7 +228,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Recent Transactions Table */}
       <div className="section">
         <h2>Recent Transactions</h2>
         {recentTransactions.length === 0 ? (
