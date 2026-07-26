@@ -8,22 +8,26 @@ const AdminWithdrawals = () => {
   const [filter, setFilter] = useState('pending');
   const [processingId, setProcessingId] = useState(null);
 
+  // ✅ API URL from environment variable
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
   useEffect(() => {
     fetchWithdrawals();
   }, [filter]);
 
+  // ✅ FIXED: Use API_URL
   const fetchWithdrawals = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      let url = '/api/admin/withdrawals';
+      let url = `${API_URL}/api/admin/withdrawals`;
       if (filter !== 'all') {
         url += `?status=${filter}`;
       }
       const response = await axios.get(url, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setWithdrawals(response.data);
+      setWithdrawals(response.data.withdrawals || response.data || []);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching withdrawals:', error);
@@ -31,6 +35,7 @@ const AdminWithdrawals = () => {
     }
   };
 
+  // ✅ FIXED: Use API_URL
   const handleApprove = async (withdrawalId) => {
     if (!window.confirm('Approve this withdrawal? User will be notified.')) return;
 
@@ -38,7 +43,7 @@ const AdminWithdrawals = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
-        `/api/admin/withdrawals/${withdrawalId}/approve`,
+        `${API_URL}/api/admin/withdrawals/${withdrawalId}/approve`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -48,12 +53,14 @@ const AdminWithdrawals = () => {
         fetchWithdrawals();
       }
     } catch (error) {
+      console.error('Approve error:', error);
       alert(error.response?.data?.message || 'Failed to approve withdrawal');
     } finally {
       setProcessingId(null);
     }
   };
 
+  // ✅ FIXED: Use API_URL
   const handleComplete = async (withdrawalId) => {
     if (!window.confirm('Mark this withdrawal as paid? This will deduct from user balance.')) return;
 
@@ -61,7 +68,7 @@ const AdminWithdrawals = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
-        `/api/admin/withdrawals/${withdrawalId}/complete`,
+        `${API_URL}/api/admin/withdrawals/${withdrawalId}/complete`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -71,12 +78,14 @@ const AdminWithdrawals = () => {
         fetchWithdrawals();
       }
     } catch (error) {
+      console.error('Complete error:', error);
       alert(error.response?.data?.message || 'Failed to complete withdrawal');
     } finally {
       setProcessingId(null);
     }
   };
 
+  // ✅ FIXED: Use API_URL
   const handleReject = async (withdrawalId) => {
     const reason = prompt('Enter reason for rejection:');
     if (!reason) return;
@@ -85,7 +94,7 @@ const AdminWithdrawals = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
-        `/api/admin/withdrawals/${withdrawalId}/reject`,
+        `${API_URL}/api/admin/withdrawals/${withdrawalId}/reject`,
         { reason },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -95,6 +104,7 @@ const AdminWithdrawals = () => {
         fetchWithdrawals();
       }
     } catch (error) {
+      console.error('Reject error:', error);
       alert(error.response?.data?.message || 'Failed to reject withdrawal');
     } finally {
       setProcessingId(null);
