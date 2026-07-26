@@ -1,3 +1,4 @@
+/* ===== CONTAINER ===== */
 .simple-account-container {
   max-width: 500px;
   margin: 40px auto;
@@ -5,7 +6,7 @@
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-/* Header */
+/* ===== HEADER ===== */
 .simple-header {
   display: flex;
   justify-content: space-between;
@@ -34,9 +35,11 @@
 .simple-home-btn:hover {
   background: #2e7d32;
   color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(46, 125, 50, 0.2);
 }
 
-/* Messages */
+/* ===== MESSAGES ===== */
 .simple-success,
 .simple-error {
   padding: 15px;
@@ -46,6 +49,7 @@
   align-items: center;
   gap: 10px;
   font-size: 14px;
+  animation: slideDown 0.3s ease;
 }
 
 .simple-success {
@@ -60,14 +64,108 @@
   border: 1px solid #f5c6cb;
 }
 
-/* Account Info Card */
+/* ===== BALANCE CARD ===== */
+.simple-balance-card {
+  background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
+  border-radius: 15px;
+  padding: 25px 30px;
+  margin-bottom: 20px;
+  box-shadow: 0 8px 25px rgba(46, 125, 50, 0.3);
+  color: white;
+  text-align: center;
+  transition: all 0.3s;
+}
+
+.simple-balance-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 35px rgba(46, 125, 50, 0.35);
+}
+
+.balance-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.balance-icon {
+  font-size: 28px;
+}
+
+.balance-label {
+  font-size: 16px;
+  font-weight: 500;
+  opacity: 0.9;
+  letter-spacing: 1px;
+}
+
+.balance-amount {
+  font-size: 40px;
+  font-weight: 700;
+  margin: 8px 0 15px;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.balance-details {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  margin-bottom: 15px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.balance-detail-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.detail-label {
+  font-size: 11px;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detail-value {
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.simple-refresh-balance-btn {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.3s;
+  backdrop-filter: blur(10px);
+}
+
+.simple-refresh-balance-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: scale(1.05);
+}
+
+/* ===== ACCOUNT INFO CARD ===== */
 .simple-info-card {
   background: white;
   border-radius: 15px;
   padding: 30px;
-  box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
   margin-bottom: 20px;
   border: 1px solid #e8f5e9;
+  transition: all 0.3s;
+}
+
+.simple-info-card:hover {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
 }
 
 .simple-avatar {
@@ -83,6 +181,7 @@
   color: white;
   margin: 0 auto 20px;
   border: 3px solid #ffd54f;
+  box-shadow: 0 4px 15px rgba(46, 125, 50, 0.2);
 }
 
 .simple-details {
@@ -111,6 +210,17 @@
   color: #333;
   font-weight: 500;
   font-size: 14px;
+}
+
+.role-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #2e7d32, #00c853);
+  color: white;
+  padding: 2px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
 .simple-actions {
@@ -164,14 +274,15 @@
   box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
 }
 
-/* Change Password Card */
+/* ===== CHANGE PASSWORD CARD ===== */
 .simple-password-card {
   background: white;
   border-radius: 15px;
   padding: 25px;
-  box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
   border: 1px solid #e8f5e9;
   animation: slideDown 0.3s ease;
+  margin-top: 20px;
 }
 
 .simple-password-card h3 {
@@ -216,6 +327,10 @@
   box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
 }
 
+.simple-password-input input.error {
+  border-color: #dc3545;
+}
+
 .simple-toggle-password {
   position: absolute;
   right: 12px;
@@ -225,6 +340,7 @@
   font-size: 18px;
   color: #666;
   padding: 5px;
+  transition: color 0.3s;
 }
 
 .simple-toggle-password:hover {
@@ -281,7 +397,7 @@
   background: #e0e0e0;
 }
 
-/* Loading */
+/* ===== LOADING ===== */
 .simple-loading {
   text-align: center;
   padding: 50px;
@@ -289,11 +405,30 @@
   font-size: 16px;
 }
 
-/* Animations */
+.simple-loading::after {
+  content: '';
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  margin-left: 10px;
+  border: 3px solid #e8f5e9;
+  border-top-color: #2e7d32;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ===== ANIMATIONS ===== */
 @keyframes slideDown {
   from {
     opacity: 0;
-    transform: translateY(-10px);
+    transform: translateY(-15px);
   }
   to {
     opacity: 1;
@@ -301,12 +436,34 @@
   }
 }
 
-/* Responsive */
+/* ===== RESPONSIVE ===== */
 @media (max-width: 480px) {
   .simple-header {
     flex-direction: column;
     gap: 15px;
     text-align: center;
+  }
+
+  .simple-header h1 {
+    font-size: 24px;
+  }
+
+  .simple-home-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .simple-balance-card {
+    padding: 20px;
+  }
+
+  .balance-amount {
+    font-size: 32px;
+  }
+
+  .balance-details {
+    flex-direction: column;
+    gap: 10px;
   }
 
   .simple-actions {
@@ -324,5 +481,50 @@
 
   .simple-form-actions {
     flex-direction: column;
+  }
+
+  .simple-change-password-btn,
+  .simple-logout-btn,
+  .simple-submit-btn,
+  .simple-cancel-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .simple-info-card {
+    padding: 20px;
+  }
+
+  .simple-password-card {
+    padding: 20px;
+  }
+
+  .simple-avatar {
+    width: 60px;
+    height: 60px;
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 360px) {
+  .simple-account-container {
+    padding: 0 12px;
+  }
+
+  .balance-amount {
+    font-size: 28px;
+  }
+
+  .balance-header {
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .simple-header h1 {
+    font-size: 20px;
+  }
+
+  .simple-row {
+    font-size: 13px;
   }
 }
