@@ -11,17 +11,21 @@ const BetHistory = () => {
   const [expandedBet, setExpandedBet] = useState(null);
   const [ticketSearch, setTicketSearch] = useState('');
 
+  // ✅ API URL from environment variable
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
   useEffect(() => {
     fetchBetHistory();
   }, [filter]);
 
+  // ✅ FIXED: Use API_URL
   const fetchBetHistory = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
       const url = filter === 'all' 
-        ? 'http://localhost:5000/api/bets/history' 
-        : `http://localhost:5000/api/bets/history?status=${filter}`;
+        ? `${API_URL}/api/bets/history` 
+        : `${API_URL}/api/bets/history?status=${filter}`;
       
       const response = await axios.get(url, {
         headers: { Authorization: `Bearer ${token}` }
@@ -50,7 +54,7 @@ const BetHistory = () => {
   const getStatusBadge = (status) => {
     const badges = {
       pending: { class: 'status-pending', text: '⏳ Pending' },
-      won: { class: 'status-won', text: '✅ Won' },
+      won: { class: 'status-won', text: '🏆 Won' },
       lost: { class: 'status-lost', text: '❌ Lost' },
       cancelled: { class: 'status-cancelled', text: '🚫 Cancelled' }
     };
@@ -60,11 +64,11 @@ const BetHistory = () => {
 
   const getSelectionStatus = (status) => {
     if (status === 'won') {
-      return <span className="sel-status sel-won">✅ Won</span>;
+      return <span className="sel-status sel-won">🏆 WON</span>;
     } else if (status === 'lost') {
-      return <span className="sel-status sel-lost">❌ Lost</span>;
+      return <span className="sel-status sel-lost">❌ LOST</span>;
     } else {
-      return <span className="sel-status sel-pending">⏳ Pending</span>;
+      return <span className="sel-status sel-pending">⏳ PENDING</span>;
     }
   };
 
@@ -220,9 +224,9 @@ const BetHistory = () => {
               <div class="match-item">
                 <div class="teams">${idx + 1}. ${sel.match}</div>
                 <div class="detail">
-                  ${sel.market}: ${sel.betType} @ ${sel.odds}
+                  ${sel.market}: ${sel.betType} ${sel.odds}
                   <span class="status ${sel.status === 'won' ? 'status-won' : sel.status === 'lost' ? 'status-lost' : 'status-pending'}">
-                    ${sel.status === 'won' ? '✅ WON' : sel.status === 'lost' ? '❌ LOST' : '⏳ PENDING'}
+                    ${sel.status === 'won' ? '🏆 WON' : sel.status === 'lost' ? '❌ LOST' : '⏳ PENDING'}
                   </span>
                 </div>
               </div>
@@ -312,7 +316,7 @@ const BetHistory = () => {
             className={`filter-btn ${filter === 'won' ? 'active' : ''}`}
             onClick={() => setFilter('won')}
           >
-            ✅ Won
+            🏆 Won
           </button>
           <button 
             className={`filter-btn ${filter === 'lost' ? 'active' : ''}`}
@@ -411,7 +415,7 @@ const BetHistory = () => {
                         <div className="selection-detail-match">
                           <span className="match-name">{sel.match}</span>
                           <span className="match-market">
-                            {sel.market}: {sel.betType} ....................................................................... {sel.odds}
+                            {sel.market}: {sel.betType} {sel.odds}
                           </span>
                         </div>
                         <div className="selection-detail-status">
@@ -454,4 +458,4 @@ const BetHistory = () => {
   );
 };
 
-export default BetHistory; 
+export default BetHistory;
