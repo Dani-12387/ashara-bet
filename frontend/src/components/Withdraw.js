@@ -31,6 +31,9 @@ const Withdraw = () => {
   const [recentWithdrawals, setRecentWithdrawals] = useState([]);
   const [selectedMethod, setSelectedMethod] = useState(null);
 
+  // ✅ API URL from environment variable
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
   // Payment methods with logos - TeleBirr FIRST (Recommended)
   const paymentMethods = [
     {
@@ -44,7 +47,7 @@ const Withdraw = () => {
     },
     {
       id: 'BANK_TRANSFER',
-      name: ' CBE Bank Transfer',
+      name: 'CBE Bank Transfer',
       logo: cbeLogo,
       color: '#1a5c3a',
       bgColor: '#e8f5e9',
@@ -73,10 +76,11 @@ const Withdraw = () => {
     fetchRecentWithdrawals();
   }, [navigate]);
 
+  // ✅ FIXED: Use API_URL
   const fetchWalletBalance = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('/api/user/wallet', {
+      const response = await axios.get(`${API_URL}/api/user/wallet`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setWallet(response.data);
@@ -85,10 +89,11 @@ const Withdraw = () => {
     }
   };
 
+  // ✅ FIXED: Use API_URL
   const fetchRecentWithdrawals = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('/api/withdrawals/recent', {
+      const response = await axios.get(`${API_URL}/api/withdrawals/recent`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setRecentWithdrawals(response.data || []);
@@ -112,6 +117,7 @@ const Withdraw = () => {
     });
   };
 
+  // ✅ FIXED: Use API_URL
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -151,7 +157,7 @@ const Withdraw = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post('/api/withdrawals/create', formData, {
+      const response = await axios.post(`${API_URL}/api/withdrawals/create`, formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -171,6 +177,7 @@ const Withdraw = () => {
         fetchRecentWithdrawals();
       }
     } catch (error) {
+      console.error('Withdrawal error:', error);
       setErrorMessage(error.response?.data?.message || 'Failed to submit withdrawal request');
     } finally {
       setLoading(false);
