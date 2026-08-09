@@ -328,7 +328,7 @@
   width: 100%;
 }
 
-.submit-btn:hover:not(:disabled) {
+.submit-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(46, 125, 50, 0.3);
 }
@@ -336,6 +336,8 @@
 .submit-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 /* ===== SPINNER ===== */

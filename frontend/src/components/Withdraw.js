@@ -80,10 +80,19 @@ const Withdraw = () => {
   const fetchWalletBalance = async () => {
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        console.log('No token found');
+        return;
+      }
       const response = await axios.get(`${API_URL}/api/user/wallet`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setWallet(response.data);
+      console.log('Wallet response:', response.data);
+      setWallet({
+        balance: response.data.balance || 0,
+        bonusBalance: response.data.bonusBalance || 0,
+        lockedBalance: response.data.lockedBalance || 0
+      });
     } catch (error) {
       console.error('Error fetching wallet:', error);
     }
@@ -93,9 +102,14 @@ const Withdraw = () => {
   const fetchRecentWithdrawals = async () => {
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        console.log('No token found');
+        return;
+      }
       const response = await axios.get(`${API_URL}/api/withdrawals/recent`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      console.log('Recent withdrawals:', response.data);
       setRecentWithdrawals(response.data || []);
     } catch (error) {
       console.error('Error fetching withdrawals:', error);
@@ -117,49 +131,94 @@ const Withdraw = () => {
     });
   };
 
-  // ✅ FIXED: Use API_URL
+  // ✅ COMPLETE WORKING handleSubmit with debug logs
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('🚀🚀🚀 FORM SUBMITTED! 🚀🚀🚀');
+    console.log('📦 Form Data:', formData);
+    console.log('💰 Wallet Balance:', wallet.balance);
+    
     setLoading(true);
     setErrorMessage('');
     setSuccessMessage('');
 
     const amount = parseFloat(formData.amount);
+    console.log('💵 Parsed Amount:', amount);
+
+    // Validation
     if (!amount || amount < 50) {
+      console.log('❌ Amount validation failed - amount:', amount);
       setErrorMessage('Minimum withdrawal amount is ETB 50');
       setLoading(false);
       return;
     }
 
     if (amount > wallet.balance) {
+      console.log('❌ Insufficient balance - amount:', amount, 'balance:', wallet.balance);
       setErrorMessage(`Insufficient balance. Available: ETB ${wallet.balance.toFixed(2)}`);
       setLoading(false);
       return;
     }
 
     if (!formData.accountName || !formData.accountNumber) {
+      console.log('❌ Account name or number missing - name:', formData.accountName, 'number:', formData.accountNumber);
       setErrorMessage('Account name and number are required');
       setLoading(false);
       return;
     }
 
     if (formData.paymentMethod === 'BANK_TRANSFER' && !formData.bankName) {
+      console.log('❌ Bank name missing');
       setErrorMessage('Bank name is required for bank transfer');
       setLoading(false);
       return;
     }
 
     if (formData.paymentMethod === 'TELE_BIRR' && !formData.phoneNumber) {
+      console.log('❌ Phone number missing for TeleBirr');
       setErrorMessage('Phone number is required for Tele Birr');
       setLoading(false);
       return;
     }
 
+    console.log('✅ All validations passed!');
+
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post(`${API_URL}/api/withdrawals/create`, formData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      console.log('🔑 Token exists:', !!token);
+      
+      if (!token) {
+        console.log('❌ No token found');
+        setErrorMessage('Please login again');
+        setLoading(false);
+        return;
+      }
+
+      const requestData = {
+        amount: formData.amount,
+        paymentMethod: formData.paymentMethod,
+        accountName: formData.accountName,
+        accountNumber: formData.accountNumber,
+        bankName: formData.bankName,
+        phoneNumber: formData.phoneNumber,
+        notes: formData.notes
+      };
+
+      console.log('📤 Sending to:', `${API_URL}/api/withdrawals/create`);
+      console.log('📤 Data:', requestData);
+
+      const response = await axios.post(
+        `${API_URL}/api/withdrawals/create`,
+        requestData,
+        {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      console.log('✅ API Response:', response.data);
 
       if (response.data.success) {
         setSuccessMessage('✅ Withdrawal request submitted successfully!');
@@ -175,12 +234,26 @@ const Withdraw = () => {
         setSelectedMethod(null);
         fetchWalletBalance();
         fetchRecentWithdrawals();
+      } else {
+        setErrorMessage(response.data.message || 'Failed to submit withdrawal request');
       }
     } catch (error) {
-      console.error('Withdrawal error:', error);
-      setErrorMessage(error.response?.data?.message || 'Failed to submit withdrawal request');
+      console.error('❌❌❌ WITHDRAWAL ERROR:', error);
+      console.error('❌ Error response:', error.response);
+      console.error('❌ Error data:', error.response?.data);
+      
+      if (error.response?.status === 401) {
+        setErrorMessage('Please login again');
+      } else if (error.response?.data?.message) {
+        setErrorMessage(error.response.data.message);
+      } else if (error.response?.data?.msg) {
+        setErrorMessage(error.response.data.msg);
+      } else {
+        setErrorMessage('Failed to submit withdrawal request. Please try again.');
+      }
     } finally {
       setLoading(false);
+      console.log('🏁 Form submission completed');
     }
   };
 
@@ -285,7 +358,7 @@ const Withdraw = () => {
                     name="amount"
                     value={formData.amount}
                     onChange={handleInputChange}
-                    placeholder={`Min. ETB 50`}
+                    placeholder="Min. ETB 50"
                     min="50"
                     max={wallet.balance}
                     step="1"
@@ -383,7 +456,13 @@ const Withdraw = () => {
               </div>
             </div>
 
-            <button type="submit" className="submit-btn" disabled={loading || wallet.balance < 50}>
+            {/* ✅ BUTTON - Always clickable (only disabled when loading) */}
+            <button 
+              type="submit" 
+              className="submit-btn" 
+              disabled={loading}
+              onClick={() => console.log('🖱️ Button clicked!')}
+            >
               {loading ? (
                 <>
                   <span className="spinner"></span>

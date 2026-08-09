@@ -26,7 +26,6 @@ const HomePage = () => {
   const [showTelegramPopup, setShowTelegramPopup] = useState(false);
   const dropdownRef = useRef(null);
 
-  // ✅ API URL from environment variable
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
   const sports = [
@@ -58,6 +57,130 @@ const HomePage = () => {
     penalty: { label: 'Penalty', icon: '⚪' },
     playerMarkets: { label: 'Player Markets', icon: '👤' },
     specials: { label: 'Specials', icon: '⭐' }
+  };
+
+  // ✅ FIXED: 12-HOUR TIME FORMAT WITH AM/PM
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    
+    const date = new Date(dateString);
+    
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const day = date.getDate();
+    let hours = date.getHours();
+    const minutes = date.getMinutes();
+    
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    
+    const localDate = new Date(year, month, day, hours, minutes);
+    
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const matchDate = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate());
+    
+    const timeStr = String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0') + ' ' + ampm;
+    
+    if (matchDate.getTime() === today.getTime()) {
+      return `Today, ${timeStr}`;
+    } else if (matchDate.getTime() === tomorrow.getTime()) {
+      return `Tomorrow, ${timeStr}`;
+    } else {
+      const dateStr = String(month + 1).padStart(2, '0') + '/' + String(day).padStart(2, '0') + '/' + String(year);
+      return `${dateStr}, ${timeStr}`;
+    }
+  };
+
+  // ✅ Check if match has started
+  const hasMatchStarted = (dateString) => {
+    if (!dateString) return true;
+    const matchDate = new Date(dateString);
+    const now = new Date();
+    return matchDate <= now;
+  };
+
+  // ✅ Get time left with 12-hour calculation
+  const getTimeLeft = (dateString) => {
+    if (!dateString) return 'N/A';
+    
+    const date = new Date(dateString);
+    const matchDate = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+      date.getHours(),
+      date.getMinutes()
+    );
+    
+    const now = new Date();
+    const diffMs = matchDate - now;
+    
+    if (diffMs < 0) return 'Started';
+    
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    
+    if (diffDays > 0) {
+      return `${diffDays}d ${diffHours % 24}h`;
+    } else if (diffHours > 0) {
+      return `${diffHours}h ${diffMins % 60}m`;
+    } else {
+      return `${diffMins}m`;
+    }
+  };
+
+  // Get day name
+  const getDayName = (dateString) => {
+    if (!dateString) return 'Unknown';
+    
+    const date = new Date(dateString);
+    const localDate = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate()
+    );
+    
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    const diffDays = Math.floor((localDate - today) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Tomorrow';
+    if (diffDays === 2) return 'In 2 Days';
+    if (diffDays === -1) return 'Yesterday';
+    
+    return localDate.toLocaleDateString('en-US', { 
+      weekday: 'long',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  // Sort matches by date
+  const sortMatchesByDate = (matchesArray) => {
+    return [...matchesArray].sort((a, b) => {
+      return new Date(a.date) - new Date(b.date);
+    });
+  };
+
+  // Group matches by day
+  const groupMatchesByDay = (matchesArray) => {
+    const groups = {};
+    matchesArray.forEach(match => {
+      const dayKey = getDayName(match.date);
+      if (!groups[dayKey]) {
+        groups[dayKey] = [];
+      }
+      groups[dayKey].push(match);
+    });
+    return groups;
   };
 
   // Generate random 10-digit ticket ID
@@ -206,7 +329,8 @@ const HomePage = () => {
               day: 'numeric',
               year: 'numeric',
               hour: '2-digit',
-              minute: '2-digit'
+              minute: '2-digit',
+              hour12: true
             })}
           </div>
 
@@ -215,7 +339,7 @@ const HomePage = () => {
               <div class="match-item">
                 <div class="teams">${idx + 1}. ${sel.match}</div>
                 <div class="detail">
-                  ${sel.market}: ${sel.betType} @ ${sel.odds}
+                  ${sel.market}: ${sel.betType} ${sel.odds}
                   <span class="status status-pending">⏳ PENDING</span>
                 </div>
               </div>
@@ -293,11 +417,41 @@ const HomePage = () => {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       
-      const matchesData = response.data.matches || [];
+      let matchesData = response.data.matches || [];
+      
+      // ✅ FILTER: Remove matches that have already started
+      const upcomingMatches = matchesData.filter(match => {
+        if (match.status === 'LIVE' || match.status === 'live') {
+          return true; // Keep live matches
+        }
+        if (match.status === 'FINISHED' || match.status === 'finished') {
+          return false; // Remove finished matches
+        }
+        // Remove matches that have started (date is in the past)
+        return !hasMatchStarted(match.date);
+      });
+      
+      matchesData = sortMatchesByDate(upcomingMatches);
       setMatches(matchesData);
       
-      const grouped = response.data.groupedMatches || [];
-      setGroupedMatches(grouped);
+      const dayGroups = groupMatchesByDay(matchesData);
+      
+      const groupedByDay = Object.keys(dayGroups).map(day => ({
+        day: day,
+        matches: sortMatchesByDate(dayGroups[day])
+      }));
+      
+      const dayOrder = ['Today', 'Tomorrow', 'In 2 Days'];
+      groupedByDay.sort((a, b) => {
+        const aIndex = dayOrder.indexOf(a.day);
+        const bIndex = dayOrder.indexOf(b.day);
+        if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+        if (aIndex !== -1) return -1;
+        if (bIndex !== -1) return 1;
+        return a.day.localeCompare(b.day);
+      });
+      
+      setGroupedMatches(groupedByDay);
       setLeagues(response.data.filters?.leagues || []);
       
       const live = matchesData.filter(m => m.status === 'LIVE' || m.status === 'live');
@@ -320,7 +474,6 @@ const HomePage = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Initial load
   useEffect(() => {
     const userData = localStorage.getItem('user');
     if (userData) {
@@ -365,6 +518,12 @@ const HomePage = () => {
 
     if (match.status === 'FINISHED' || match.status === 'finished') {
       alert('This match has already finished!');
+      return;
+    }
+
+    // ✅ Check if match has started
+    if (hasMatchStarted(match.date)) {
+      alert('This match has already started!');
       return;
     }
 
@@ -492,39 +651,16 @@ const HomePage = () => {
     navigate('/');
   };
 
-  // Handle Telegram join - opens in new tab
+  // Handle Telegram join
   const handleJoinTelegram = () => {
     window.open('https://t.me/wetatochm', '_blank');
     localStorage.setItem('hasJoinedTelegram', 'true');
     setShowTelegramPopup(false);
   };
 
-  // Handle skip Telegram
   const handleSkipTelegram = () => {
     localStorage.setItem('hasJoinedTelegram', 'skipped');
     setShowTelegramPopup(false);
-  };
-
-  // Check if user needs to see Telegram popup
-  const shouldShowTelegram = () => {
-    const hasJoined = localStorage.getItem('hasJoinedTelegram');
-    const userData = localStorage.getItem('user');
-    return userData && !hasJoined;
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    const now = new Date();
-    if (date.toDateString() === now.toDateString()) {
-      return `Today, ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
-    }
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
   };
 
   const formatCurrency = (amount) => `ETB ${parseFloat(amount).toFixed(2)}`;
@@ -581,7 +717,6 @@ const HomePage = () => {
 
   return (
     <div className="homepage-pro">
-      {/* Header */}
       <header className="header-pro">
         <div className="header-inner-pro">
           <div className="header-left-pro">
@@ -623,7 +758,9 @@ const HomePage = () => {
                         <button onClick={() => navigate('/deposit')}>💰 Deposit</button>
                         <button onClick={() => navigate('/withdraw')}>💸 Withdraw</button>
                         <button onClick={() => navigate('/bet-history')}>📊 Bet History</button>
-                       
+                        {user.role === 'admin' && (
+                          <button onClick={() => navigate('/admin/dashboard')} className="admin-link-pro">⚙️ Admin</button>
+                        )}
                         <button className="logout-btn-pro" onClick={handleLogout}>🚪 Logout</button>
                       </div>
                     </div>
@@ -641,7 +778,6 @@ const HomePage = () => {
         </div>
       </header>
 
-      {/* Mobile Menu */}
       {showMobileMenu && (
         <div className="mobile-overlay-pro" onClick={() => setShowMobileMenu(false)}>
           <div className="mobile-nav-pro" onClick={(e) => e.stopPropagation()}>
@@ -664,10 +800,8 @@ const HomePage = () => {
         </div>
       )}
 
-      {/* ===== MAIN CONTENT ===== */}
       <div className="main-pro">
         <div className="main-content-pro">
-          {/* Sports Tabs */}
           <div className="sports-tabs-pro">
             {sports.map(sport => (
               <button
@@ -680,7 +814,6 @@ const HomePage = () => {
             ))}
           </div>
 
-          {/* Matches */}
           <div className="matches-pro">
             {loading ? (
               <div className="loading-pro">
@@ -689,16 +822,17 @@ const HomePage = () => {
               </div>
             ) : groupedMatches.length > 0 ? (
               groupedMatches.map((group) => (
-                <div key={group.league} className="league-group-pro">
+                <div key={group.day} className="league-group-pro">
                   <div className="league-header-pro">
-                    <span className="league-icon-pro">🏆</span>
-                    <h3>{group.league}</h3>
+                    <span className="league-icon-pro">📅</span>
+                    <h3>{group.day}</h3>
                     <span className="match-count-pro">{group.matches.length} matches</span>
                   </div>
 
                   {group.matches.map((match) => {
                     const isExpanded = expandedMatch === match._id;
                     const availableMarkets = getAvailableMarkets(match);
+                    const timeLeft = getTimeLeft(match.date);
                     
                     return (
                       <div key={match._id} className={`match-card-pro ${isExpanded ? 'expanded' : ''}`}>
@@ -712,6 +846,9 @@ const HomePage = () => {
                             <div className="match-meta-pro">
                               <span className="match-date-pro">{formatDate(match.date)}</span>
                               {getStatusBadge(match.status)}
+                              {match.status !== 'LIVE' && match.status !== 'FINISHED' && timeLeft && (
+                                <span className="time-left-badge">⏱️ {timeLeft}</span>
+                              )}
                             </div>
                           </div>
                           <button className="expand-btn-pro" onClick={() => toggleMatchExpand(match._id)}>
@@ -720,12 +857,11 @@ const HomePage = () => {
                           </button>
                         </div>
 
-                        {/* Result - 1X2 */}
                         <div className="result-odds-pro">
                           <button 
                             className={`result-odd-btn ${isInBetSlip(match._id, '1', 'Result') ? 'selected' : ''}`}
                             onClick={() => addToBetSlip(match, '1', match.odds?.home || 'N/A', 'Result')}
-                            disabled={match.status === 'FINISHED' || match.status === 'finished'}
+                            disabled={match.status === 'FINISHED' || match.status === 'finished' || hasMatchStarted(match.date)}
                           >
                             <span className="result-label">1</span>
                             <span className="result-odd">{match.odds?.home || 'N/A'}</span>
@@ -733,7 +869,7 @@ const HomePage = () => {
                           <button 
                             className={`result-odd-btn ${isInBetSlip(match._id, 'X', 'Result') ? 'selected' : ''}`}
                             onClick={() => addToBetSlip(match, 'X', match.odds?.draw || 'N/A', 'Result')}
-                            disabled={match.status === 'FINISHED' || match.status === 'finished'}
+                            disabled={match.status === 'FINISHED' || match.status === 'finished' || hasMatchStarted(match.date)}
                           >
                             <span className="result-label">X</span>
                             <span className="result-odd">{match.odds?.draw || 'N/A'}</span>
@@ -741,14 +877,13 @@ const HomePage = () => {
                           <button 
                             className={`result-odd-btn ${isInBetSlip(match._id, '2', 'Result') ? 'selected' : ''}`}
                             onClick={() => addToBetSlip(match, '2', match.odds?.away || 'N/A', 'Result')}
-                            disabled={match.status === 'FINISHED' || match.status === 'finished'}
+                            disabled={match.status === 'FINISHED' || match.status === 'finished' || hasMatchStarted(match.date)}
                           >
                             <span className="result-label">2</span>
                             <span className="result-odd">{match.odds?.away || 'N/A'}</span>
                           </button>
                         </div>
 
-                        {/* Additional Markets */}
                         {isExpanded && availableMarkets.length > 0 && (
                           <div className="all-markets-pro">
                             <div className="markets-grid-pro">
@@ -794,14 +929,13 @@ const HomePage = () => {
             ) : (
               <div className="empty-pro">
                 <div className="empty-icon-pro">⚽</div>
-                <h3>No Matches Available</h3>
+                <h3>No Upcoming Matches Available</h3>
                 <p>Check back later for upcoming matches</p>
               </div>
             )}
           </div>
         </div>
 
-        {/* ===== BET SLIP SIDEBAR ===== */}
         <div className={`sidebar-pro ${!showBetSlip ? 'hidden' : ''}`}>
           <div className="sidebar-header-pro">
             <h3>🎫 BET SLIP</h3>
@@ -811,7 +945,6 @@ const HomePage = () => {
 
           <div className="sidebar-body-pro">
             {betSlip.length === 0 ? (
-              // Show Telegram Join button when bet slip is empty AND user is logged in
               user ? (
                 <div className="telegram-join-betslip">
                   <div className="telegram-join-icon">📢</div>
@@ -851,7 +984,6 @@ const HomePage = () => {
                   ))}
                 </div>
 
-                {/* Total Stake Input */}
                 <div className="betslip-total-stake-pro">
                   <label>Total Stake</label>
                   <input
@@ -889,7 +1021,6 @@ const HomePage = () => {
         </div>
       </div>
 
-      {/* ===== BOTTOM NAVIGATION - Mobile Only ===== */}
       {isMobile && (
         <div className="bottom-nav">
           {bottomNavItems.map((item) => (
@@ -914,14 +1045,12 @@ const HomePage = () => {
         </div>
       )}
 
-      {/* Mobile Bet Slip Toggle */}
       {betSlip.length > 0 && !showBetSlip && isMobile && (
         <button className="mobile-betslip-pro" onClick={toggleBetSlip}>
           🎫 {betSlip.length}
         </button>
       )}
 
-      {/* ===== TELEGRAM POPUP OVERLAY (shown when user clicks Join in bet slip) ===== */}
       {showTelegramPopup && (
         <div className="telegram-popup-overlay" onClick={handleSkipTelegram}>
           <div className="telegram-popup-simple" onClick={(e) => e.stopPropagation()}>

@@ -14,10 +14,8 @@ const MatchesManagement = () => {
     dateTo: ''
   });
 
-  // ✅ API URL from environment variable
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-  // All 20 betting markets configuration for admin
   const allMarkets = {
     result: { label: 'Result', key: 'result' },
     doubleChance: { label: 'Double Chance', key: 'doubleChance' },
@@ -82,7 +80,6 @@ const MatchesManagement = () => {
     fetchMatches();
   }, [filters]);
 
-  // ✅ FIXED: Use API_URL
   const fetchMatches = async () => {
     try {
       setLoading(true);
@@ -105,7 +102,6 @@ const MatchesManagement = () => {
     }
   };
 
-  // ✅ FIXED: Use API_URL
   const handleDelete = async (matchId) => {
     if (!window.confirm('Are you sure you want to delete this match?')) return;
     try {
@@ -121,17 +117,14 @@ const MatchesManagement = () => {
     }
   };
 
-  // ✅ FIXED: Use API_URL
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
       
-      // Clean up markets - remove empty ones
       const cleanedMarkets = {};
       Object.keys(formData.markets || {}).forEach(key => {
         const marketData = formData.markets[key];
-        // Only include markets that have at least one option with a value
         const hasValidOdds = Object.values(marketData).some(val => val && parseFloat(val) > 0);
         if (hasValidOdds) {
           cleanedMarkets[key] = marketData;
@@ -147,8 +140,6 @@ const MatchesManagement = () => {
         },
         markets: cleanedMarkets
       };
-
-      console.log('Saving match with markets:', data.markets);
 
       if (editingMatch) {
         await axios.put(`${API_URL}/api/admin/matches/${editingMatch._id}`, data, {
@@ -212,13 +203,22 @@ const MatchesManagement = () => {
 
   const editMatch = (match) => {
     setEditingMatch(match);
+    
+    const date = new Date(match.date);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const localDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
+    
     setFormData({
       sport: match.sport,
       league: match.league,
       country: match.country,
       homeTeam: match.homeTeam,
       awayTeam: match.awayTeam,
-      date: new Date(match.date).toISOString().slice(0, 16),
+      date: localDateTime,
       oddsHome: match.odds?.home?.toString() || '',
       oddsDraw: match.odds?.draw?.toString() || '',
       oddsAway: match.odds?.away?.toString() || '',
@@ -227,14 +227,23 @@ const MatchesManagement = () => {
     setShowForm(true);
   };
 
+  // ✅ 12-HOUR TIME FORMAT WITH AM/PM
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    let hours = date.getHours();
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    
+    // Convert to 12-hour format
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // 12-hour format (0 becomes 12)
+    
+    return `${year}/${month}/${day} ${hours}:${minutes} ${ampm}`;
   };
 
   return (
@@ -244,7 +253,6 @@ const MatchesManagement = () => {
         <button onClick={() => setShowForm(true)} className="btn-add">+ Add New Match</button>
       </div>
 
-      {/* Filters */}
       <div className="filters-container">
         <select value={filters.sport} onChange={(e) => setFilters({ ...filters, sport: e.target.value })}>
           <option value="FOOTBALL">⚽ Football</option>
@@ -262,13 +270,11 @@ const MatchesManagement = () => {
         <button onClick={fetchMatches} className="btn-filter">Apply Filters</button>
       </div>
 
-      {/* Modal Form */}
       {showForm && (
         <div className="modal-overlay">
           <div className="modal-content">
             <h3>{editingMatch ? '✏️ Edit Match' : '➕ Add New Match'}</h3>
             <form onSubmit={handleSubmit} className="match-form">
-              {/* Basic Info */}
               <div className="form-grid">
                 <div className="form-group">
                   <label>Sport</label>
@@ -287,8 +293,16 @@ const MatchesManagement = () => {
                   <input type="text" placeholder="e.g., England" value={formData.country} onChange={(e) => setFormData({ ...formData, country: e.target.value })} required />
                 </div>
                 <div className="form-group">
-                  <label>Date & Time</label>
-                  <input type="datetime-local" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} required />
+                  <label>Date &amp; Time (12H)</label>
+                  <input 
+                    type="datetime-local" 
+                    value={formData.date} 
+                    onChange={(e) => setFormData({ ...formData, date: e.target.value })} 
+                    required 
+                  />
+                  <small style={{ color: '#888', fontSize: '11px', marginTop: '4px', display: 'block' }}>
+                    Format: YYYY-MM-DD HH:MM (e.g. 2026-08-09 02:30 PM)
+                  </small>
                 </div>
                 <div className="form-group">
                   <label>Home Team</label>
@@ -300,7 +314,6 @@ const MatchesManagement = () => {
                 </div>
               </div>
 
-              {/* 1X2 Odds */}
               <div className="odds-section">
                 <h4>1X2 - Match Result</h4>
                 <div className="odds-grid">
@@ -319,7 +332,6 @@ const MatchesManagement = () => {
                 </div>
               </div>
 
-              {/* All 20 Markets */}
               <div className="markets-section">
                 <h4>All Betting Markets</h4>
                 <div className="markets-grid-admin">
@@ -378,7 +390,6 @@ const MatchesManagement = () => {
         </div>
       )}
 
-      {/* Matches Table */}
       {loading ? (
         <div className="loading">Loading matches...</div>
       ) : (
@@ -386,7 +397,7 @@ const MatchesManagement = () => {
           <table>
             <thead>
               <tr>
-                <th>Date</th>
+                <th>Date &amp; Time</th>
                 <th>League</th>
                 <th>Home</th>
                 <th>Away</th>
