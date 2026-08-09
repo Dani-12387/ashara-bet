@@ -8,31 +8,26 @@ const withdrawalSchema = new mongoose.Schema({
   },
   amount: {
     type: Number,
-    required: true,
-    min: 50
+    required: true
   },
   paymentMethod: {
     type: String,
-    enum: ['BANK_TRANSFER', 'TELE_BIRR', 'MOBILE_MONEY'],
+    enum: ['TELE_BIRR', 'BANK_TRANSFER', 'MOBILE_MONEY'],
     required: true
   },
   accountName: {
     type: String,
-    required: true,
-    trim: true
+    required: true
   },
   accountNumber: {
     type: String,
-    required: true,
-    trim: true
+    required: true
   },
   bankName: {
-    type: String,
-    trim: true
+    type: String
   },
   phoneNumber: {
-    type: String,
-    trim: true
+    type: String
   },
   notes: {
     type: String
@@ -44,16 +39,6 @@ const withdrawalSchema = new mongoose.Schema({
   },
   rejectionReason: {
     type: String
-  },
-  processedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
-  processedAt: {
-    type: Date
-  },
-  completedAt: {
-    type: Date
   },
   createdAt: {
     type: Date,
