@@ -28,12 +28,19 @@ const HomePage = () => {
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
+  // ✅ Sports with Casino, Aviator, Fast Keno
   const sports = [
     { id: 'FOOTBALL', name: 'Football', icon: '⚽' },
     { id: 'BASKETBALL', name: 'Basketball', icon: '🏀' },
     { id: 'TENNIS', name: 'Tennis', icon: '🎾' },
-    { id: 'CRICKET', name: 'Cricket', icon: '🏏' }
+    { id: 'CRICKET', name: 'Cricket', icon: '🏏' },
+    { id: 'CASINO', name: 'Casino', icon: '🎰', comingSoon: true },
+    { id: 'AVIATOR', name: 'Aviator', icon: '✈️', comingSoon: true },
+    { id: 'FAST_KENO', name: 'Fast Keno', icon: '🎲', comingSoon: true }
   ];
+
+  // ✅ Coming Soon sports (IDs that show coming soon message)
+  const comingSoonSports = ['CASINO', 'AVIATOR', 'FAST_KENO'];
 
   const allMarkets = {
     result: { label: 'Result', icon: '🏆' },
@@ -802,14 +809,16 @@ const HomePage = () => {
 
       <div className="main-pro">
         <div className="main-content-pro">
+          {/* ✅ Updated Sports Tabs with Coming Soon */}
           <div className="sports-tabs-pro">
             {sports.map(sport => (
               <button
                 key={sport.id}
-                className={`sport-tab-pro ${selectedSport === sport.id ? 'active' : ''}`}
+                className={`sport-tab-pro ${selectedSport === sport.id ? 'active' : ''} ${sport.comingSoon ? 'coming-soon-tab' : ''}`}
                 onClick={() => setSelectedSport(sport.id)}
               >
                 {sport.icon} {sport.name}
+                {sport.comingSoon && <span className="coming-soon-badge">Soon</span>}
               </button>
             ))}
           </div>
@@ -819,6 +828,29 @@ const HomePage = () => {
               <div className="loading-pro">
                 <div className="spinner-pro"></div>
                 <p>Loading matches...</p>
+              </div>
+            ) : comingSoonSports.includes(selectedSport) ? (
+              // ✅ Coming Soon Message for Casino, Aviator, Fast Keno
+              <div className="coming-soon-container">
+                <div className="coming-soon-content">
+                  <div className="coming-soon-icon">
+                    {selectedSport === 'CASINO' && '🎰'}
+                    {selectedSport === 'AVIATOR' && '✈️'}
+                    {selectedSport === 'FAST_KENO' && '🎲'}
+                  </div>
+                  <h2>Coming Soon!</h2>
+                  <p>We're working hard to bring you the best {selectedSport === 'CASINO' ? 'Casino' : selectedSport === 'AVIATOR' ? 'Aviator' : 'Fast Keno'} experience.</p>
+                  <p className="coming-soon-sub">Stay tuned for exciting updates!</p>
+                  <div className="coming-soon-progress">
+                    <div className="progress-bar">
+                      <div className="progress-fill" style={{ width: '65%' }}></div>
+                    </div>
+                    <span className="progress-text">65% Complete</span>
+                  </div>
+                  <button className="coming-soon-notify-btn" onClick={() => alert('🔔 You will be notified when this feature is available!')}>
+                    🔔 Notify Me
+                  </button>
+                </div>
               </div>
             ) : groupedMatches.length > 0 ? (
               groupedMatches.map((group) => (
