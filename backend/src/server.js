@@ -54,7 +54,11 @@ app.get("/", (req, res) => {
       health: "/health",
       matches: "/api/matches",
       bets: "/api/bets",
-      auth: "/api/auth"
+      auth: "/api/auth",
+      odds: "/api/odds",
+      withdrawals: "/api/withdrawals",
+      deposits: "/api/deposits",
+      user: "/api/user"
     }
   });
 });
@@ -99,6 +103,7 @@ const adminWithdrawalRoutes = require("./routes/adminWithdrawalRoutes");
 const matchRoutes = require('./routes/matches');
 const adminMatchRoutes = require('./routes/adminMatches');
 const betRoutes = require('./routes/betRoutes');
+const oddsRoutes = require('./routes/oddsRoutes'); // ✅ ADDED
 
 app.use("/api/withdrawals", withdrawalRoutes);
 app.use("/api/admin", adminWithdrawalRoutes);
@@ -110,6 +115,7 @@ app.use("/api/admin", adminTransactionRoutes);
 app.use('/api', matchRoutes);
 app.use('/api', adminMatchRoutes);
 app.use('/api/bets', betRoutes);
+app.use('/api/odds', oddsRoutes); // ✅ ADDED
 
 // ===== ERROR HANDLING =====
 // 404 handler
@@ -136,6 +142,8 @@ const PORT = process.env.PORT || 5000;
 console.log('🔄 Starting server...');
 console.log('📊 NODE_ENV:', process.env.NODE_ENV || 'development');
 console.log('📊 PORT:', PORT);
+console.log('📊 MONGODB_URI:', process.env.MONGODB_URI ? '✅ Set' : '❌ Missing');
+console.log('📊 ODDS_API_KEY:', process.env.ODDS_API_KEY ? '✅ Set' : '❌ Missing (using mock data)');
 
 // Connect to MongoDB
 connectDB();
@@ -150,4 +158,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`   - /api/bets/history`);
   console.log(`   - /api/auth/login`);
   console.log(`   - /api/auth/register`);
+  console.log(`   - /api/odds/test (odds test)`);
+  console.log(`   - /api/odds/odds/:sport (Live Odds)`);
+  console.log(`   - /api/odds/sports (Available Sports)`);
 });

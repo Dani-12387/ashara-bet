@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './HomePage.css';
+import LiveOdds from './LiveOdds';
 
 const HomePage = () => {
   const navigate = useNavigate();
@@ -320,6 +321,11 @@ const HomePage = () => {
         </style>
       </head>
       <body>
+
+      {/* Live Odds Section */}
+<div className="live-odds-section">
+  <LiveOdds />
+</div>
         <div class="ticket">
           <div class="header">
             <h2>⚡ AsharaBet</h2>

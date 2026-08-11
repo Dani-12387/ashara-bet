@@ -13,12 +13,99 @@ const MatchesManagement = () => {
     dateFrom: '',
     dateTo: ''
   });
+  
+  // ✅ State for live odds
+  const [liveOdds, setLiveOdds] = useState([]);
+  const [loadingOdds, setLoadingOdds] = useState(false);
+  const [showLiveOdds, setShowLiveOdds] = useState(false);
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
+  // ✅ Sport mapping for API
+  const sportMapping = {
+    'FOOTBALL': 'soccer_epl',
+    'BASKETBALL': 'basketball_nba',
+    'TENNIS': 'tennis_atp',
+    'CRICKET': 'cricket_t20_blast'
+  };
+
+  // ✅ Fetch live odds from API
+  const fetchLiveOdds = async () => {
+    try {
+      setLoadingOdds(true);
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        alert('Please login to fetch live odds');
+        setLoadingOdds(false);
+        return;
+      }
+      
+      const sportKey = sportMapping[formData.sport] || 'soccer_epl';
+      console.log('📡 Fetching odds for:', sportKey);
+      console.log('🔗 URL:', `${API_URL}/api/odds/odds/${sportKey}`);
+      
+      const response = await axios.get(
+        `${API_URL}/api/odds/odds/${sportKey}`,
+        { 
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 15000
+        }
+      );
+      
+      console.log('✅ Response:', response.data);
+      
+      if (response.data.success) {
+        setLiveOdds(response.data.matches || []);
+        setShowLiveOdds(true);
+        if (response.data.matches.length === 0) {
+          alert('No live matches available for this sport');
+        }
+      } else {
+        alert(response.data.message || 'Failed to fetch live odds');
+      }
+    } catch (error) {
+      console.error('❌ Error fetching live odds:', error);
+      
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+        
+        if (error.response.status === 401) {
+          alert('Please login again to fetch live odds');
+        } else if (error.response.status === 404) {
+          alert('Odds API not configured. Please check backend setup.');
+        } else {
+          alert(`Failed to fetch live odds: ${error.response.data?.message || 'Unknown error'}`);
+        }
+      } else if (error.request) {
+        alert('No response from server. Please check your connection.');
+      } else {
+        alert(`Error: ${error.message}`);
+      }
+    } finally {
+      setLoadingOdds(false);
+    }
+  };
+
+  // ✅ Apply odds from live match to form
+  const applyLiveOdds = (match) => {
+    setFormData({
+      ...formData,
+      homeTeam: match.homeTeam,
+      awayTeam: match.awayTeam,
+      oddsHome: match.odds.home?.toString() || '',
+      oddsDraw: match.odds.draw?.toString() || '',
+      oddsAway: match.odds.away?.toString() || '',
+      league: match.sportTitle || formData.league,
+      country: formData.country || 'England',
+    });
+    setShowLiveOdds(false);
+    alert(`✅ Odds loaded for ${match.homeTeam} vs ${match.awayTeam}`);
+  };
+
   // ✅ 2026/27 Clubs by League
   const clubsByLeague = {
-    // Premier League (England) - 2026/27
     'Premier League': [
       'Arsenal', 'Aston Villa', 'Bournemouth', 'Brentford', 'Brighton',
       'Chelsea', 'Crystal Palace', 'Everton', 'Fulham', 'Ipswich Town',
@@ -47,8 +134,6 @@ const MatchesManagement = () => {
     'Community Shield': [
       'Manchester City', 'Arsenal'
     ],
-
-    // Bundesliga (Germany) - 2026/27
     'Bundesliga': [
       'Augsburg', 'Union Berlin', 'Werder Bremen', 'Borussia Dortmund',
       'SV Elversberg', 'Eintracht Frankfurt', 'Freiburg', 'Hamburger SV',
@@ -68,8 +153,6 @@ const MatchesManagement = () => {
     'DFL-Supercup': [
       'Bayer Leverkusen', 'Bayern Munich'
     ],
-
-    // Eredivisie (Netherlands) - 2026/27
     'Eredivisie': [
       'ADO Den Haag', 'Ajax', 'AZ Alkmaar', 'Excelsior', 'FC Groningen',
       'FC Twente', 'FC Utrecht', 'Feyenoord', 'Fortuna Sittard', 'Go Ahead Eagles',
@@ -88,8 +171,6 @@ const MatchesManagement = () => {
     'Johan Cruyff Shield': [
       'PSV Eindhoven', 'Feyenoord'
     ],
-
-    // La Liga (Spain) - 2026/27
     'La Liga': [
       'Athletic Bilbao', 'Atletico Madrid', 'Osasuna', 'Celta Vigo', 'Alaves',
       'Elche', 'Barcelona', 'Getafe', 'Levante', 'Malaga', 'Racing Santander',
@@ -108,8 +189,6 @@ const MatchesManagement = () => {
     'Supercopa de España': [
       'Real Madrid', 'Barcelona'
     ],
-
-    // Liga Portugal (Portugal) - 2026/27
     'Liga Portugal': [
       'Estrela Amadora', 'Estoril', 'Famalicão', 'Gil Vicente', 'Rio Ave',
       'Marítimo', 'Casa Pia', 'Moreirense', 'Braga', 'Porto', 'Alverca',
@@ -127,8 +206,6 @@ const MatchesManagement = () => {
     'Supertaça Cândido de Oliveira': [
       'Sporting CP', 'Porto'
     ],
-
-    // Ligue 1 (France) - 2026/27
     'Ligue 1': [
       'Angers', 'Auxerre', 'Brest', 'Le Havre', 'Le Mans', 'Lens',
       'Lorient', 'Lille', 'Lyon', 'Marseille', 'Monaco', 'Nice',
@@ -145,8 +222,6 @@ const MatchesManagement = () => {
     'Trophée des Champions': [
       'PSG', 'Toulouse'
     ],
-
-    // Pro League (Belgium) - 2026/27
     'Pro League': [
       'Anderlecht', 'Antwerp', 'Cercle Brugge', 'Charleroi', 'Club Brugge',
       'Genk', 'Gent', 'Kortrijk', 'Mechelen', 'Westerlo', 'Lommel',
@@ -164,8 +239,6 @@ const MatchesManagement = () => {
     'Belgian Super Cup': [
       'Club Brugge', 'Union Saint-Gilloise'
     ],
-
-    // Serie A (Italy) - 2026/27
     'Serie A': [
       'AC Milan', 'Atalanta', 'Bologna', 'Cagliari', 'Como', 'Fiorentina',
       'Frosinone', 'Genoa', 'Inter Milan', 'Juventus', 'Lazio', 'Lecce',
@@ -184,8 +257,6 @@ const MatchesManagement = () => {
     'Supercoppa Italiana': [
       'Napoli', 'Inter Milan'
     ],
-
-    // Allsvenskan (Sweden) - 2026
     'Allsvenskan': [
       'AIK', 'BK Häcken', 'Brommapojkarna', 'Degerfors', 'Djurgårdens IF',
       'Elfsborg', 'GAIS', 'Halmstad', 'Hammarby IF', 'IFK Göteborg',
@@ -203,8 +274,6 @@ const MatchesManagement = () => {
     'Svenska Supercupen': [
       'Malmö FF', 'Elfsborg'
     ],
-
-    // Danish Superliga - 2026/27
     'Danish Superliga': [
       'AGF Aarhus', 'Brøndby IF', 'FC Copenhagen', 'FC Fredericia',
       'FC Midtjylland', 'FC Nordsjælland', 'Odense BK', 'Randers FC',
@@ -220,8 +289,6 @@ const MatchesManagement = () => {
     'Danish Super Cup': [
       'FC Midtjylland', 'FC Copenhagen'
     ],
-
-    // Eliteserien (Norway) - 2026
     'Eliteserien': [
       'Bodø/Glimt', 'Viking', 'Tromsø', 'Lillestrøm', 'Molde', 'Sarpsborg 08',
       'Vålerenga', 'Brann', 'Rosenborg', 'HamKam', 'Sandefjord', 'Fredrikstad',
@@ -237,8 +304,6 @@ const MatchesManagement = () => {
     'Mesterfinalen': [
       'Bodø/Glimt', 'Molde'
     ],
-
-    // Swiss Super League - 2026/27
     'Swiss Super League': [
       'Grasshoppers', 'St. Gallen', 'FC Thun', 'Lausanne-Sport', 'Luzern',
       'Young Boys', 'Sion', 'FC Zürich', 'Lugano', 'Servette', 'FC Basel',
@@ -254,8 +319,6 @@ const MatchesManagement = () => {
     'Swiss Super Cup': [
       'Young Boys', 'FC Zürich'
     ],
-
-    // Austrian Bundesliga - 2026/27
     'Austrian Bundesliga': [
       'Red Bull Salzburg', 'Sturm Graz', 'Rapid Wien', 'Austria Wien',
       'Wolfsberger AC', 'TSV Hartberg', 'LASK', 'Austria Klagenfurt',
@@ -272,8 +335,6 @@ const MatchesManagement = () => {
     'Austrian Supercup': [
       'Red Bull Salzburg', 'Sturm Graz'
     ],
-
-    // Super League Greece - 2026/27
     'Super League Greece': [
       'AEK Athens', 'Aris', 'Asteras Tripolis', 'Kifisia', 'Atromitos',
       'Iraklis', 'Levadiakos', 'Kalamata', 'OFI Crete', 'Olympiacos',
@@ -290,8 +351,6 @@ const MatchesManagement = () => {
     'Greek Super Cup': [
       'Olympiacos', 'AEK Athens'
     ],
-
-    // Süper Lig (Turkey) - 2026/27
     'Süper Lig': [
       'Amedspor', 'Antalyaspor', 'Alanyaspor', 'Başakşehir', 'Beşiktaş',
       'Çorum FK', 'Erzurumspor', 'Fenerbahçe', 'Galatasaray', 'Gaziantep FK',
@@ -309,8 +368,6 @@ const MatchesManagement = () => {
     'Turkish Super Cup': [
       'Galatasaray', 'Fenerbahçe'
     ],
-
-    // Russian Premier League - 2026/27
     'Russian Premier League': [
       'Akhmat Grozny', 'Akron Togliatti', 'Baltika Kaliningrad', 'CSKA Moscow',
       'Dynamo Makhachkala', 'Dynamo Moscow', 'Krasnodar', 'Krylia Sovetov',
@@ -329,8 +386,6 @@ const MatchesManagement = () => {
     'Russian Super Cup': [
       'Zenit', 'CSKA Moscow'
     ],
-
-    // Ukrainian Premier League - 2026/27
     'Ukrainian Premier League': [
       'Bukovyna', 'Veres Rivne', 'Dynamo Kyiv', 'Epicentr', 'Zorya Luhansk',
       'Karpaty Lviv', 'Kolos Kovalivka', 'Kryvbas Kryvyi Rih', 'Kudrivka',
@@ -349,8 +404,6 @@ const MatchesManagement = () => {
     'Ukrainian Super Cup': [
       'Shakhtar Donetsk', 'Dynamo Kyiv'
     ],
-
-    // Ekstraklasa (Poland) - 2026/27
     'Ekstraklasa': [
       'Zagłębie Lubin', 'Wisła Płock', 'Wisła Kraków', 'Górnik Zabrze',
       'Radomiak Radom', 'Legia Warsaw', 'Jagiellonia Białystok', 'Motor Lublin',
@@ -370,8 +423,6 @@ const MatchesManagement = () => {
     'Polish Super Cup': [
       'Raków Częstochowa', 'Legia Warsaw'
     ],
-
-    // UEFA Champions League - 2026/27
     'UEFA Champions League': [
       'Real Madrid', 'Barcelona', 'Bayern Munich', 'PSG', 'Manchester City',
       'Liverpool', 'Inter Milan', 'AC Milan', 'Arsenal', 'Chelsea',
@@ -379,16 +430,12 @@ const MatchesManagement = () => {
       'Benfica', 'Porto', 'RB Leipzig', 'Lazio', 'Feyenoord', 'Celtic',
       'Red Star Belgrade', 'Shakhtar Donetsk', 'Galatasaray', 'Dynamo Kyiv'
     ],
-
-    // UEFA Europa League - 2026/27
     'UEFA Europa League': [
       'Sevilla', 'Roma', 'Bayer Leverkusen', 'Atalanta', 'Sporting CP',
       'Marseille', 'Tottenham', 'West Ham', 'Villarreal', 'Eintracht Frankfurt',
       'Real Sociedad', 'Betis', 'Olympiacos', 'Lyon', 'Rennes', 'Lille',
       'AZ Alkmaar', 'Genk', 'Midtjylland', 'Legia Warsaw'
     ],
-
-    // UEFA Conference League - 2026/27
     'UEFA Conference League': [
       'Fiorentina', 'Osasuna', 'Hearts', 'AZ Alkmaar', 'Gent',
       'Partizan', 'Slovan Bratislava', 'Sturm Graz', 'Lugano',
@@ -482,255 +529,91 @@ const MatchesManagement = () => {
 
   // ✅ ALL 82 BETTING MARKETS
   const allMarkets = {
-    // 1. 3 WAY (1X2)
     result: { label: '3 Way (1X2)', key: 'result' },
-    
-    // 2. BOTH TEAMS TO SCORE
     btts: { label: 'Both Teams to Score', key: 'btts' },
-    
-    // 3. DOUBLE CHANCE
     doubleChance: { label: 'Double Chance', key: 'doubleChance' },
-    
-    // 4. OVER/UNDER
     totalGoals: { label: 'Over/Under', key: 'totalGoals' },
-    
-    // 5. 1ST HALF - 3 WAY
     firstHalfResult: { label: '1st Half - 3 Way', key: 'firstHalfResult' },
-    
-    // 6. 1ST HALF - OVER/UNDER
     firstHalfTotalGoals: { label: '1st Half - Over/Under', key: 'firstHalfTotalGoals' },
-    
-    // 7. 1ST HALF - CORRECT SCORE
     firstHalfCorrectScore: { label: '1st Half - Correct Score', key: 'firstHalfCorrectScore' },
-    
-    // 8. HALFTIME/FULLTIME
     halfTimeFullTime: { label: 'Halftime/Fulltime', key: 'halfTimeFullTime' },
-    
-    // 9. EXACT GOALS
     exactGoals: { label: 'Exact Goals', key: 'exactGoals' },
-    
-    // 10. ODD/EVEN
     oddEven: { label: 'Odd/Even', key: 'oddEven' },
-    
-    // 11. DRAW NO BET
     drawNoBet: { label: 'Draw No Bet', key: 'drawNoBet' },
-    
-    // 12. 1ST HALF - BOTH TEAMS TO SCORE
     firstHalfBtts: { label: '1st Half - Both Teams to Score', key: 'firstHalfBtts' },
-    
-    // 13. 3 WAY & OVER/UNDER
     threeWayOverUnder: { label: '3 Way & Over/Under', key: 'threeWayOverUnder' },
-    
-    // 14. 3 WAY & BOTH TEAMS TO SCORE
     threeWayBtts: { label: '3 Way & Both Teams to Score', key: 'threeWayBtts' },
-    
-    // 15. HOME TEAM TO WIN EITHER HALF
     homeWinEitherHalf: { label: 'Home Team to Win Either Half', key: 'homeWinEitherHalf' },
-    
-    // 16. AWAY TEAM TO WIN EITHER HALF
     awayWinEitherHalf: { label: 'Away Team to Win Either Half', key: 'awayWinEitherHalf' },
-    
-    // 17. HIGHEST SCORING HALF
     highestScoringHalf: { label: 'Highest Scoring Half', key: 'highestScoringHalf' },
-    
-    // 18. GOAL RANGE
     goalRange: { label: 'Goal Range', key: 'goalRange' },
-    
-    // 19. 1 GOAL
     oneGoal: { label: '1 Goal', key: 'oneGoal' },
-    
-    // 20. 1 GOAL & 1X2
     oneGoalAnd1x2: { label: '1 Goal & 1X2', key: 'oneGoalAnd1x2' },
-    
-    // 21. 10 MINUTES - 3 WAY FROM 1 TO 10
     tenMinute3Way: { label: '10 Minutes - 3 Way (1-10)', key: 'tenMinute3Way' },
-    
-    // 22. 1ST HALF - 1 GOAL
     firstHalfOneGoal: { label: '1st Half - 1 Goal', key: 'firstHalfOneGoal' },
-    
-    // 23. 1ST HALF - 1X2 & BOTH TEAMS TO SCORE
     firstHalf1x2Btts: { label: '1st Half - 1X2 & Both Teams to Score', key: 'firstHalf1x2Btts' },
-    
-    // 24. 1ST HALF - 1X2 & OVER/UNDER
     firstHalf1x2OverUnder: { label: '1st Half - 1X2 & Over/Under', key: 'firstHalf1x2OverUnder' },
-    
-    // 25. 1ST HALF - HOME TEAM CLEAN SHEET
     firstHalfHomeCleanSheet: { label: '1st Half - Home Team Clean Sheet', key: 'firstHalfHomeCleanSheet' },
-    
-    // 26. 1ST HALF - HOME TEAM OVER/UNDER
     firstHalfHomeOverUnder: { label: '1st Half - Home Team Over/Under', key: 'firstHalfHomeOverUnder' },
-    
-    // 27. 1ST HALF - AWAY TEAM CLEAN SHEET
     firstHalfAwayCleanSheet: { label: '1st Half - Away Team Clean Sheet', key: 'firstHalfAwayCleanSheet' },
-    
-    // 28. 1ST HALF - AWAY TEAM OVER/UNDER
     firstHalfAwayOverUnder: { label: '1st Half - Away Team Over/Under', key: 'firstHalfAwayOverUnder' },
-    
-    // 29. 1ST HALF - DOUBLE CHANCE
     firstHalfDoubleChance: { label: '1st Half - Double Chance', key: 'firstHalfDoubleChance' },
-    
-    // 30. 1ST HALF - DOUBLE CHANCE & BOTH TEAMS TO SCORE
     firstHalfDoubleChanceBtts: { label: '1st Half - Double Chance & Both Teams to Score', key: 'firstHalfDoubleChanceBtts' },
-    
-    // 31. 1ST HALF - DRAW NO BET
     firstHalfDrawNoBet: { label: '1st Half - Draw No Bet', key: 'firstHalfDrawNoBet' },
-    
-    // 32. 1ST HALF - EXACT GOALS
     firstHalfExactGoals: { label: '1st Half - Exact Goals', key: 'firstHalfExactGoals' },
-    
-    // 33. 1ST HALF - HANDICAP 1:0
     firstHalfHandicap: { label: '1st Half - Handicap 1:0', key: 'firstHalfHandicap' },
-    
-    // 34. 1ST HALF - ODD/EVEN
     firstHalfOddEven: { label: '1st Half - Odd/Even', key: 'firstHalfOddEven' },
-    
-    // 35. 1ST/2ND HALF - BOTH TEAMS TO SCORE
     bothHalvesBtts: { label: '1st/2nd Half - Both Teams to Score', key: 'bothHalvesBtts' },
-    
-    // 36. 2ND HALF - 1 GOAL
     secondHalfOneGoal: { label: '2nd Half - 1 Goal', key: 'secondHalfOneGoal' },
-    
-    // 37. 2ND HALF - 3 WAY
     secondHalfResult: { label: '2nd Half - 3 Way', key: 'secondHalfResult' },
-    
-    // 38. 2ND HALF - 3 WAY & BOTH TEAMS TO SCORE
     secondHalf3WayBtts: { label: '2nd Half - 3 Way & Both Teams to Score', key: 'secondHalf3WayBtts' },
-    
-    // 39. 2ND HALF - 3 WAY & OVER/UNDER
     secondHalf3WayOverUnder: { label: '2nd Half - 3 Way & Over/Under', key: 'secondHalf3WayOverUnder' },
-    
-    // 40. 2ND HALF - HOME TEAM CLEAN SHEET
     secondHalfHomeCleanSheet: { label: '2nd Half - Home Team Clean Sheet', key: 'secondHalfHomeCleanSheet' },
-    
-    // 41. 2ND HALF - HOME TEAM OVER/UNDER
     secondHalfHomeOverUnder: { label: '2nd Half - Home Team Over/Under', key: 'secondHalfHomeOverUnder' },
-    
-    // 42. 2ND HALF - BOTH TEAMS TO SCORE
     secondHalfBtts: { label: '2nd Half - Both Teams to Score', key: 'secondHalfBtts' },
-    
-    // 43. 2ND HALF - CORRECT SCORE
     secondHalfCorrectScore: { label: '2nd Half - Correct Score', key: 'secondHalfCorrectScore' },
-    
-    // 44. 2ND HALF - AWAY TEAM CLEAN SHEET
     secondHalfAwayCleanSheet: { label: '2nd Half - Away Team Clean Sheet', key: 'secondHalfAwayCleanSheet' },
-    
-    // 45. 2ND HALF - AWAY TEAM OVER/UNDER
     secondHalfAwayOverUnder: { label: '2nd Half - Away Team Over/Under', key: 'secondHalfAwayOverUnder' },
-    
-    // 46. 2ND HALF - DOUBLE CHANCE
     secondHalfDoubleChance: { label: '2nd Half - Double Chance', key: 'secondHalfDoubleChance' },
-    
-    // 47. 2ND HALF - DOUBLE CHANCE & BOTH TEAMS TO SCORE
     secondHalfDoubleChanceBtts: { label: '2nd Half - Double Chance & Both Teams to Score', key: 'secondHalfDoubleChanceBtts' },
-    
-    // 48. 2ND HALF - DRAW NO BET
     secondHalfDrawNoBet: { label: '2nd Half - Draw No Bet', key: 'secondHalfDrawNoBet' },
-    
-    // 49. 2ND HALF - EXACT GOALS
     secondHalfExactGoals: { label: '2nd Half - Exact Goals', key: 'secondHalfExactGoals' },
-    
-    // 50. 2ND HALF - HANDICAP 1:0
     secondHalfHandicap: { label: '2nd Half - Handicap 1:0', key: 'secondHalfHandicap' },
-    
-    // 51. 2ND HALF - ODD/EVEN
     secondHalfOddEven: { label: '2nd Half - Odd/Even', key: 'secondHalfOddEven' },
-    
-    // 52. 2ND HALF - OVER/UNDER
     secondHalfOverUnder: { label: '2nd Half - Over/Under', key: 'secondHalfOverUnder' },
-    
-    // 53. HOME TEAM CLEAN SHEET
     homeCleanSheet: { label: 'Home Team Clean Sheet', key: 'homeCleanSheet' },
-    
-    // 54. HOME TEAM EXACT GOALS
     homeExactGoals: { label: 'Home Team Exact Goals', key: 'homeExactGoals' },
-    
-    // 55. HOME TEAM HIGHEST SCORING HALF
     homeHighestScoringHalf: { label: 'Home Team Highest Scoring Half', key: 'homeHighestScoringHalf' },
-    
-    // 56. HOME TEAM NO BET
     homeNoBet: { label: 'Home Team No Bet', key: 'homeNoBet' },
-    
-    // 57. HOME TEAM ODD/EVEN
     homeOddEven: { label: 'Home Team Odd/Even', key: 'homeOddEven' },
-    
-    // 58. HOME TEAM OVER/UNDER
     homeOverUnder: { label: 'Home Team Over/Under', key: 'homeOverUnder' },
-    
-    // 59. HOME TEAM TO SCORE IN BOTH HALVES
     homeScoreBothHalves: { label: 'Home Team to Score in Both Halves', key: 'homeScoreBothHalves' },
-    
-    // 60. HOME TEAM TO WIN BOTH HALVES
     homeWinBothHalves: { label: 'Home Team to Win Both Halves', key: 'homeWinBothHalves' },
-    
-    // 61. BOTH HALVES OVER 1.5
     bothHalvesOver1_5: { label: 'Both Halves Over 1.5', key: 'bothHalvesOver1_5' },
-    
-    // 62. BOTH HALVES UNDER 1.5
     bothHalvesUnder1_5: { label: 'Both Halves Under 1.5', key: 'bothHalvesUnder1_5' },
-    
-    // 63. CORRECT SCORE
     correctScore: { label: 'Correct Score', key: 'correctScore' },
-    
-    // 64. AWAY TEAM CLEAN SHEET
     awayCleanSheet: { label: 'Away Team Clean Sheet', key: 'awayCleanSheet' },
-    
-    // 65. AWAY TEAM EXACT GOALS
     awayExactGoals: { label: 'Away Team Exact Goals', key: 'awayExactGoals' },
-    
-    // 66. AWAY TEAM HIGHEST SCORING HALF
     awayHighestScoringHalf: { label: 'Away Team Highest Scoring Half', key: 'awayHighestScoringHalf' },
-    
-    // 67. AWAY TEAM NO BET
     awayNoBet: { label: 'Away Team No Bet', key: 'awayNoBet' },
-    
-    // 68. AWAY TEAM ODD/EVEN
     awayOddEven: { label: 'Away Team Odd/Even', key: 'awayOddEven' },
-    
-    // 69. AWAY TEAM TOTAL
     awayTotal: { label: 'Away Team Total', key: 'awayTotal' },
-    
-    // 70. AWAY TEAM TO SCORE IN BOTH HALVES
     awayScoreBothHalves: { label: 'Away Team to Score in Both Halves', key: 'awayScoreBothHalves' },
-    
-    // 71. DOUBLE CHANCE (MATCH) & 1ST HALF BOTH TEAMS SCORE
     doubleChanceFirstHalfBtts: { label: 'Double Chance & 1st Half Both Teams Score', key: 'doubleChanceFirstHalfBtts' },
-    
-    // 72. DOUBLE CHANCE (MATCH) & 2ND HALF BOTH TEAMS SCORE
     doubleChanceSecondHalfBtts: { label: 'Double Chance & 2nd Half Both Teams Score', key: 'doubleChanceSecondHalfBtts' },
-    
-    // 73. DOUBLE CHANCE & BOTH TEAMS TO SCORE
     doubleChanceBtts: { label: 'Double Chance & Both Teams to Score', key: 'doubleChanceBtts' },
-    
-    // 74. DOUBLE CHANCE & OVER/UNDER
     doubleChanceOverUnder: { label: 'Double Chance & Over/Under', key: 'doubleChanceOverUnder' },
-    
-    // 75. HALFTIME/FULLTIME & 1ST HALF OVER/UNDER
     htFtFirstHalfOverUnder: { label: 'Halftime/Fulltime & 1st Half Over/Under', key: 'htFtFirstHalfOverUnder' },
-    
-    // 76. HALFTIME/FULLTIME & EXACT GOALS
     htFtExactGoals: { label: 'Halftime/Fulltime & Exact Goals', key: 'htFtExactGoals' },
-    
-    // 77. HALFTIME/FULLTIME & OVER/UNDER
     htFtOverUnder: { label: 'Halftime/Fulltime & Over/Under', key: 'htFtOverUnder' },
-    
-    // 78. HALFTIME/FULLTIME CORRECT SCORE
     htFtCorrectScore: { label: 'Halftime/Fulltime Correct Score', key: 'htFtCorrectScore' },
-    
-    // 79. HANDICAP 0:1
     handicap: { label: 'Handicap 0:1', key: 'handicap' },
-    
-    // 80. LAST GOAL
     lastGoal: { label: 'Last Goal', key: 'lastGoal' },
-    
-    // 81. OVER/UNDER & BOTH TEAMS TO SCORE
     overUnderBtts: { label: 'Over/Under & Both Teams to Score', key: 'overUnderBtts' },
-    
-    // 82. WHICH TEAM TO SCORE
     whichTeamToScore: { label: 'Which Team to Score', key: 'whichTeamToScore' }
   };
 
   const defaultOdds = {
-    // Existing default odds
     doubleChance: { '1X': 1.01, '12': 1.07, 'X2': 5.45 },
     drawNoBet: { 'Home': 1.5, 'Away': 2.5 },
     btts: { 'Yes': 2.0, 'No': 1.8 },
@@ -751,8 +634,6 @@ const MatchesManagement = () => {
     penalty: { 'Penalty Awarded': 2.5, 'No Penalty': 1.5 },
     playerMarkets: { 'Anytime Goalscorer': 2.5, 'First Goalscorer': 5.0, 'Last Goalscorer': 5.5, 'Player to Receive Card': 3.0, 'Player to Assist': 3.5 },
     specials: { 'Clean Sheet - Home': 2.0, 'Clean Sheet - Away': 2.5, 'Win to Nil - Home': 3.0, 'Win to Nil - Away': 4.0, 'Both Halves Over 1.5': 6.0, 'Highest Scoring Half - 1st': 2.0, 'Highest Scoring Half - 2nd': 2.2, 'Odd Total Goals': 1.9, 'Even Total Goals': 1.9 },
-
-    // New markets
     firstHalfCorrectScore: { '0-0': 4.0, '1-0': 3.5, '2-0': 5.0, '2-1': 6.0, '3-0': 8.0, '3-1': 10.0, '3-2': 15.0, '1-1': 4.5, '2-2': 8.0, '0-1': 4.0, '0-2': 5.5, '1-2': 6.5, '0-3': 12.0 },
     oddEven: { 'Odd': 1.9, 'Even': 1.9 },
     firstHalfOddEven: { 'Odd': 1.9, 'Even': 1.9 },
@@ -882,6 +763,29 @@ const MatchesManagement = () => {
     }
   };
 
+  // ✅ Bulk add all 82 markets
+  const handleAddAllMarkets = () => {
+    const allMarketsData = {};
+    Object.keys(allMarkets).forEach(key => {
+      allMarketsData[key] = defaultOdds[key] || {};
+    });
+    setFormData({
+      ...formData,
+      markets: allMarketsData
+    });
+    alert('✅ All 82 betting markets added successfully!');
+  };
+
+  // ✅ Clear all markets
+  const handleClearAllMarkets = () => {
+    if (!window.confirm('Are you sure you want to remove all markets?')) return;
+    setFormData({
+      ...formData,
+      markets: {}
+    });
+    alert('✅ All markets cleared!');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -964,6 +868,7 @@ const MatchesManagement = () => {
       oddsAway: '',
       markets: {}
     });
+    setShowLiveOdds(false);
   };
 
   const editMatch = (match) => {
@@ -1037,7 +942,72 @@ const MatchesManagement = () => {
       {showForm && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <h3>{editingMatch ? '✏️ Edit Match' : '➕ Add New Match'}</h3>
+            <div className="modal-header">
+              <h3>{editingMatch ? '✏️ Edit Match' : '➕ Add New Match'}</h3>
+              <div className="modal-actions">
+                <button 
+                  type="button" 
+                  className="btn-live-odds" 
+                  onClick={fetchLiveOdds}
+                  disabled={loadingOdds}
+                >
+                  {loadingOdds ? '⏳ Loading...' : '📡 Pull Live Odds'}
+                </button>
+                <button 
+                  type="button" 
+                  className="btn-add-all-markets" 
+                  onClick={handleAddAllMarkets}
+                >
+                  📊 Add All 82 Markets
+                </button>
+                <button 
+                  type="button" 
+                  className="btn-clear-markets" 
+                  onClick={handleClearAllMarkets}
+                >
+                  🗑️ Clear Markets
+                </button>
+              </div>
+            </div>
+
+            {showLiveOdds && (
+              <div className="live-odds-results">
+                <div className="live-odds-header">
+                  <h4>📡 Live Odds Results</h4>
+                  <button 
+                    type="button" 
+                    className="close-live-odds"
+                    onClick={() => setShowLiveOdds(false)}
+                  >
+                    ✕
+                  </button>
+                </div>
+                {loadingOdds ? (
+                  <div className="loading-odds">Loading odds...</div>
+                ) : liveOdds.length === 0 ? (
+                  <div className="no-odds">No live matches available</div>
+                ) : (
+                  <div className="live-odds-list">
+                    {liveOdds.slice(0, 10).map((match) => (
+                      <div key={match.id} className="live-odds-item" onClick={() => applyLiveOdds(match)}>
+                        <div className="live-match-teams">
+                          <span className="home">{match.homeTeam}</span>
+                          <span className="vs">vs</span>
+                          <span className="away">{match.awayTeam}</span>
+                        </div>
+                        <div className="live-match-odds">
+                          <span className="odd">1: {match.odds.home || 'N/A'}</span>
+                          <span className="odd">X: {match.odds.draw || 'N/A'}</span>
+                          <span className="odd">2: {match.odds.away || 'N/A'}</span>
+                        </div>
+                        <button className="apply-odds-btn">Apply</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="match-form">
               <div className="form-grid">
                 <div className="form-group">
@@ -1178,19 +1148,25 @@ const MatchesManagement = () => {
               </div>
 
               <div className="markets-section">
-                <h4>All Betting Markets</h4>
+                <div className="markets-header">
+                  <h4>All Betting Markets <span className="markets-count-badge">{Object.keys(formData.markets || {}).length} / 82</span></h4>
+                  <div className="markets-actions">
+                    <button type="button" className="btn-add-all-markets-small" onClick={handleAddAllMarkets}>
+                      📊 Add All 82
+                    </button>
+                    <button type="button" className="btn-clear-markets-small" onClick={handleClearAllMarkets}>
+                      🗑️ Clear All
+                    </button>
+                  </div>
+                </div>
                 <div className="markets-grid-admin">
                   {Object.entries(allMarkets).map(([key, market]) => (
                     <div key={key} className="market-group-admin">
                       <div className="market-header-admin">
                         <h5>{market.label}</h5>
-                        <button 
-                          type="button" 
-                          className="btn-add-market"
-                          onClick={() => handleBulkMarketAdd(key)}
-                        >
-                          + Add All
-                        </button>
+                        <span className="market-status">
+                          {formData.markets?.[key] ? '✅' : '❌'}
+                        </span>
                       </div>
                       <div className="market-options-admin">
                         {formData.markets?.[key] && Object.entries(formData.markets[key]).map(([optionId, value]) => (
