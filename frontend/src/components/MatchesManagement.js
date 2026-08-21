@@ -32,16 +32,13 @@ const MatchesManagement = () => {
   // ODDS HELPER FUNCTIONS
   // ============================================
   
-  // Clamp odds between 1.05 and 101.00
   const clampOdds = (value) => {
     if (value <= 0 || isNaN(value)) return 1.05;
     if (value < 1.05) return 1.05;
     if (value > 101.00) return 101.00;
-    // Round to 2 decimal places
     return Math.round(value * 100) / 100;
   };
 
-  // Get odds with clamping and rounding
   const getOdds = (probability, margin = 0.95) => {
     if (probability <= 0 || probability > 1 || isNaN(probability)) return 101.00;
     const rawOdds = (1 / probability) * margin;
@@ -958,7 +955,7 @@ const MatchesManagement = () => {
   };
 
   // ============================================
-  // CLUBS BY LEAGUE (Keep your existing data)
+  // ALL CLUBS BY LEAGUE (Full List)
   // ============================================
   const clubsByLeague = {
     'Premier League': [
@@ -1512,6 +1509,47 @@ const MatchesManagement = () => {
   };
 
   // ============================================
+  // ✅ FIXED: ADD ALL 82 MARKETS (Formula-Based)
+  // ============================================
+  const handleAddAllMarkets = () => {
+    // Get current 1X2 odds from the form
+    const homeOdds = parseFloat(formData.oddsHome) || 2.0;
+    const drawOdds = parseFloat(formData.oddsDraw) || 3.5;
+    const awayOdds = parseFloat(formData.oddsAway) || 2.5;
+    
+    // Validate odds
+    if (homeOdds <= 0 || drawOdds <= 0 || awayOdds <= 0) {
+      alert('⚠️ Please enter valid 1X2 odds first!');
+      return;
+    }
+    
+    // Generate all markets using the Poisson formula
+    const allMarketsData = generateAllMarkets(homeOdds, drawOdds, awayOdds);
+    
+    // Count how many markets were generated
+    const marketCount = Object.keys(allMarketsData).length;
+    
+    setFormData({
+      ...formData,
+      markets: allMarketsData
+    });
+    
+    alert(`✅ ${marketCount} betting markets generated from odds: ${homeOdds.toFixed(2)} / ${drawOdds.toFixed(2)} / ${awayOdds.toFixed(2)}!`);
+  };
+
+  // ============================================
+  // CLEAR ALL MARKETS
+  // ============================================
+  const handleClearAllMarkets = () => {
+    if (!window.confirm('Are you sure you want to remove all markets?')) return;
+    setFormData({
+      ...formData,
+      markets: {}
+    });
+    alert('✅ All markets cleared!');
+  };
+
+  // ============================================
   // ALL MARKETS LIST (for display)
   // ============================================
   const allMarkets = {
@@ -1599,102 +1637,6 @@ const MatchesManagement = () => {
     whichTeamToScore: { label: 'Which Team to Score', key: 'whichTeamToScore' }
   };
 
-  // ============================================
-  // DEFAULT ODDS (for "Add All 82 Markets" button)
-  // ============================================
-  const defaultOdds = {
-    doubleChance: { '1X': 1.01, '12': 1.07, 'X2': 5.45 },
-    drawNoBet: { 'Home': 1.5, 'Away': 2.5 },
-    btts: { 'Yes': 2.0, 'No': 1.8 },
-    totalGoals: { 'Over 0.5': 1.05, 'Under 0.5': 10.0, 'Over 1.5': 1.15, 'Under 1.5': 5.25, 'Over 2.5': 1.56, 'Under 2.5': 2.43, 'Over 3.5': 1.9, 'Under 3.5': 1.9, 'Over 4.5': 3.5, 'Under 4.5': 1.3 },
-    exactGoals: { '0 Goals': 8.0, '1 Goal': 4.5, '2 Goals': 3.5, '3 Goals': 4.0, '4 Goals': 7.0, '5+ Goals': 12.0 },
-    correctScore: { '0-0': 8.0, '1-0': 6.0, '2-0': 8.5, '2-1': 9.0, '3-0': 15.0, '3-1': 18.0, '3-2': 25.0, '1-1': 7.0, '2-2': 12.0, '0-1': 6.5, '0-2': 9.0, '1-2': 10.0, '0-3': 20.0, 'Any Other Home Win': 30.0, 'Any Other Away Win': 35.0, 'Any Other Draw': 40.0 },
-    halfTimeResult: { 'Home': 2.5, 'Draw': 2.0, 'Away': 3.0 },
-    halfTimeFullTime: { 'Home/Home': 2.5, 'Home/Draw': 15.0, 'Home/Away': 30.0, 'Draw/Home': 5.0, 'Draw/Draw': 4.5, 'Draw/Away': 6.0, 'Away/Home': 25.0, 'Away/Draw': 12.0, 'Away/Away': 3.5 },
-    firstTeamScore: { 'Home': 1.8, 'Away': 2.2, 'No Goal': 10.0 },
-    lastTeamScore: { 'Home': 1.9, 'Away': 2.1, 'No Goal': 10.0 },
-    firstGoalTime: { '0-15 Min': 3.0, '16-30 Min': 3.5, '31-45 Min': 4.0, '46-60 Min': 5.0, '61-75 Min': 6.0, '76-90 Min': 4.5, 'No Goal': 10.0 },
-    teamGoalsHome: { 'Over 0.5': 1.2, 'Over 1.5': 2.0, 'Over 2.5': 4.0 },
-    teamGoalsAway: { 'Over 0.5': 1.5, 'Over 1.5': 3.0, 'Over 2.5': 6.0 },
-    handicap: { 'Home -1': 1.5, 'Home -2': 2.5, 'Away +1': 2.0, 'Away +2': 1.8 },
-    asianHandicap: { 'Home -0.5': 1.8, 'Home -1': 2.0, 'Away +0.5': 1.9, 'Away +1': 1.7 },
-    corners: { 'Over 8.5': 1.8, 'Under 8.5': 2.0, 'Home Most': 2.0, 'Away Most': 2.2, 'First Corner - Home': 1.9, 'First Corner - Away': 2.1, 'Last Corner - Home': 2.0, 'Last Corner - Away': 2.0 },
-    cards: { 'Over 2.5 Yellow': 1.7, 'Under 2.5 Yellow': 2.1, 'Red Card - Yes': 3.0, 'Red Card - No': 1.3 },
-    penalty: { 'Penalty Awarded': 2.5, 'No Penalty': 1.5 },
-    playerMarkets: { 'Anytime Goalscorer': 2.5, 'First Goalscorer': 5.0, 'Last Goalscorer': 5.5, 'Player to Receive Card': 3.0, 'Player to Assist': 3.5 },
-    specials: { 'Clean Sheet - Home': 2.0, 'Clean Sheet - Away': 2.5, 'Win to Nil - Home': 3.0, 'Win to Nil - Away': 4.0, 'Both Halves Over 1.5': 6.0, 'Highest Scoring Half - 1st': 2.0, 'Highest Scoring Half - 2nd': 2.2, 'Odd Total Goals': 1.9, 'Even Total Goals': 1.9 },
-    firstHalfCorrectScore: { '0-0': 4.0, '1-0': 3.5, '2-0': 5.0, '2-1': 6.0, '3-0': 8.0, '3-1': 10.0, '3-2': 15.0, '1-1': 4.5, '2-2': 8.0, '0-1': 4.0, '0-2': 5.5, '1-2': 6.5, '0-3': 12.0 },
-    oddEven: { 'Odd': 1.9, 'Even': 1.9 },
-    firstHalfOddEven: { 'Odd': 1.9, 'Even': 1.9 },
-    secondHalfOddEven: { 'Odd': 1.9, 'Even': 1.9 },
-    homeOddEven: { 'Odd': 1.9, 'Even': 1.9 },
-    awayOddEven: { 'Odd': 1.9, 'Even': 1.9 },
-    threeWayOverUnder: { 'Home & Over 2.5': 3.5, 'Home & Under 2.5': 4.0, 'Draw & Over 2.5': 6.0, 'Draw & Under 2.5': 5.0, 'Away & Over 2.5': 4.5, 'Away & Under 2.5': 5.5 },
-    threeWayBtts: { 'Home & Yes': 4.0, 'Home & No': 5.0, 'Draw & Yes': 6.0, 'Draw & No': 7.0, 'Away & Yes': 4.5, 'Away & No': 5.5 },
-    homeWinEitherHalf: { 'Yes': 2.0, 'No': 1.8 },
-    awayWinEitherHalf: { 'Yes': 2.2, 'No': 1.7 },
-    highestScoringHalf: { '1st Half': 2.0, '2nd Half': 2.0, 'Both Equal': 3.0 },
-    goalRange: { '0 Goals': 8.0, '1 Goal': 4.5, '2 Goals': 3.5, '3 Goals': 4.0, '4 Goals': 7.0, '5+ Goals': 12.0 },
-    oneGoal: { '0 Goals': 8.0, '1 Goal': 4.5, '2+ Goals': 2.5 },
-    oneGoalAnd1x2: { 'Home & 1 Goal': 6.0, 'Draw & 1 Goal': 8.0, 'Away & 1 Goal': 7.0 },
-    tenMinute3Way: { 'Home': 4.0, 'Draw': 2.5, 'Away': 5.0 },
-    firstHalfOneGoal: { '0 Goals': 3.0, '1 Goal': 2.5, '2+ Goals': 3.5 },
-    firstHalf1x2Btts: { 'Home & Yes': 5.0, 'Home & No': 6.0, 'Draw & Yes': 7.0, 'Draw & No': 8.0, 'Away & Yes': 5.5, 'Away & No': 6.5 },
-    firstHalf1x2OverUnder: { 'Home & Over 1.5': 4.5, 'Home & Under 1.5': 5.5, 'Draw & Over 1.5': 6.0, 'Draw & Under 1.5': 5.0, 'Away & Over 1.5': 5.0, 'Away & Under 1.5': 6.0 },
-    firstHalfHomeCleanSheet: { 'Yes': 2.5, 'No': 1.5 },
-    firstHalfHomeOverUnder: { 'Over 0.5': 1.8, 'Under 0.5': 2.0, 'Over 1.5': 3.0, 'Under 1.5': 1.3 },
-    firstHalfAwayCleanSheet: { 'Yes': 3.0, 'No': 1.3 },
-    firstHalfAwayOverUnder: { 'Over 0.5': 2.0, 'Under 0.5': 1.8, 'Over 1.5': 3.5, 'Under 1.5': 1.3 },
-    firstHalfDoubleChance: { '1X': 1.5, '12': 1.8, 'X2': 2.0 },
-    firstHalfDoubleChanceBtts: { '1X & Yes': 3.5, '1X & No': 4.0, '12 & Yes': 4.0, '12 & No': 4.5, 'X2 & Yes': 4.5, 'X2 & No': 5.0 },
-    firstHalfDrawNoBet: { 'Home': 1.8, 'Away': 2.2 },
-    firstHalfExactGoals: { '0 Goals': 3.0, '1 Goal': 2.5, '2 Goals': 4.0, '3 Goals': 7.0, '4 Goals': 12.0 },
-    firstHalfHandicap: { 'Home -1': 3.0, 'Away +1': 1.5 },
-    bothHalvesBtts: { 'Yes': 3.0, 'No': 1.3 },
-    secondHalfOneGoal: { '0 Goals': 3.5, '1 Goal': 2.5, '2+ Goals': 3.0 },
-    secondHalfResult: { 'Home': 2.5, 'Draw': 2.0, 'Away': 3.0 },
-    secondHalf3WayBtts: { 'Home & Yes': 4.5, 'Home & No': 5.5, 'Draw & Yes': 6.0, 'Draw & No': 7.0, 'Away & Yes': 5.0, 'Away & No': 6.0 },
-    secondHalf3WayOverUnder: { 'Home & Over 1.5': 4.0, 'Home & Under 1.5': 5.0, 'Draw & Over 1.5': 6.0, 'Draw & Under 1.5': 5.5, 'Away & Over 1.5': 4.5, 'Away & Under 1.5': 5.5 },
-    secondHalfHomeCleanSheet: { 'Yes': 2.5, 'No': 1.5 },
-    secondHalfHomeOverUnder: { 'Over 0.5': 1.8, 'Under 0.5': 2.0, 'Over 1.5': 3.0, 'Under 1.5': 1.3 },
-    secondHalfBtts: { 'Yes': 2.5, 'No': 1.5 },
-    secondHalfCorrectScore: { '0-0': 5.0, '1-0': 4.5, '2-0': 6.0, '2-1': 7.0, '1-1': 5.5, '0-1': 5.0, '0-2': 7.0, '1-2': 8.0 },
-    secondHalfAwayCleanSheet: { 'Yes': 3.0, 'No': 1.3 },
-    secondHalfAwayOverUnder: { 'Over 0.5': 2.0, 'Under 0.5': 1.8, 'Over 1.5': 3.5, 'Under 1.5': 1.3 },
-    secondHalfDoubleChance: { '1X': 1.5, '12': 1.8, 'X2': 2.0 },
-    secondHalfDoubleChanceBtts: { '1X & Yes': 3.5, '1X & No': 4.0, '12 & Yes': 4.0, '12 & No': 4.5, 'X2 & Yes': 4.5, 'X2 & No': 5.0 },
-    secondHalfDrawNoBet: { 'Home': 1.8, 'Away': 2.2 },
-    secondHalfExactGoals: { '0 Goals': 3.5, '1 Goal': 2.5, '2 Goals': 4.5, '3 Goals': 8.0, '4 Goals': 14.0 },
-    secondHalfHandicap: { 'Home -1': 3.0, 'Away +1': 1.5 },
-    secondHalfOverUnder: { 'Over 0.5': 1.5, 'Under 0.5': 2.5, 'Over 1.5': 2.5, 'Under 1.5': 1.5, 'Over 2.5': 4.5, 'Under 2.5': 1.2 },
-    homeCleanSheet: { 'Yes': 2.0, 'No': 1.7 },
-    homeExactGoals: { '0 Goals': 3.0, '1 Goal': 2.5, '2 Goals': 4.0, '3 Goals': 6.0, '4 Goals': 10.0 },
-    homeHighestScoringHalf: { '1st Half': 2.5, '2nd Half': 2.5, 'Both Equal': 3.5 },
-    homeNoBet: { 'Yes': 1.8, 'No': 2.0 },
-    homeOverUnder: { 'Over 0.5': 1.5, 'Under 0.5': 2.5, 'Over 1.5': 2.5, 'Under 1.5': 1.5, 'Over 2.5': 4.5, 'Under 2.5': 1.2 },
-    homeScoreBothHalves: { 'Yes': 3.0, 'No': 1.3 },
-    homeWinBothHalves: { 'Yes': 4.0, 'No': 1.2 },
-    bothHalvesOver1_5: { 'Yes': 3.5, 'No': 1.3 },
-    bothHalvesUnder1_5: { 'Yes': 1.3, 'No': 3.5 },
-    awayCleanSheet: { 'Yes': 2.5, 'No': 1.5 },
-    awayExactGoals: { '0 Goals': 2.5, '1 Goal': 2.0, '2 Goals': 4.5, '3 Goals': 8.0, '4 Goals': 14.0 },
-    awayHighestScoringHalf: { '1st Half': 2.5, '2nd Half': 2.5, 'Both Equal': 3.5 },
-    awayNoBet: { 'Yes': 2.0, 'No': 1.8 },
-    awayTotal: { 'Over 0.5': 1.8, 'Under 0.5': 2.0, 'Over 1.5': 3.5, 'Under 1.5': 1.3 },
-    awayScoreBothHalves: { 'Yes': 3.5, 'No': 1.2 },
-    doubleChanceFirstHalfBtts: { '1X & Yes': 4.0, '1X & No': 5.0, '12 & Yes': 4.5, '12 & No': 5.5, 'X2 & Yes': 5.0, 'X2 & No': 6.0 },
-    doubleChanceSecondHalfBtts: { '1X & Yes': 4.0, '1X & No': 5.0, '12 & Yes': 4.5, '12 & No': 5.5, 'X2 & Yes': 5.0, 'X2 & No': 6.0 },
-    doubleChanceBtts: { '1X & Yes': 3.5, '1X & No': 4.5, '12 & Yes': 4.0, '12 & No': 5.0, 'X2 & Yes': 4.5, 'X2 & No': 5.5 },
-    doubleChanceOverUnder: { '1X & Over 2.5': 4.0, '1X & Under 2.5': 3.5, '12 & Over 2.5': 4.5, '12 & Under 2.5': 4.0, 'X2 & Over 2.5': 5.0, 'X2 & Under 2.5': 4.5 },
-    htFtFirstHalfOverUnder: { 'Home/Home & Over 1.5': 6.0, 'Home/Home & Under 1.5': 7.0, 'Draw/Home & Over 1.5': 8.0, 'Draw/Home & Under 1.5': 9.0, 'Away/Away & Over 1.5': 7.0, 'Away/Away & Under 1.5': 8.0 },
-    htFtExactGoals: { 'Home/Home & 1 Goal': 5.0, 'Home/Home & 2 Goals': 7.0, 'Draw/Home & 1 Goal': 6.0, 'Draw/Home & 2 Goals': 8.0, 'Away/Away & 1 Goal': 6.0, 'Away/Away & 2 Goals': 8.0 },
-    htFtOverUnder: { 'Home/Home & Over 2.5': 5.5, 'Home/Home & Under 2.5': 6.5, 'Draw/Home & Over 2.5': 7.0, 'Draw/Home & Under 2.5': 8.0, 'Away/Away & Over 2.5': 6.0, 'Away/Away & Under 2.5': 7.0 },
-    htFtCorrectScore: { 'Home/Home 1-0': 8.0, 'Home/Home 2-0': 12.0, 'Home/Home 2-1': 14.0, 'Draw/Home 1-0': 10.0, 'Draw/Home 2-0': 15.0, 'Away/Away 0-1': 9.0, 'Away/Away 0-2': 13.0 },
-    lastGoal: { 'Home': 1.9, 'Away': 1.9, 'No Goal': 10.0 },
-    overUnderBtts: { 'Over 2.5 & Yes': 3.5, 'Over 2.5 & No': 4.5, 'Under 2.5 & Yes': 4.0, 'Under 2.5 & No': 3.0 },
-    whichTeamToScore: { 'Home Only': 3.0, 'Away Only': 3.5, 'Both': 2.0, 'Neither': 8.0 }
-  };
-
   const [formData, setFormData] = useState({
     sport: 'FOOTBALL',
     country: '',
@@ -1754,27 +1696,6 @@ const MatchesManagement = () => {
       console.error('Error deleting match:', error);
       alert('Failed to delete match');
     }
-  };
-
-  const handleAddAllMarkets = () => {
-    const allMarketsData = {};
-    Object.keys(allMarkets).forEach(key => {
-      allMarketsData[key] = defaultOdds[key] || {};
-    });
-    setFormData({
-      ...formData,
-      markets: allMarketsData
-    });
-    alert('✅ All 82 betting markets added successfully!');
-  };
-
-  const handleClearAllMarkets = () => {
-    if (!window.confirm('Are you sure you want to remove all markets?')) return;
-    setFormData({
-      ...formData,
-      markets: {}
-    });
-    alert('✅ All markets cleared!');
   };
 
   const handleSubmit = async (e) => {
