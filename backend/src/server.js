@@ -18,7 +18,7 @@ process.on('unhandledRejection', (reason, promise) => {
 
 const app = express();
 
-// ===== HEALTH CHECK (CRITICAL FOR RENDER) =====
+// ===== HEALTH CHECK =====
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'ok',
@@ -103,7 +103,9 @@ const adminWithdrawalRoutes = require("./routes/adminWithdrawalRoutes");
 const matchRoutes = require('./routes/matches');
 const adminMatchRoutes = require('./routes/adminMatches');
 const betRoutes = require('./routes/betRoutes');
-const oddsRoutes = require('./routes/oddsRoutes'); // ✅ ADDED
+
+// ✅ FIXED: Correct path to oddsRoutes.js
+const oddsRoutes = require('./backend/src/routes/oddsRoutes');
 
 app.use("/api/withdrawals", withdrawalRoutes);
 app.use("/api/admin", adminWithdrawalRoutes);
@@ -115,7 +117,7 @@ app.use("/api/admin", adminTransactionRoutes);
 app.use('/api', matchRoutes);
 app.use('/api', adminMatchRoutes);
 app.use('/api/bets', betRoutes);
-app.use('/api/odds', oddsRoutes); // ✅ ADDED
+app.use('/api/odds', oddsRoutes);
 
 // ===== ERROR HANDLING =====
 // 404 handler
