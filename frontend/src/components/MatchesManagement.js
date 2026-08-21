@@ -14,14 +14,15 @@ const MatchesManagement = () => {
     dateTo: ''
   });
   
-  // ✅ State for live odds
+  // State for live odds
   const [liveOdds, setLiveOdds] = useState([]);
   const [loadingOdds, setLoadingOdds] = useState(false);
   const [showLiveOdds, setShowLiveOdds] = useState(false);
+  const [oddsError, setOddsError] = useState('');
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-  // ✅ Sport mapping for API
+  // ✅ CORRECT SPORT MAPPING - Using 'soccer_epl' (matches The Odds API)
   const sportMapping = {
     'FOOTBALL': 'soccer_epl',
     'BASKETBALL': 'basketball_nba',
@@ -29,82 +30,7 @@ const MatchesManagement = () => {
     'CRICKET': 'cricket_t20_blast'
   };
 
-  // ✅ Fetch live odds from API
-  const fetchLiveOdds = async () => {
-    try {
-      setLoadingOdds(true);
-      const token = localStorage.getItem('token');
-      
-      if (!token) {
-        alert('Please login to fetch live odds');
-        setLoadingOdds(false);
-        return;
-      }
-      
-      const sportKey = sportMapping[formData.sport] || 'soccer_epl';
-      console.log('📡 Fetching odds for:', sportKey);
-      console.log('🔗 URL:', `${API_URL}/api/odds/odds/${sportKey}`);
-      
-      const response = await axios.get(
-        `${API_URL}/api/odds/odds/${sportKey}`,
-        { 
-          headers: { Authorization: `Bearer ${token}` },
-          timeout: 15000
-        }
-      );
-      
-      console.log('✅ Response:', response.data);
-      
-      if (response.data.success) {
-        setLiveOdds(response.data.matches || []);
-        setShowLiveOdds(true);
-        if (response.data.matches.length === 0) {
-          alert('No live matches available for this sport');
-        }
-      } else {
-        alert(response.data.message || 'Failed to fetch live odds');
-      }
-    } catch (error) {
-      console.error('❌ Error fetching live odds:', error);
-      
-      if (error.response) {
-        console.error('Response status:', error.response.status);
-        console.error('Response data:', error.response.data);
-        
-        if (error.response.status === 401) {
-          alert('Please login again to fetch live odds');
-        } else if (error.response.status === 404) {
-          alert('Odds API not configured. Please check backend setup.');
-        } else {
-          alert(`Failed to fetch live odds: ${error.response.data?.message || 'Unknown error'}`);
-        }
-      } else if (error.request) {
-        alert('No response from server. Please check your connection.');
-      } else {
-        alert(`Error: ${error.message}`);
-      }
-    } finally {
-      setLoadingOdds(false);
-    }
-  };
-
-  // ✅ Apply odds from live match to form
-  const applyLiveOdds = (match) => {
-    setFormData({
-      ...formData,
-      homeTeam: match.homeTeam,
-      awayTeam: match.awayTeam,
-      oddsHome: match.odds.home?.toString() || '',
-      oddsDraw: match.odds.draw?.toString() || '',
-      oddsAway: match.odds.away?.toString() || '',
-      league: match.sportTitle || formData.league,
-      country: formData.country || 'England',
-    });
-    setShowLiveOdds(false);
-    alert(`✅ Odds loaded for ${match.homeTeam} vs ${match.awayTeam}`);
-  };
-
-  // ✅ 2026/27 Clubs by League
+  // ✅ ALL CLUBS BY LEAGUE
   const clubsByLeague = {
     'Premier League': [
       'Arsenal', 'Aston Villa', 'Bournemouth', 'Brentford', 'Brighton',
@@ -527,7 +453,189 @@ const MatchesManagement = () => {
     return clubsByLeague[league] || [];
   };
 
-  // ✅ ALL 82 BETTING MARKETS
+  // ✅ GENERATE MOCK DATA for Live Odds (Fallback)
+  const generateMockMatches = (sport) => {
+    const now = new Date();
+    const mockData = {
+      'soccer_epl': [
+        {
+          id: 'mock_1',
+          homeTeam: 'Manchester City',
+          awayTeam: 'Arsenal',
+          odds: { home: 1.85, draw: 3.40, away: 4.20 },
+          league: 'Premier League',
+          country: 'England',
+          commenceTime: new Date(now.getTime() + 3600000).toISOString()
+        },
+        {
+          id: 'mock_2',
+          homeTeam: 'Liverpool',
+          awayTeam: 'Chelsea',
+          odds: { home: 1.90, draw: 3.50, away: 4.00 },
+          league: 'Premier League',
+          country: 'England',
+          commenceTime: new Date(now.getTime() + 7200000).toISOString()
+        },
+        {
+          id: 'mock_3',
+          homeTeam: 'Tottenham Hotspur',
+          awayTeam: 'Manchester United',
+          odds: { home: 2.30, draw: 3.20, away: 3.10 },
+          league: 'Premier League',
+          country: 'England',
+          commenceTime: new Date(now.getTime() + 10800000).toISOString()
+        },
+        {
+          id: 'mock_4',
+          homeTeam: 'Newcastle United',
+          awayTeam: 'Aston Villa',
+          odds: { home: 2.10, draw: 3.30, away: 3.60 },
+          league: 'Premier League',
+          country: 'England',
+          commenceTime: new Date(now.getTime() + 14400000).toISOString()
+        },
+        {
+          id: 'mock_5',
+          homeTeam: 'West Ham United',
+          awayTeam: 'Crystal Palace',
+          odds: { home: 2.05, draw: 3.25, away: 3.80 },
+          league: 'Premier League',
+          country: 'England',
+          commenceTime: new Date(now.getTime() + 18000000).toISOString()
+        }
+      ],
+      'basketball_nba': [
+        {
+          id: 'mock_nba_1',
+          homeTeam: 'Los Angeles Lakers',
+          awayTeam: 'Golden State Warriors',
+          odds: { home: 1.75, draw: 0, away: 2.25 },
+          league: 'NBA',
+          country: 'USA',
+          commenceTime: new Date(now.getTime() + 3600000).toISOString()
+        }
+      ],
+      'tennis_atp': [
+        {
+          id: 'mock_tennis_1',
+          homeTeam: 'Novak Djokovic',
+          awayTeam: 'Carlos Alcaraz',
+          odds: { home: 1.80, draw: 0, away: 2.10 },
+          league: 'ATP Tennis',
+          country: 'International',
+          commenceTime: new Date(now.getTime() + 3600000).toISOString()
+        }
+      ]
+    };
+    
+    return mockData[sport] || mockData['soccer_epl'];
+  };
+
+  // ✅ Fetch live odds from API with fallback to mock data
+  const fetchLiveOdds = async () => {
+    try {
+      setLoadingOdds(true);
+      setOddsError('');
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        alert('Please login to fetch live odds');
+        setLoadingOdds(false);
+        return;
+      }
+      
+      const sportKey = sportMapping[formData.sport] || 'soccer_epl';
+      console.log('📡 Fetching odds for:', sportKey);
+      console.log('🔗 URL:', `${API_URL}/api/odds/odds/${sportKey}`);
+      
+      try {
+        const response = await axios.get(
+          `${API_URL}/api/odds/odds/${sportKey}`,
+          { 
+            headers: { 
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            timeout: 15000
+          }
+        );
+        
+        console.log('✅ Response status:', response.status);
+        console.log('✅ Response data:', response.data);
+        
+        if (response.data && response.data.success) {
+          const matchesData = response.data.matches || [];
+          console.log(`✅ Found ${matchesData.length} matches from API`);
+          
+          if (matchesData.length > 0) {
+            setLiveOdds(matchesData);
+            setShowLiveOdds(true);
+            const sourceMsg = response.data.source === 'mock' ? ' (Mock data from backend)' : ' (Live data from API)';
+            alert(`✅ Found ${matchesData.length} matches!${sourceMsg}`);
+            setLoadingOdds(false);
+            return;
+          }
+        }
+      } catch (apiError) {
+        console.log('⚠️ API error, using mock data:', apiError.message);
+        if (apiError.response) {
+          console.log('Status:', apiError.response.status);
+          console.log('Data:', apiError.response.data);
+        }
+      }
+      
+      // ✅ FALLBACK: Use mock data if API fails
+      console.log('📊 Using mock data as fallback');
+      const mockMatches = generateMockMatches(sportKey);
+      console.log(`✅ Generated ${mockMatches.length} mock matches`);
+      
+      setLiveOdds(mockMatches);
+      setShowLiveOdds(true);
+      alert(`✅ Found ${mockMatches.length} matches! (Using sample data - API not available)`);
+      
+    } catch (error) {
+      console.error('❌ Error fetching live odds:', error);
+      
+      // Final fallback - always show something
+      const mockMatches = generateMockMatches('soccer_epl');
+      setLiveOdds(mockMatches);
+      setShowLiveOdds(true);
+      alert(`✅ Found ${mockMatches.length} sample matches! (API unavailable)`);
+      
+    } finally {
+      setLoadingOdds(false);
+    }
+  };
+
+  // ✅ Apply odds from live match to form
+  const applyLiveOdds = (match) => {
+    try {
+      console.log('📝 Applying odds from match:', match);
+      
+      const homeOdds = match.odds?.home || match.odds?.['1'] || '';
+      const drawOdds = match.odds?.draw || match.odds?.X || '';
+      const awayOdds = match.odds?.away || match.odds?.['2'] || '';
+      
+      setFormData({
+        ...formData,
+        homeTeam: match.homeTeam || '',
+        awayTeam: match.awayTeam || '',
+        oddsHome: homeOdds?.toString() || '',
+        oddsDraw: drawOdds?.toString() || '',
+        oddsAway: awayOdds?.toString() || '',
+        league: match.league || match.sportTitle || formData.league || '',
+        country: match.country || formData.country || '',
+      });
+      
+      setShowLiveOdds(false);
+      alert(`✅ Odds loaded successfully for ${match.homeTeam || 'Home'} vs ${match.awayTeam || 'Away'}!`);
+    } catch (error) {
+      console.error('Error applying odds:', error);
+      alert('Failed to apply odds. Please try manually entering them.');
+    }
+  };
+
+  // ALL 82 BETTING MARKETS
   const allMarkets = {
     result: { label: '3 Way (1X2)', key: 'result' },
     btts: { label: 'Both Teams to Score', key: 'btts' },
@@ -742,7 +850,11 @@ const MatchesManagement = () => {
       setMatches(response.data.matches || []);
     } catch (error) {
       console.error('Error fetching matches:', error);
-      alert('Failed to fetch matches');
+      if (error.response?.status === 401) {
+        alert('Session expired. Please login again.');
+      } else {
+        alert('Failed to fetch matches');
+      }
     } finally {
       setLoading(false);
     }
@@ -763,7 +875,6 @@ const MatchesManagement = () => {
     }
   };
 
-  // ✅ Bulk add all 82 markets
   const handleAddAllMarkets = () => {
     const allMarketsData = {};
     Object.keys(allMarkets).forEach(key => {
@@ -776,7 +887,6 @@ const MatchesManagement = () => {
     alert('✅ All 82 betting markets added successfully!');
   };
 
-  // ✅ Clear all markets
   const handleClearAllMarkets = () => {
     if (!window.confirm('Are you sure you want to remove all markets?')) return;
     setFormData({
@@ -842,17 +952,6 @@ const MatchesManagement = () => {
     });
   };
 
-  const handleBulkMarketAdd = (marketKey) => {
-    const options = defaultOdds[marketKey] || {};
-    const newMarkets = { ...formData.markets };
-    newMarkets[marketKey] = options;
-    
-    setFormData({
-      ...formData,
-      markets: newMarkets
-    });
-  };
-
   const resetForm = () => {
     setShowForm(false);
     setEditingMatch(null);
@@ -869,6 +968,7 @@ const MatchesManagement = () => {
       markets: {}
     });
     setShowLiveOdds(false);
+    setOddsError('');
   };
 
   const editMatch = (match) => {
@@ -897,7 +997,6 @@ const MatchesManagement = () => {
     setShowForm(true);
   };
 
-  // ✅ 12-HOUR TIME FORMAT WITH AM/PM
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
@@ -985,25 +1084,28 @@ const MatchesManagement = () => {
                 {loadingOdds ? (
                   <div className="loading-odds">Loading odds...</div>
                 ) : liveOdds.length === 0 ? (
-                  <div className="no-odds">No live matches available</div>
+                  <div className="no-odds">No live matches available for this sport</div>
                 ) : (
                   <div className="live-odds-list">
                     {liveOdds.slice(0, 10).map((match) => (
-                      <div key={match.id} className="live-odds-item" onClick={() => applyLiveOdds(match)}>
+                      <div key={match.id || match._id} className="live-odds-item" onClick={() => applyLiveOdds(match)}>
                         <div className="live-match-teams">
-                          <span className="home">{match.homeTeam}</span>
+                          <span className="home">{match.homeTeam || 'Home'}</span>
                           <span className="vs">vs</span>
-                          <span className="away">{match.awayTeam}</span>
+                          <span className="away">{match.awayTeam || 'Away'}</span>
                         </div>
                         <div className="live-match-odds">
-                          <span className="odd">1: {match.odds.home || 'N/A'}</span>
-                          <span className="odd">X: {match.odds.draw || 'N/A'}</span>
-                          <span className="odd">2: {match.odds.away || 'N/A'}</span>
+                          <span className="odd">1: {match.odds?.home || match.odds?.['1'] || 'N/A'}</span>
+                          <span className="odd">X: {match.odds?.draw || match.odds?.X || 'N/A'}</span>
+                          <span className="odd">2: {match.odds?.away || match.odds?.['2'] || 'N/A'}</span>
                         </div>
                         <button className="apply-odds-btn">Apply</button>
                       </div>
                     ))}
                   </div>
+                )}
+                {oddsError && (
+                  <div className="odds-error">{oddsError}</div>
                 )}
               </div>
             )}
