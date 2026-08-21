@@ -46,6 +46,15 @@ mongoose.connection.on('error', (err) => {
   console.error('❌ MongoDB Connection Error:', err);
 });
 
+// ===== DIRECT TEST ROUTE =====
+app.get('/api/odds-test', (req, res) => {
+  res.json({ 
+    success: true, 
+    message: 'Direct test route is working!',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // ===== TEST ROUTES =====
 app.get("/", (req, res) => {
   res.json({ 
@@ -104,8 +113,8 @@ const matchRoutes = require('./routes/matches');
 const adminMatchRoutes = require('./routes/adminMatches');
 const betRoutes = require('./routes/betRoutes');
 
-// ✅ FIXED: Correct path to oddsRoutes.js
-const oddsRoutes = require('./backend/src/routes/oddsRoutes');
+// ✅ FIXED: Correct path - since server.js is in backend/src/
+const oddsRoutes = require('./routes/oddsRoutes');
 
 app.use("/api/withdrawals", withdrawalRoutes);
 app.use("/api/admin", adminWithdrawalRoutes);
@@ -160,6 +169,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`   - /api/bets/history`);
   console.log(`   - /api/auth/login`);
   console.log(`   - /api/auth/register`);
+  console.log(`   - /api/odds-test (direct test)`);
   console.log(`   - /api/odds/test (odds test)`);
   console.log(`   - /api/odds/odds/:sport (Live Odds)`);
   console.log(`   - /api/odds/sports (Available Sports)`);
