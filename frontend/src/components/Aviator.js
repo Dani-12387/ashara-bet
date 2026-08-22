@@ -4,20 +4,16 @@ import './Aviator.css';
 
 const Aviator = () => {
   const [gameState, setGameState] = useState({
-    status: 'idle', // idle, waiting, flying, crashed
+    status: 'idle',
     multiplier: 1.00,
     crashPoint: 0,
     history: [],
     balance: 0,
     betAmount: 10,
-    cashOutMultiplier: 1.50,
     profit: 0,
-    isAutoBet: false,
-    autoCashOut: 0,
-    isAnimating: false
+    autoCashOut: 0
   });
 
-  const [bets, setBets] = useState([]);
   const [userBet, setUserBet] = useState({
     amount: 10,
     autoCashOut: 1.50,
@@ -26,33 +22,25 @@ const Aviator = () => {
 
   const canvasRef = useRef(null);
   const animationRef = useRef(null);
-  const multiplierRef = useRef(1.00);
-  const isRunningRef = useRef(false);
-
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-  // Canvas drawing
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     
-    // Set canvas size
     canvas.width = canvas.offsetWidth || 800;
     canvas.height = 400;
 
-    // Draw the graph
     const drawGraph = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       
-      // Background
       const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
       gradient.addColorStop(0, '#0a0e27');
       gradient.addColorStop(1, '#1a1a3e');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Grid
       ctx.strokeStyle = 'rgba(255,255,255,0.05)';
       ctx.lineWidth = 1;
       for (let i = 0; i < canvas.width; i += 50) {
@@ -68,7 +56,6 @@ const Aviator = () => {
         ctx.stroke();
       }
 
-      // Multiplier labels
       ctx.fillStyle = 'rgba(255,255,255,0.3)';
       ctx.font = '12px Arial';
       ctx.textAlign = 'right';
@@ -77,59 +64,7 @@ const Aviator = () => {
         ctx.fillText(i + 'x', 35, y + 4);
       }
 
-      // Draw history
-      const history = gameState.history.slice(-20);
-      if (history.length > 0) {
-        const maxMultiplier = Math.max(...history.map(h => h.multiplier), 1);
-        const scaleX = canvas.width / 20;
-        const scaleY = canvas.height / Math.max(maxMultiplier, 1);
-
-        ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        history.forEach((point, index) => {
-          const x = index * scaleX;
-          const y = canvas.height - (point.multiplier * scaleY);
-          if (index === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        });
-        ctx.stroke();
-
-        // Points
-        history.forEach((point, index) => {
-          const x = index * scaleX;
-          const y = canvas.height - (point.multiplier * scaleY);
-          ctx.fillStyle = point.crashed ? '#ff4444' : '#00ff88';
-          ctx.beginPath();
-          ctx.arc(x, y, 3, 0, Math.PI * 2);
-          ctx.fill();
-        });
-      }
-
-      // Current multiplier curve
       if (gameState.status === 'flying' || gameState.status === 'crashed') {
-        const points = 100;
-        const maxX = canvas.width;
-        const maxY = canvas.height;
-        
-        ctx.strokeStyle = gameState.status === 'crashed' ? '#ff4444' : '#00ff88';
-        ctx.lineWidth = 3;
-        ctx.shadowColor = gameState.status === 'crashed' ? '#ff4444' : '#00ff88';
-        ctx.shadowBlur = 10;
-        ctx.beginPath();
-        
-        for (let i = 0; i <= points; i++) {
-          const t = i / points;
-          const x = t * maxX;
-          const multiplier = gameState.multiplier * Math.pow(t, 1.5);
-          const y = maxY - (multiplier / 10) * maxY;
-          if (i === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-
-        // Current multiplier display
         ctx.fillStyle = gameState.status === 'crashed' ? '#ff4444' : '#ffffff';
         ctx.font = 'bold 48px Arial';
         ctx.textAlign = 'center';
@@ -145,19 +80,17 @@ const Aviator = () => {
         }
       }
 
-      // Idle state
-      if (gameState.status === 'idle' || gameState.status === 'waiting') {
+      if (gameState.status === 'idle') {
         ctx.fillStyle = 'rgba(255,255,255,0.5)';
         ctx.font = 'bold 28px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(gameState.status === 'waiting' ? 'Next round starting...' : 'Place your bet to start!', canvas.width / 2, canvas.height / 2);
+        ctx.fillText('Place your bet to start!', canvas.width / 2, canvas.height / 2);
       }
     };
 
     drawGraph();
 
-    // Resize handler
     const handleResize = () => {
       canvas.width = canvas.offsetWidth || 800;
       canvas.height = 400;
@@ -165,41 +98,28 @@ const Aviator = () => {
     };
 
     window.addEventListener('resize', handleResize);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
-    };
+    return () => window.removeEventListener('resize', handleResize);
   }, [gameState]);
 
-  // Game loop
   useEffect(() => {
     if (gameState.status === 'flying') {
       const startTime = Date.now();
-      let lastMultiplier = 1.00;
       
       const gameLoop = () => {
         const elapsed = (Date.now() - startTime) / 1000;
-        // Exponential growth with random variation
-        const baseMultiplier = 1 + Math.pow(elapsed, 1.5) * 0.15;
-        const randomFactor = 1 + Math.sin(elapsed * 2.3) * 0.02;
-        const currentMultiplier = baseMultiplier * randomFactor;
+        const currentMultiplier = 1 + Math.pow(elapsed, 1.5) * 0.15;
         
-        // Check if it crashes
         const crashPoint = gameState.crashPoint || (2 + Math.random() * 8);
         if (currentMultiplier >= crashPoint) {
-          // CRASH!
           setGameState(prev => ({
             ...prev,
             status: 'crashed',
-            multiplier: crashPoint,
-            crashPoint: crashPoint
+            multiplier: crashPoint
           }));
           handleCrash(crashPoint);
           return;
         }
 
-        // Check auto cash out
         if (userBet.autoCashOut > 0 && currentMultiplier >= userBet.autoCashOut) {
           handleCashOut(currentMultiplier);
           return;
@@ -214,18 +134,13 @@ const Aviator = () => {
       };
 
       animationRef.current = requestAnimationFrame(gameLoop);
-
       return () => {
-        if (animationRef.current) {
-          cancelAnimationFrame(animationRef.current);
-        }
+        if (animationRef.current) cancelAnimationFrame(animationRef.current);
       };
     }
-  }, [gameState.status, gameState.crashPoint, userBet.autoCashOut]);
+  }, [gameState.status]);
 
-  // Handle crash
   const handleCrash = (crashPoint) => {
-    // Add to history
     setGameState(prev => ({
       ...prev,
       history: [
@@ -234,18 +149,14 @@ const Aviator = () => {
       ]
     }));
 
-    // Check if user had a bet
     if (userBet.isActive) {
-      // User lost their bet
       setUserBet(prev => ({ ...prev, isActive: false }));
-      // Update balance
       setGameState(prev => ({
         ...prev,
         balance: prev.balance - prev.betAmount
       }));
     }
 
-    // Reset after 3 seconds
     setTimeout(() => {
       setGameState(prev => ({
         ...prev,
@@ -256,7 +167,6 @@ const Aviator = () => {
     }, 3000);
   };
 
-  // Handle cash out
   const handleCashOut = (multiplier) => {
     if (!userBet.isActive) return;
     
@@ -270,7 +180,6 @@ const Aviator = () => {
     
     setUserBet(prev => ({ ...prev, isActive: false }));
     
-    // Add to history
     setGameState(prev => ({
       ...prev,
       history: [
@@ -282,7 +191,6 @@ const Aviator = () => {
     alert(`🎉 Cashed out at ${multiplier.toFixed(2)}x! Profit: $${profit.toFixed(2)}`);
   };
 
-  // Place bet
   const placeBet = () => {
     if (gameState.status !== 'idle') {
       alert('Wait for the next round!');
@@ -294,15 +202,13 @@ const Aviator = () => {
       return;
     }
 
-    // Generate random crash point (2x - 100x)
     const crashPoint = 2 + Math.random() * 98;
     
     setGameState(prev => ({
       ...prev,
       status: 'flying',
       crashPoint: crashPoint,
-      multiplier: 1.00,
-      betAmount: prev.betAmount
+      multiplier: 1.00
     }));
 
     setUserBet(prev => ({
@@ -313,7 +219,6 @@ const Aviator = () => {
     }));
   };
 
-  // Get user balance
   useEffect(() => {
     fetchBalance();
   }, []);
@@ -344,12 +249,7 @@ const Aviator = () => {
       </div>
 
       <div className="aviator-game-area">
-        <canvas 
-          ref={canvasRef} 
-          className="aviator-canvas"
-          width="800"
-          height="400"
-        ></canvas>
+        <canvas ref={canvasRef} className="aviator-canvas" width="800" height="400"></canvas>
         
         <div className="aviator-stats">
           <div className="stat">
@@ -411,7 +311,7 @@ const Aviator = () => {
           <button 
             className={`bet-btn ${gameState.status === 'flying' ? 'cashout-btn' : 'place-btn'}`}
             onClick={gameState.status === 'flying' && userBet.isActive ? () => handleCashOut(gameState.multiplier) : placeBet}
-            disabled={gameState.status === 'waiting' || gameState.status === 'crashed'}
+            disabled={gameState.status === 'crashed'}
           >
             {gameState.status === 'flying' && userBet.isActive ? '💰 Cash Out' : '📈 Place Bet'}
           </button>

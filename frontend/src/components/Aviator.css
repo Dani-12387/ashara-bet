@@ -43,7 +43,6 @@
   padding: 20px;
   border: 1px solid #2a2a5e;
   margin-bottom: 20px;
-  position: relative;
 }
 
 .aviator-canvas {
@@ -242,12 +241,8 @@
 }
 
 @keyframes pulse {
-  from {
-    transform: scale(1);
-  }
-  to {
-    transform: scale(1.05);
-  }
+  from { transform: scale(1); }
+  to { transform: scale(1.05); }
 }
 
 .aviator-history {
@@ -302,22 +297,12 @@
   .aviator-controls {
     grid-template-columns: 1fr;
   }
-  
   .aviator-header {
     flex-direction: column;
     text-align: center;
   }
-  
   .aviator-stats {
     flex-direction: column;
     gap: 10px;
-  }
-  
-  .bet-input-group input {
-    width: 60px;
-  }
-  
-  .auto-cashout-input input {
-    width: 80px;
   }
 }
