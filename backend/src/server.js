@@ -30,7 +30,19 @@ app.get('/health', (req, res) => {
 });
 
 // ===== MIDDLEWARE =====
-app.use(cors());
+// ✅ FIXED: Better CORS configuration
+app.use(cors({
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:5000',
+    'https://ashara-bet-frontend.onrender.com',
+    'https://ashara-bet-backend.onrender.com'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
