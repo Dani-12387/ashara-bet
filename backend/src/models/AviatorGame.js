@@ -36,6 +36,13 @@ const AviatorGameSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  settings: {
+    autoStart: { type: Boolean, default: false },
+    autoStartDelay: { type: Number, default: 10 },
+    minBet: { type: Number, default: 1 },
+    maxBet: { type: Number, default: 1000 },
+    houseEdge: { type: Number, default: 5 }
+  },
   createdAt: {
     type: Date,
     default: Date.now

@@ -202,7 +202,7 @@ const adminWithdrawalRoutes = require("./routes/adminWithdrawalRoutes");
 const matchRoutes = require('./routes/matches');
 const adminMatchRoutes = require('./routes/adminMatches');
 const betRoutes = require('./routes/betRoutes');
-const aviatorRoutes = require('./routes/aviatorRoutes'); // ✅ ADDED
+const aviatorRoutes = require('./routes/aviatorRoutes'); // ✅ AVIATOR ROUTES
 
 app.use("/api/withdrawals", withdrawalRoutes);
 app.use("/api/admin", adminWithdrawalRoutes);
@@ -214,7 +214,7 @@ app.use("/api/admin", adminTransactionRoutes);
 app.use('/api', matchRoutes);
 app.use('/api', adminMatchRoutes);
 app.use('/api/bets', betRoutes);
-app.use('/api/aviator', aviatorRoutes); // ✅ ADDED
+app.use('/api/aviator', aviatorRoutes); // ✅ AVIATOR ROUTES REGISTERED
 
 // =============================================
 // ===== ERROR HANDLING =====
@@ -264,8 +264,13 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`   - /api/odds/odds/:sport (Live Odds)`);
   console.log(`   - /api/odds/sports (Available Sports)`);
   console.log(`   - /api/aviator/state (Aviator State)`);
-  console.log(`   - /api/aviator/start (Start Game)`);
-  console.log(`   - /api/aviator/stop (Stop Game)`);
-  console.log(`   - /api/aviator/bet (Place Bet)`);
-  console.log(`   - /api/aviator/cashout (Cash Out)`);
+  console.log(`   - /api/aviator/start (Start Game - Admin)`);
+  console.log(`   - /api/aviator/stop (Stop Game - Admin)`);
+  console.log(`   - /api/aviator/close (Close Game - Admin)`);
+  console.log(`   - /api/aviator/set-crash (Set Crash Point - Admin)`);
+  console.log(`   - /api/aviator/settings (Update Settings - Admin)`);
+  console.log(`   - /api/aviator/history (Game History)`);
+  console.log(`   - /api/aviator/active-bets (Active Bets)`);
+  console.log(`   - /api/aviator/bet (Place Bet - User)`);
+  console.log(`   - /api/aviator/cashout (Cash Out - User)`);
 });

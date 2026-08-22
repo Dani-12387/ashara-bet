@@ -12,8 +12,12 @@ const User = require('../models/User');
 // Get game state
 router.get('/state', auth, async (req, res) => {
   try {
-    const game = await AviatorGame.findOne().sort({ createdAt: -1 });
-    res.json(game || { status: 'idle', multiplier: 1.00 });
+    let game = await AviatorGame.findOne().sort({ createdAt: -1 });
+    if (!game) {
+      game = new AviatorGame({ status: 'idle' });
+      await game.save();
+    }
+    res.json(game);
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -34,12 +38,22 @@ router.post('/start', auth, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Game already active' });
     }
 
-    const game = new AviatorGame({
-      status: 'active',
-      startTime: new Date(),
-      crashPoint: crashPoint || 0,
-      roundNumber: (await AviatorGame.countDocuments()) + 1
-    });
+    // Get the latest game or create new
+    let game = await AviatorGame.findOne().sort({ createdAt: -1 });
+    if (!game || game.status !== 'idle') {
+      game = new AviatorGame({
+        status: 'active',
+        startTime: new Date(),
+        crashPoint: crashPoint || 0,
+        roundNumber: (await AviatorGame.countDocuments()) + 1
+      });
+    } else {
+      game.status = 'active';
+      game.startTime = new Date();
+      game.crashPoint = crashPoint || 0;
+      game.roundNumber = (await AviatorGame.countDocuments()) + 1;
+      game.multiplier = 1.00;
+    }
 
     await game.save();
     res.json({ success: true, game });
@@ -112,20 +126,20 @@ router.post('/set-crash', auth, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid crash point' });
     }
 
-    const game = await AviatorGame.findOne({ status: { $in: ['idle', 'waiting'] } });
+    let game = await AviatorGame.findOne({ status: { $in: ['idle', 'waiting'] } }).sort({ createdAt: -1 });
     if (game) {
       game.crashPoint = crashPoint;
       await game.save();
     } else {
-      const newGame = new AviatorGame({
+      game = new AviatorGame({
         status: 'idle',
         crashPoint: crashPoint,
         roundNumber: (await AviatorGame.countDocuments()) + 1
       });
-      await newGame.save();
+      await game.save();
     }
 
-    res.json({ success: true, message: 'Crash point set' });
+    res.json({ success: true, message: 'Crash point set', game });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -139,8 +153,12 @@ router.post('/settings', auth, async (req, res) => {
     }
 
     const settings = req.body;
-    // Save settings to database or file
-    // For now, just return success
+    let game = await AviatorGame.findOne().sort({ createdAt: -1 });
+    if (game) {
+      game.settings = settings;
+      await game.save();
+    }
+
     res.json({ success: true, settings });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -212,6 +230,12 @@ router.post('/bet', auth, async (req, res) => {
 
     await bet.save();
 
+    // Update game stats
+    game.totalBets += 1;
+    game.totalAmount += amount;
+    game.playersActive += 1;
+    await game.save();
+
     res.json({ success: true, bet, balance: user.balance });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -250,6 +274,10 @@ router.post('/cashout', auth, async (req, res) => {
     const user = await User.findById(req.user.id);
     user.balance += winAmount;
     await user.save();
+
+    // Update game stats
+    game.playersActive = Math.max(0, game.playersActive - 1);
+    await game.save();
 
     res.json({ 
       success: true, 
