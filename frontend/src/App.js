@@ -15,6 +15,7 @@ import AdminWithdrawals from './components/AdminWithdrawals';
 import MatchesManagement from './components/MatchesManagement';
 import AdminBets from './components/AdminBets';
 import BetHistory from './components/BetHistory';
+import AviatorManagement from './components/AviatorManagement';
 import './App.css';
 
 // Protected Route Component
@@ -90,6 +91,11 @@ function App() {
             <AdminLayout />
           </AdminRoute>
         }>
+
+
+
+
+
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="users" element={<UserManagement />} />
@@ -104,6 +110,7 @@ function App() {
           <Route path="settings" element={<div style={{ padding: '20px', color: '#fff' }}>Settings Page</div>} />
           <Route path="support" element={<div style={{ padding: '20px', color: '#fff' }}>Support Page</div>} />
         </Route>
+        <Route path="aviator" element={<AviatorManagement />} />
 
         {/* Catch all - redirect to home */}
         <Route path="*" element={<Navigate to="/" replace />} />

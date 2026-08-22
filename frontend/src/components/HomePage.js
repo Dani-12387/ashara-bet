@@ -29,19 +29,19 @@ const HomePage = () => {
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-  // ✅ Sports with Casino, Aviator, Fast Keno
+  // ✅ Sports with Aviator navigation
   const sports = [
     { id: 'FOOTBALL', name: 'Football', icon: '⚽' },
     { id: 'BASKETBALL', name: 'Basketball', icon: '🏀' },
     { id: 'TENNIS', name: 'Tennis', icon: '🎾' },
     { id: 'CRICKET', name: 'Cricket', icon: '🏏' },
     { id: 'CASINO', name: 'Casino', icon: '🎰', comingSoon: true },
-    { id: 'AVIATOR', name: 'Aviator', icon: '✈️', comingSoon: true },
+    { id: 'AVIATOR', name: 'Aviator', icon: '✈️', path: '/aviator' },
     { id: 'FAST_KENO', name: 'Fast Keno', icon: '🎲', comingSoon: true }
   ];
 
-  // ✅ Coming Soon sports (IDs that show coming soon message)
-  const comingSoonSports = ['CASINO', 'AVIATOR', 'FAST_KENO'];
+  // ✅ Coming Soon sports (AVIATOR removed)
+  const comingSoonSports = ['CASINO', 'FAST_KENO'];
 
   const allMarkets = {
     result: { label: 'Result', icon: '🏆' },
@@ -67,7 +67,7 @@ const HomePage = () => {
     specials: { label: 'Specials', icon: '⭐' }
   };
 
-  // ✅ FIXED: 12-HOUR TIME FORMAT WITH AM/PM
+  // ✅ 12-HOUR TIME FORMAT WITH AM/PM
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     
@@ -321,11 +321,6 @@ const HomePage = () => {
         </style>
       </head>
       <body>
-
-      {/* Live Odds Section */}
-<div className="live-odds-section">
-  <LiveOdds />
-</div>
         <div class="ticket">
           <div class="header">
             <h2>⚡ AsharaBet</h2>
@@ -432,15 +427,14 @@ const HomePage = () => {
       
       let matchesData = response.data.matches || [];
       
-      // ✅ FILTER: Remove matches that have already started
+      // Filter: Remove matches that have already started
       const upcomingMatches = matchesData.filter(match => {
         if (match.status === 'LIVE' || match.status === 'live') {
-          return true; // Keep live matches
+          return true;
         }
         if (match.status === 'FINISHED' || match.status === 'finished') {
-          return false; // Remove finished matches
+          return false;
         }
-        // Remove matches that have started (date is in the past)
         return !hasMatchStarted(match.date);
       });
       
@@ -534,7 +528,6 @@ const HomePage = () => {
       return;
     }
 
-    // ✅ Check if match has started
     if (hasMatchStarted(match.date)) {
       alert('This match has already started!');
       return;
@@ -804,6 +797,7 @@ const HomePage = () => {
               <button className="mobile-link-pro" onClick={() => { navigate('/matches'); setShowMobileMenu(false); }}>⚽ Matches</button>
               <button className="mobile-link-pro" onClick={() => { navigate('/deposit'); setShowMobileMenu(false); }}>💰 Deposit</button>
               <button className="mobile-link-pro" onClick={() => { navigate('/withdraw'); setShowMobileMenu(false); }}>💸 Withdraw</button>
+              <button className="mobile-link-pro" onClick={() => { navigate('/aviator'); setShowMobileMenu(false); }}>✈️ Aviator</button>
               {user?.role === 'admin' && (
                 <button className="mobile-link-pro admin" onClick={() => { navigate('/admin/dashboard'); setShowMobileMenu(false); }}>⚙️ Admin</button>
               )}
@@ -815,13 +809,19 @@ const HomePage = () => {
 
       <div className="main-pro">
         <div className="main-content-pro">
-          {/* ✅ Updated Sports Tabs with Coming Soon */}
+          {/* ✅ Updated Sports Tabs - Aviator navigates */}
           <div className="sports-tabs-pro">
             {sports.map(sport => (
               <button
                 key={sport.id}
                 className={`sport-tab-pro ${selectedSport === sport.id ? 'active' : ''} ${sport.comingSoon ? 'coming-soon-tab' : ''}`}
-                onClick={() => setSelectedSport(sport.id)}
+                onClick={() => {
+                  if (sport.path) {
+                    navigate(sport.path);
+                  } else {
+                    setSelectedSport(sport.id);
+                  }
+                }}
               >
                 {sport.icon} {sport.name}
                 {sport.comingSoon && <span className="coming-soon-badge">Soon</span>}
@@ -836,16 +836,15 @@ const HomePage = () => {
                 <p>Loading matches...</p>
               </div>
             ) : comingSoonSports.includes(selectedSport) ? (
-              // ✅ Coming Soon Message for Casino, Aviator, Fast Keno
+              // Coming Soon Message for Casino and Fast Keno
               <div className="coming-soon-container">
                 <div className="coming-soon-content">
                   <div className="coming-soon-icon">
                     {selectedSport === 'CASINO' && '🎰'}
-                    {selectedSport === 'AVIATOR' && '✈️'}
                     {selectedSport === 'FAST_KENO' && '🎲'}
                   </div>
                   <h2>Coming Soon!</h2>
-                  <p>We're working hard to bring you the best {selectedSport === 'CASINO' ? 'Casino' : selectedSport === 'AVIATOR' ? 'Aviator' : 'Fast Keno'} experience.</p>
+                  <p>We're working hard to bring you the best {selectedSport === 'CASINO' ? 'Casino' : 'Fast Keno'} experience.</p>
                   <p className="coming-soon-sub">Stay tuned for exciting updates!</p>
                   <div className="coming-soon-progress">
                     <div className="progress-bar">
@@ -972,6 +971,11 @@ const HomePage = () => {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Live Odds Section */}
+        <div className="live-odds-section">
+          <LiveOdds />
         </div>
 
         <div className={`sidebar-pro ${!showBetSlip ? 'hidden' : ''}`}>
