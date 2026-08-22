@@ -4,7 +4,7 @@ import AdminLayout from './components/AdminLayout';
 import Dashboard from './components/Dashboard';
 import UserManagement from './components/UserManagement';
 import HomePage from './components/HomePage';
-import AboutPage from './components/AboutPage'; // ← ADD THIS
+import AboutPage from './components/AboutPage';
 import Login from './components/Login';
 import Register from './components/Register';
 import MyAccount from './components/MyAccount';
@@ -16,6 +16,7 @@ import MatchesManagement from './components/MatchesManagement';
 import AdminBets from './components/AdminBets';
 import BetHistory from './components/BetHistory';
 import AviatorManagement from './components/AviatorManagement';
+import Aviator from './components/Aviator';
 import './App.css';
 
 // Protected Route Component
@@ -50,9 +51,16 @@ function App() {
         {/* Public Routes */}
         <Route path="/" element={<HomePage />} />
         <Route path="/home" element={<HomePage />} />
-        <Route path="/about" element={<AboutPage />} /> {/* ← ADD THIS ROUTE */}
+        <Route path="/about" element={<AboutPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        
+        {/* ✅ Aviator - Protected Route */}
+        <Route path="/aviator" element={
+          <ProtectedRoute>
+            <Aviator />
+          </ProtectedRoute>
+        } />
         
         {/* Protected User Routes */}
         <Route path="/MyAccount" element={
@@ -85,17 +93,12 @@ function App() {
           </ProtectedRoute>
         } />
         
-        {/* Admin Routes - Protected */}
+        {/* Admin Routes */}
         <Route path="/admin" element={
           <AdminRoute>
             <AdminLayout />
           </AdminRoute>
         }>
-
-
-
-
-
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="users" element={<UserManagement />} />
@@ -103,6 +106,7 @@ function App() {
           <Route path="withdrawals" element={<AdminWithdrawals />} />
           <Route path="bets" element={<AdminBets />} />
           <Route path="matches" element={<MatchesManagement />} />
+          <Route path="aviator" element={<AviatorManagement />} />
           <Route path="odds" element={<div style={{ padding: '20px', color: '#fff' }}>Odds Management Page</div>} />
           <Route path="reports" element={<div style={{ padding: '20px', color: '#fff' }}>Reports Page</div>} />
           <Route path="bonuses" element={<div style={{ padding: '20px', color: '#fff' }}>Bonuses Page</div>} />
@@ -110,7 +114,6 @@ function App() {
           <Route path="settings" element={<div style={{ padding: '20px', color: '#fff' }}>Settings Page</div>} />
           <Route path="support" element={<div style={{ padding: '20px', color: '#fff' }}>Support Page</div>} />
         </Route>
-        <Route path="aviator" element={<AviatorManagement />} />
 
         {/* Catch all - redirect to home */}
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -333,5 +333,5 @@ const Aviator = () => {
   );
 };
 
-// ✅ THIS IS CRITICAL - Must have this line at the end!
+// ✅ IMPORTANT: This must be at the end!
 export default Aviator;
