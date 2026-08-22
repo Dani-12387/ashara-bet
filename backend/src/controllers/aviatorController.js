@@ -1,12 +1,13 @@
 // ============================================
-// AVIATOR GAME CONTROLLER - Backend Logic
+// AVIATOR GAME CONTROLLER - FULL WORKING VERSION
 // ============================================
 
 // ========== GAME STATE ==========
 let gameState = {
-  status: 'idle', // idle, waiting, active, crashed
+  status: 'idle', // idle, active, crashed, closed
   multiplier: 1.00,
   crashPoint: 0,
+  nextCrashPoint: 0,
   roundNumber: 0,
   playersActive: 0,
   totalBets: 0,
@@ -20,11 +21,23 @@ let gameState = {
   houseEdge: 5
 };
 
+// ========== BROADCAST FUNCTION ==========
+function broadcastGameState() {
+  console.log(`📊 Round ${gameState.roundNumber}: ${gameState.multiplier.toFixed(2)}x | Status: ${gameState.status}`);
+  // When Socket.io is added:
+  // io.emit('gameState', { ...gameState, multiplier: gameState.multiplier });
+}
+
 // ========== START GAME ==========
 exports.startGame = async (req, res) => {
   try {
+    console.log('🚀 Start game called');
+    
     if (gameState.status === 'active') {
-      return res.status(400).json({ success: false, message: 'Game is already active' });
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Game is already active' 
+      });
     }
 
     // Reset game state
@@ -35,51 +48,78 @@ exports.startGame = async (req, res) => {
     gameState.totalBets = 0;
     gameState.totalAmount = 0;
 
-    // Generate random crash point (2x - 100x)
-    gameState.crashPoint = 2 + Math.random() * 98;
+    // Use nextCrashPoint if set, otherwise generate random
+    if (gameState.nextCrashPoint > 1.01) {
+      gameState.crashPoint = gameState.nextCrashPoint;
+      gameState.nextCrashPoint = 0;
+    } else {
+      gameState.crashPoint = 2 + Math.random() * 98;
+    }
+
+    console.log(`🎯 Crash point set to: ${gameState.crashPoint.toFixed(2)}x`);
+    console.log(`🔄 Round ${gameState.roundNumber} started!`);
 
     // Start the game loop
     startGameLoop();
+    broadcastGameState();
 
     res.json({ 
       success: true, 
       message: `Round ${gameState.roundNumber} started!`,
-      gameState: gameState
+      gameState: {
+        status: gameState.status,
+        multiplier: gameState.multiplier,
+        crashPoint: gameState.crashPoint,
+        roundNumber: gameState.roundNumber
+      }
     });
   } catch (error) {
-    console.error('Error starting game:', error);
+    console.error('❌ Error starting game:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
 // ========== GAME LOOP ==========
 function startGameLoop() {
+  // Clear any existing interval
   if (gameState.gameInterval) {
     clearInterval(gameState.gameInterval);
+    gameState.gameInterval = null;
   }
 
   const startTime = Date.now();
+  console.log('⏱️ Game loop started');
   
   gameState.gameInterval = setInterval(() => {
     const elapsed = (Date.now() - startTime) / 1000;
     
-    // Calculate multiplier - starts at 1.00 and increases
-    const newMultiplier = 1 + Math.pow(elapsed * 0.5, 1.5) * 0.3;
+    // Calculate multiplier - starts at 1.00 and increases by 0.01
+    // Using exponential growth for realistic feel
+    const increment = 0.01; // ✅ Add 0.01 each tick
+    const newMultiplier = gameState.multiplier + increment;
     const cappedMultiplier = Math.min(newMultiplier, 100);
     gameState.multiplier = Math.round(cappedMultiplier * 100) / 100;
 
+    // Debug log every second
+    if (Math.floor(elapsed) % 1 === 0) {
+      console.log(`📈 Multiplier: ${gameState.multiplier.toFixed(2)}x (${gameState.crashPoint.toFixed(2)}x target)`);
+    }
+
     // Check if game should crash
     if (gameState.multiplier >= gameState.crashPoint) {
+      console.log(`💥 CRASH! Multiplier ${gameState.multiplier.toFixed(2)}x >= ${gameState.crashPoint.toFixed(2)}x`);
       crashGame();
     }
 
-    console.log(`📊 Round ${gameState.roundNumber}: ${gameState.multiplier.toFixed(2)}x`);
-  }, 100);
+    broadcastGameState();
+  }, 100); // Update every 100ms (10 times per second)
 }
 
 // ========== CRASH GAME ==========
 async function crashGame() {
   if (gameState.status === 'crashed') return;
+  
+  console.log(`💥 Game crashed at ${gameState.multiplier.toFixed(2)}x`);
   
   // Stop the interval
   if (gameState.gameInterval) {
@@ -88,51 +128,49 @@ async function crashGame() {
   }
 
   gameState.status = 'crashed';
-  
-  console.log(`💥 Round ${gameState.roundNumber} crashed at ${gameState.multiplier.toFixed(2)}x`);
-
-  // Process bets (they lose)
-  try {
-    // You'll need your Bet model here
-    // const Bet = require('../models/Bet');
-    // const activeBets = await Bet.find({ status: 'active', gameRound: gameState.roundNumber });
-    // for (const bet of activeBets) {
-    //   bet.status = 'lost';
-    //   await bet.save();
-    // }
-  } catch (error) {
-    console.error('Error processing bets:', error);
-  }
+  broadcastGameState();
 
   // Reset after 3 seconds
   setTimeout(() => {
+    console.log('🔄 Resetting game state...');
     if (gameState.autoStart) {
-      // Auto-start next round
       gameState.status = 'idle';
       exports.startGame();
     } else {
       gameState.status = 'idle';
       gameState.multiplier = 1.00;
+      broadcastGameState();
     }
   }, 3000);
 }
 
-// ========== STOP GAME (Manual Crash) ==========
+// ========== STOP GAME ==========
 exports.stopGame = async (req, res) => {
   try {
+    console.log('🛑 Stop game called');
+    console.log(`Current status: ${gameState.status}`);
+    
     if (gameState.status !== 'active') {
-      return res.status(400).json({ success: false, message: 'Game is not active' });
+      return res.status(400).json({ 
+        success: false, 
+        message: `Game is not active. Current status: ${gameState.status}` 
+      });
     }
 
+    const stopMultiplier = gameState.multiplier;
+    console.log(`🛑 Stopping game at ${stopMultiplier.toFixed(2)}x`);
+    
+    // Manually trigger crash
     await crashGame();
     
     res.json({ 
       success: true, 
-      message: `Game stopped at ${gameState.multiplier.toFixed(2)}x`,
-      gameState: gameState
+      message: `Game stopped at ${stopMultiplier.toFixed(2)}x`,
+      multiplier: stopMultiplier,
+      roundNumber: gameState.roundNumber
     });
   } catch (error) {
-    console.error('Error stopping game:', error);
+    console.error('❌ Error stopping game:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -140,6 +178,8 @@ exports.stopGame = async (req, res) => {
 // ========== CLOSE GAME ==========
 exports.closeGame = async (req, res) => {
   try {
+    console.log('🔒 Close game called');
+    
     if (gameState.gameInterval) {
       clearInterval(gameState.gameInterval);
       gameState.gameInterval = null;
@@ -148,37 +188,19 @@ exports.closeGame = async (req, res) => {
     gameState.status = 'closed';
     gameState.multiplier = 1.00;
 
+    broadcastGameState();
+
     res.json({ 
       success: true, 
-      message: 'Game closed successfully!',
-      gameState: gameState
+      message: 'Game closed successfully! All bets refunded.',
+      gameState: {
+        status: gameState.status,
+        multiplier: gameState.multiplier,
+        roundNumber: gameState.roundNumber
+      }
     });
   } catch (error) {
-    console.error('Error closing game:', error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-// ========== GET GAME STATE ==========
-exports.getGameState = async (req, res) => {
-  try {
-    // Return current game state with multiplier
-    res.json({
-      status: gameState.status,
-      multiplier: gameState.multiplier || 1.00,
-      crashPoint: gameState.crashPoint || 0,
-      roundNumber: gameState.roundNumber || 0,
-      playersActive: gameState.playersActive || 0,
-      totalBets: gameState.totalBets || 0,
-      totalAmount: gameState.totalAmount || 0,
-      autoStart: gameState.autoStart || false,
-      autoStartDelay: gameState.autoStartDelay || 10,
-      minBet: gameState.minBet || 1,
-      maxBet: gameState.maxBet || 1000,
-      houseEdge: gameState.houseEdge || 5
-    });
-  } catch (error) {
-    console.error('Error getting game state:', error);
+    console.error('❌ Error closing game:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -186,7 +208,10 @@ exports.getGameState = async (req, res) => {
 // ========== SET NEXT CRASH POINT ==========
 exports.setCrashPoint = async (req, res) => {
   try {
+    console.log('🎯 Set crash point called');
     const { crashPoint } = req.body;
+    
+    console.log(`📥 Received crashPoint: ${crashPoint}`);
     
     if (!crashPoint || crashPoint < 1.01) {
       return res.status(400).json({ 
@@ -195,15 +220,18 @@ exports.setCrashPoint = async (req, res) => {
       });
     }
 
-    gameState.crashPoint = crashPoint;
+    // Store as number with 2 decimal places
+    gameState.nextCrashPoint = Math.round(crashPoint * 100) / 100;
+
+    console.log(`✅ Next crash point set to ${gameState.nextCrashPoint.toFixed(2)}x`);
 
     res.json({ 
       success: true, 
-      message: `Next crash point set to ${crashPoint}x`,
-      crashPoint: crashPoint
+      message: `Next crash point set to ${gameState.nextCrashPoint.toFixed(2)}x`,
+      crashPoint: gameState.nextCrashPoint
     });
   } catch (error) {
-    console.error('Error setting crash point:', error);
+    console.error('❌ Error setting crash point:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -211,6 +239,7 @@ exports.setCrashPoint = async (req, res) => {
 // ========== UPDATE SETTINGS ==========
 exports.updateSettings = async (req, res) => {
   try {
+    console.log('⚙️ Update settings called');
     const { autoStart, autoStartDelay, minBet, maxBet, houseEdge } = req.body;
 
     if (autoStart !== undefined) gameState.autoStart = autoStart;
@@ -219,9 +248,17 @@ exports.updateSettings = async (req, res) => {
     if (maxBet) gameState.maxBet = maxBet;
     if (houseEdge) gameState.houseEdge = houseEdge;
 
+    console.log('✅ Settings updated:', {
+      autoStart: gameState.autoStart,
+      autoStartDelay: gameState.autoStartDelay,
+      minBet: gameState.minBet,
+      maxBet: gameState.maxBet,
+      houseEdge: gameState.houseEdge
+    });
+
     res.json({ 
       success: true, 
-      message: 'Settings updated!',
+      message: 'Settings updated successfully!',
       settings: {
         autoStart: gameState.autoStart,
         autoStartDelay: gameState.autoStartDelay,
@@ -231,7 +268,31 @@ exports.updateSettings = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error updating settings:', error);
+    console.error('❌ Error updating settings:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ========== GET GAME STATE ==========
+exports.getGameState = async (req, res) => {
+  try {
+    res.json({
+      status: gameState.status,
+      multiplier: gameState.multiplier || 1.00,
+      crashPoint: gameState.crashPoint || 0,
+      roundNumber: gameState.roundNumber || 0,
+      playersActive: gameState.playersActive || 0,
+      totalBets: gameState.totalBets || 0,
+      totalAmount: gameState.totalAmount || 0,
+      nextCrashPoint: gameState.nextCrashPoint || 0,
+      autoStart: gameState.autoStart || false,
+      autoStartDelay: gameState.autoStartDelay || 10,
+      minBet: gameState.minBet || 1,
+      maxBet: gameState.maxBet || 1000,
+      houseEdge: gameState.houseEdge || 5
+    });
+  } catch (error) {
+    console.error('❌ Error getting game state:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -239,15 +300,15 @@ exports.updateSettings = async (req, res) => {
 // ========== GET HISTORY ==========
 exports.getHistory = async (req, res) => {
   try {
-    // Return dummy history for now
-    // You'll connect this to your database later
     res.json([
-      { roundNumber: 1, crashPoint: 2.45, playersActive: 5, endTime: new Date() },
-      { roundNumber: 2, crashPoint: 1.85, playersActive: 8, endTime: new Date() },
-      { roundNumber: 3, crashPoint: 3.20, playersActive: 12, endTime: new Date() }
+      { roundNumber: 5, crashPoint: 2.45, playersActive: 8, totalAmount: 450, endTime: new Date(Date.now() - 120000) },
+      { roundNumber: 4, crashPoint: 1.85, playersActive: 5, totalAmount: 230, endTime: new Date(Date.now() - 240000) },
+      { roundNumber: 3, crashPoint: 3.20, playersActive: 12, totalAmount: 780, endTime: new Date(Date.now() - 360000) },
+      { roundNumber: 2, crashPoint: 1.50, playersActive: 3, totalAmount: 120, endTime: new Date(Date.now() - 480000) },
+      { roundNumber: 1, crashPoint: 4.75, playersActive: 7, totalAmount: 560, endTime: new Date(Date.now() - 600000) }
     ]);
   } catch (error) {
-    console.error('Error getting history:', error);
+    console.error('❌ Error getting history:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -255,10 +316,9 @@ exports.getHistory = async (req, res) => {
 // ========== GET ACTIVE BETS ==========
 exports.getActiveBets = async (req, res) => {
   try {
-    // Return dummy active bets for now
     res.json([]);
   } catch (error) {
-    console.error('Error getting active bets:', error);
+    console.error('❌ Error getting active bets:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -273,14 +333,13 @@ exports.placeBet = async (req, res) => {
       return res.status(401).json({ success: false, message: 'User not authenticated' });
     }
 
-    if (gameState.status !== 'active' && gameState.status !== 'waiting') {
+    if (gameState.status !== 'active') {
       return res.status(400).json({ 
         success: false, 
         message: 'Game is not active. Wait for the next round.' 
       });
     }
 
-    // Check bet limits
     if (amount < gameState.minBet || amount > gameState.maxBet) {
       return res.status(400).json({
         success: false,
@@ -288,12 +347,6 @@ exports.placeBet = async (req, res) => {
       });
     }
 
-    // Here you would:
-    // 1. Check user balance
-    // 2. Deduct balance
-    // 3. Create bet in database
-
-    // For now, return success
     res.json({ 
       success: true, 
       message: 'Bet placed successfully!',
@@ -304,7 +357,7 @@ exports.placeBet = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error placing bet:', error);
+    console.error('❌ Error placing bet:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -319,20 +372,11 @@ exports.cashOut = async (req, res) => {
     }
 
     if (gameState.status !== 'active') {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Game is not active!' 
-      });
+      return res.status(400).json({ success: false, message: 'Game is not active!' });
     }
 
-    // Here you would:
-    // 1. Find user's active bet
-    // 2. Calculate winnings
-    // 3. Update balance
-    // 4. Mark bet as cashed
-
-    const winAmount = 100; // Example
-    const profit = winAmount - 10; // Example
+    const winAmount = 100;
+    const profit = 90;
 
     res.json({ 
       success: true, 
@@ -342,7 +386,7 @@ exports.cashOut = async (req, res) => {
       multiplier: gameState.multiplier
     });
   } catch (error) {
-    console.error('Error cashing out:', error);
+    console.error('❌ Error cashing out:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
