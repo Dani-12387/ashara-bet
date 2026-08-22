@@ -306,3 +306,33 @@
     gap: 10px;
   }
 }
+
+
+.aviator-stats-bottom {
+  display: flex;
+  justify-content: space-around;
+  padding: 15px 20px;
+  background: linear-gradient(135deg, #1a1a3e, #0a0e27);
+  border-radius: 12px;
+  border: 1px solid #2a2a5e;
+  margin-top: 20px;
+}
+
+.stat-small {
+  text-align: center;
+}
+
+.stat-small span {
+  display: block;
+  color: #888;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.stat-small strong {
+  display: block;
+  font-size: 20px;
+  color: #fff;
+  margin-top: 4px;
+}
