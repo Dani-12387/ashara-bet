@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './HomePage.css';
-import LiveOdds from './LiveOdds';
 
 const HomePage = () => {
   const navigate = useNavigate();
@@ -809,7 +808,7 @@ const HomePage = () => {
 
       <div className="main-pro">
         <div className="main-content-pro">
-          {/* ✅ Updated Sports Tabs - Aviator navigates */}
+          {/* ✅ Sports Tabs with Aviator navigation */}
           <div className="sports-tabs-pro">
             {sports.map(sport => (
               <button
@@ -971,11 +970,6 @@ const HomePage = () => {
               </div>
             )}
           </div>
-        </div>
-
-        {/* Live Odds Section */}
-        <div className="live-odds-section">
-          <LiveOdds />
         </div>
 
         <div className={`sidebar-pro ${!showBetSlip ? 'hidden' : ''}`}>
