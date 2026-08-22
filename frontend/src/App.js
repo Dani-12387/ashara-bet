@@ -15,7 +15,8 @@ import AdminWithdrawals from './components/AdminWithdrawals';
 import MatchesManagement from './components/MatchesManagement';
 import AdminBets from './components/AdminBets';
 import BetHistory from './components/BetHistory';
-import AviatorManagement from './components/AviatorManagement';
+// ✅ CHANGED THIS LINE - Added 'admin/' to the path
+import AviatorManagement from './components/admin/AviatorManagement';
 import Aviator from './components/Aviator';
 import './App.css';
 
