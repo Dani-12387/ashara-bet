@@ -60,6 +60,14 @@ const AdminLayout = () => {
                 <span className="icon">📈</span> Odds Management
               </Link>
             </li>
+
+            <li>
+  <Link to="/admin/aviator">
+    <span>✈️</span> Aviator Management
+  </Link>
+</li>
+
+
             <li>
               <Link to="/admin/reports" className="nav-link">
                 <span className="icon">📋</span> Reports
