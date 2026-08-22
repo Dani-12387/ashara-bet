@@ -7,7 +7,8 @@ const Aviator = () => {
     status: 'idle', // idle, waiting, active, crashed
     multiplier: 1.00,
     crashPoint: 0,
-    roundNumber: 0
+    roundNumber: 0,
+    oddCounter: 1.00 // ✅ ADDED: Real-time odd counter
   });
 
   const [userBet, setUserBet] = useState({
@@ -25,7 +26,6 @@ const Aviator = () => {
   const [loading, setLoading] = useState(false);
 
   const canvasRef = useRef(null);
-  const animationRef = useRef(null);
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
   // ========== FETCH USER DATA ==========
@@ -71,24 +71,24 @@ const Aviator = () => {
         
         // Check if game just crashed
         if (gameState.status === 'active' && newState.status === 'crashed') {
-          // Check if user had an active bet
           if (userBet.isActive) {
-            // User lost - their bet was already deducted
             setUserBet(prev => ({ ...prev, isActive: false }));
             setTotalBets(prev => prev + 1);
-            // Fetch updated balance
             fetchBalance();
           }
         }
         
         // Check if game just started
         if (gameState.status === 'idle' && newState.status === 'active') {
-          // Reset for new round
           setProfit(0);
         }
         
-        // Update game state
-        setGameState(newState);
+        // ✅ Update game state with odd counter
+        setGameState(prev => ({
+          ...prev,
+          ...newState,
+          oddCounter: newState.multiplier || newState.oddCounter || 1.00
+        }));
       }
     } catch (error) {
       console.error('Error fetching game state:', error);
@@ -97,128 +97,16 @@ const Aviator = () => {
 
   // ========== POLL GAME STATE ==========
   useEffect(() => {
-    // Initial fetch
     fetchBalance();
     fetchHistory();
     fetchGameState();
 
-    // Poll every 500ms for real-time updates
     const interval = setInterval(() => {
       fetchGameState();
     }, 500);
 
     return () => clearInterval(interval);
   }, []);
-
-  // ========== CANVAS DRAWING ==========
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    
-    const drawGraph = () => {
-      const rect = canvas.parentElement.getBoundingClientRect();
-      canvas.width = canvas.parentElement.clientWidth || 800;
-      canvas.height = 400;
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      // Background
-      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      gradient.addColorStop(0, '#0a0e27');
-      gradient.addColorStop(1, '#1a1a3e');
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Grid
-      ctx.strokeStyle = 'rgba(255,255,255,0.05)';
-      ctx.lineWidth = 1;
-      for (let i = 0; i < canvas.width; i += 50) {
-        ctx.beginPath();
-        ctx.moveTo(i, 0);
-        ctx.lineTo(i, canvas.height);
-        ctx.stroke();
-      }
-      for (let i = 0; i < canvas.height; i += 50) {
-        ctx.beginPath();
-        ctx.moveTo(0, i);
-        ctx.lineTo(canvas.width, i);
-        ctx.stroke();
-      }
-
-      // Multiplier labels
-      ctx.fillStyle = 'rgba(255,255,255,0.3)';
-      ctx.font = '12px Arial';
-      ctx.textAlign = 'right';
-      for (let i = 1; i <= 10; i++) {
-        const y = canvas.height - (i / 10) * canvas.height;
-        ctx.fillText(i + 'x', 35, y + 4);
-      }
-
-      // Draw curve based on multiplier
-      if (gameState.status === 'active' || gameState.status === 'crashed') {
-        const currentMultiplier = gameState.multiplier;
-        const maxMultiplier = Math.max(currentMultiplier, 1.5);
-        const scaleX = canvas.width / Math.log(maxMultiplier + 1);
-        
-        // Draw curve
-        ctx.beginPath();
-        ctx.moveTo(0, canvas.height);
-        
-        for (let x = 0; x <= canvas.width; x += 2) {
-          const progress = x / canvas.width;
-          const mult = 1 + Math.pow(progress * 10, 1.5) * 0.15;
-          const y = canvas.height - (Math.min(mult, maxMultiplier) / maxMultiplier) * canvas.height * 0.9;
-          ctx.lineTo(x, y);
-        }
-        
-        const gradientLine = ctx.createLinearGradient(0, 0, canvas.width, 0);
-        if (gameState.status === 'crashed') {
-          gradientLine.addColorStop(0, '#ff6b6b');
-          gradientLine.addColorStop(1, '#ff4444');
-        } else {
-          gradientLine.addColorStop(0, '#4ecdc4');
-          gradientLine.addColorStop(1, '#44bd9e');
-        }
-        ctx.strokeStyle = gradientLine;
-        ctx.lineWidth = 3;
-        ctx.stroke();
-
-        // Current multiplier display
-        ctx.fillStyle = gameState.status === 'crashed' ? '#ff4444' : '#ffffff';
-        ctx.font = 'bold 48px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        const displayX = canvas.width / 2;
-        const displayY = canvas.height / 2 - 40;
-        ctx.fillText(gameState.multiplier.toFixed(2) + 'x', displayX, displayY);
-
-        if (gameState.status === 'crashed') {
-          ctx.fillStyle = '#ff4444';
-          ctx.font = 'bold 24px Arial';
-          ctx.fillText('💥 CRASHED!', displayX, displayY + 60);
-        }
-      }
-
-      if (gameState.status === 'idle' || gameState.status === 'waiting') {
-        ctx.fillStyle = 'rgba(255,255,255,0.5)';
-        ctx.font = 'bold 28px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        const statusText = gameState.status === 'waiting' ? '⏳ Next round starting...' : '✈️ Waiting for next round...';
-        ctx.fillText(statusText, canvas.width / 2, canvas.height / 2);
-      }
-    };
-
-    drawGraph();
-
-    const handleResize = () => {
-      drawGraph();
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [gameState]);
 
   // ========== PLACE BET ==========
   const placeBet = async () => {
@@ -242,7 +130,6 @@ const Aviator = () => {
     try {
       const token = localStorage.getItem('token');
       
-      // Place bet on backend
       const response = await axios.post(`${API_URL}/api/aviator/bet`, 
         { 
           amount: betAmount,
@@ -252,20 +139,13 @@ const Aviator = () => {
       );
       
       if (response.data.success) {
-        // Deduct bet from balance
         setBalance(prev => prev - betAmount);
-        
-        // Set user bet as active
         setUserBet(prev => ({
           ...prev,
           isActive: true,
           placedAt: Date.now()
         }));
-        
         setTotalBets(prev => prev + 1);
-        
-        // If game is idle, tell admin to start? No, admin controls that.
-        // User just waits for admin to start the round.
         alert('✅ Bet placed! Waiting for the game to start...');
       } else {
         alert('❌ Failed to place bet: ' + response.data.message);
@@ -302,15 +182,12 @@ const Aviator = () => {
         const winAmount = response.data.winAmount || 0;
         const profitAmount = winAmount - userBet.amount;
         
-        // Update balance
         setBalance(prev => prev + winAmount);
         setProfit(profitAmount);
         setTotalWins(prev => prev + 1);
         setUserBet(prev => ({ ...prev, isActive: false }));
         
-        alert(`🎉 Cashed out at ${gameState.multiplier.toFixed(2)}x! Profit: ETB ${profitAmount.toFixed(2)}`);
-        
-        // Fetch fresh balance
+        alert(`🎉 Cashed out at ${gameState.oddCounter.toFixed(2)}x! Profit: ETB ${profitAmount.toFixed(2)}`);
         fetchBalance();
       } else {
         alert('❌ Failed to cash out: ' + response.data.message);
@@ -340,27 +217,30 @@ const Aviator = () => {
       </div>
 
       <div className="aviator-game-area">
-        <div className="aviator-canvas-wrapper">
-          <canvas ref={canvasRef} className="aviator-canvas"></canvas>
+        <div className="aviator-odd-display">
+          {/* ✅ ODD COUNTER - PROMINENT DISPLAY */}
+          <div className="odd-counter-user">
+            <span className="odd-label">📊 Current Odd</span>
+            <span className={`odd-number-user ${gameState.status === 'active' ? 'pulse-odd' : ''}`}>
+              {gameState.oddCounter.toFixed(2)}x
+            </span>
+            <span className="odd-status">
+              {gameState.status === 'idle' && '⏸️ Waiting'}
+              {gameState.status === 'waiting' && '⏳ Starting...'}
+              {gameState.status === 'active' && '🟢 Live'}
+              {gameState.status === 'crashed' && '💥 Crashed'}
+            </span>
+          </div>
         </div>
-        
+
         <div className="aviator-stats">
           <div className="stat">
-            <span>Status</span>
-            <span className={`stat-value status-${gameState.status}`}>
-              {gameState.status === 'idle' && '⏸️ Idle'}
-              {gameState.status === 'waiting' && '⏳ Waiting...'}
-              {gameState.status === 'active' && '▶️ Flying!'}
-              {gameState.status === 'crashed' && '💥 Crashed!'}
-            </span>
+            <span>Round</span>
+            <span className="stat-value">#{gameState.roundNumber || 0}</span>
           </div>
           <div className="stat">
             <span>Multiplier</span>
             <span className="stat-value">{gameState.multiplier.toFixed(2)}x</span>
-          </div>
-          <div className="stat">
-            <span>Round</span>
-            <span className="stat-value">#{gameState.roundNumber || 0}</span>
           </div>
           <div className="stat">
             <span>Profit</span>
@@ -423,7 +303,7 @@ const Aviator = () => {
             }
           >
             {userBet.isActive && gameState.status === 'active' 
-              ? `💰 Cash Out (${gameState.multiplier.toFixed(2)}x)` 
+              ? `💰 Cash Out (${gameState.oddCounter.toFixed(2)}x)` 
               : '📈 Place Bet'}
           </button>
           {balance <= 0 && gameState.status === 'idle' && (

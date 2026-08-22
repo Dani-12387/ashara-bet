@@ -336,3 +336,102 @@
   color: #fff;
   margin-top: 4px;
 }
+
+/* ===== ODD COUNTER - ADMIN ===== */
+.odd-counter-admin {
+  background: linear-gradient(135deg, #0f0f1a, #1a1a3e);
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  margin: 15px 0;
+  border: 2px solid #2a2a4a;
+}
+
+.odd-label {
+  display: block;
+  font-size: 0.85rem;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 5px;
+}
+
+.odd-number-admin {
+  display: block;
+  font-size: 4rem;
+  font-weight: bold;
+  color: #ffd700;
+  font-family: 'Courier New', monospace;
+  text-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.odd-number-admin.pulse-odd {
+  animation: pulseOdd 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes pulseOdd {
+  0% { transform: scale(1); color: #ffd700; }
+  100% { transform: scale(1.05); color: #ff6b6b; }
+}
+
+.odd-counter-running {
+  display: inline-block;
+  margin-top: 5px;
+  padding: 4px 12px;
+  background: rgba(40, 167, 69, 0.3);
+  border-radius: 20px;
+  color: #28a745;
+  font-size: 0.85rem;
+  animation: blink 1s infinite;
+}
+
+.odd-counter-crashed {
+  display: inline-block;
+  margin-top: 5px;
+  padding: 4px 12px;
+  background: rgba(220, 53, 69, 0.3);
+  border-radius: 20px;
+  color: #dc3545;
+  font-size: 0.85rem;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ===== ODD COUNTER - USER ===== */
+.aviator-odd-display {
+  background: linear-gradient(135deg, #0a0e27, #1a1a3e);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 15px;
+  border: 1px solid #2a2a4a;
+}
+
+.odd-counter-user {
+  text-align: center;
+}
+
+.odd-number-user {
+  display: block;
+  font-size: 5rem;
+  font-weight: bold;
+  color: #ffd700;
+  font-family: 'Courier New', monospace;
+  text-shadow: 0 0 40px rgba(255, 215, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.odd-number-user.pulse-odd {
+  animation: pulseOdd 0.5s ease-in-out infinite alternate;
+}
+
+.odd-status {
+  display: inline-block;
+  margin-top: 5px;
+  padding: 4px 16px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+}

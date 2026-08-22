@@ -9,6 +9,7 @@ const AviatorManagement = () => {
     crashPoint: 0,
     nextCrashPoint: 0,
     roundNumber: 0,
+    oddCounter: 1.00, // ✅ ADDED: Real-time odd counter
     totalBets: 0,
     totalAmount: 0,
     playersActive: 0,
@@ -41,12 +42,10 @@ const AviatorManagement = () => {
     fetchHistory();
     fetchActiveBets();
 
-    // Auto-refresh game state when active
+    // Auto-refresh game state every 500ms for real-time updates
     const interval = setInterval(() => {
-      if (gameState.status === 'active') {
-        fetchGameState();
-      }
-    }, 1000);
+      fetchGameState();
+    }, 500);
 
     return () => clearInterval(interval);
   }, []);
@@ -60,7 +59,11 @@ const AviatorManagement = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.data) {
-        setGameState(response.data);
+        setGameState(prev => ({
+          ...prev,
+          ...response.data,
+          oddCounter: response.data.multiplier || response.data.oddCounter || 1.00
+        }));
       }
     } catch (error) {
       console.error('Error fetching game state:', error);
@@ -110,7 +113,7 @@ const AviatorManagement = () => {
       );
       
       if (response.data.success) {
-        showMessage('✅ Game started successfully!', 'success');
+        showMessage(`✅ Game started! Round ${gameState.roundNumber + 1}`, 'success');
         await fetchGameState();
         await fetchActiveBets();
       } else {
@@ -137,7 +140,7 @@ const AviatorManagement = () => {
       );
       
       if (response.data.success) {
-        showMessage('✅ Game stopped successfully!', 'success');
+        showMessage(`✅ Round ${gameState.roundNumber} stopped at ${gameState.oddCounter.toFixed(2)}x!`, 'success');
         await fetchGameState();
         await fetchHistory();
         await fetchActiveBets();
@@ -152,7 +155,7 @@ const AviatorManagement = () => {
     }
   };
 
-  // 🔒 CLOSE GAME (Force close with all bets cancelled)
+  // 🔒 CLOSE GAME
   const closeGame = async () => {
     if (!window.confirm('⚠️ Are you sure you want to close the game? All active bets will be cancelled and refunded.')) {
       return;
@@ -292,14 +295,28 @@ const AviatorManagement = () => {
               </span>
             </div>
             
+            {/* ✅ ODD COUNTER - BIG AND VISIBLE */}
+            <div className="odd-counter-admin">
+              <span className="odd-label">📊 Current Odd</span>
+              <span className={`odd-number-admin ${gameState.status === 'active' ? 'pulse-odd' : ''}`}>
+                {gameState.oddCounter.toFixed(2)}x
+              </span>
+              {gameState.status === 'active' && (
+                <span className="odd-counter-running">
+                  ⏱️ Live
+                </span>
+              )}
+              {gameState.status === 'crashed' && (
+                <span className="odd-counter-crashed">
+                  💥 Crashed!
+                </span>
+              )}
+            </div>
+
             <div className="game-stats">
               <div className="stat-item">
                 <label>Round</label>
                 <span>#{gameState.roundNumber || 0}</span>
-              </div>
-              <div className="stat-item">
-                <label>Multiplier</label>
-                <span className="multiplier-display">{gameState.multiplier?.toFixed(2) || '1.00'}x</span>
               </div>
               <div className="stat-item">
                 <label>Active Players</label>
@@ -322,7 +339,7 @@ const AviatorManagement = () => {
               onClick={startGame}
               disabled={gameState.status === 'active' || loading}
             >
-              {loading ? '⏳ Loading...' : '🚀 Start Round'}
+              {loading ? '⏳ Loading...' : `🚀 Start Round ${gameState.roundNumber + 1}`}
             </button>
             
             <button 
@@ -330,7 +347,7 @@ const AviatorManagement = () => {
               onClick={stopGame}
               disabled={gameState.status !== 'active' || loading}
             >
-              {loading ? '⏳ Loading...' : '🛑 Stop Round'}
+              {loading ? '⏳ Loading...' : `🛑 Stop at ${gameState.oddCounter.toFixed(2)}x`}
             </button>
             
             <button 
