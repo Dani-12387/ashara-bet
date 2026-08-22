@@ -35,7 +35,7 @@ const HomePage = () => {
     { id: 'TENNIS', name: 'Tennis', icon: '🎾' },
     { id: 'CRICKET', name: 'Cricket', icon: '🏏' },
     { id: 'CASINO', name: 'Casino', icon: '🎰', comingSoon: true },
-    { id: 'AVIATOR', name: 'Aviator', icon: '✈️', path: '/aviator' },
+    { id: 'AVIATOR', name: 'Aviator', icon: '✈️', path: '/Aviator' },
     { id: 'FAST_KENO', name: 'Fast Keno', icon: '🎲', comingSoon: true }
   ];
 
