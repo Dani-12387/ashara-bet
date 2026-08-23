@@ -1,6 +1,6 @@
 /* ============================================
    AVIATOR - Horizontal Layout
-   Two Bets Side by Side
+   Two Bets Side by Side (Responsive)
    ============================================ */
 
 * {
@@ -195,7 +195,7 @@
   margin-bottom: 4px;
 }
 
-/* ===== TWO BETS - HORIZONTAL LAYOUT ===== */
+/* ===== TWO BETS - SIDE BY SIDE (FIXED) ===== */
 .bets-horizontal {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -211,6 +211,7 @@
   border: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
   flex-direction: column;
+  min-width: 0; /* Prevents overflow */
 }
 
 .bet-section-header {
@@ -285,6 +286,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .bet-input-group button:hover:not(:disabled) {
@@ -305,7 +307,8 @@
   color: #fff;
   font-size: 0.7rem;
   text-align: center;
-  width: 50px;
+  min-width: 30px;
+  max-width: 60px;
 }
 
 .bet-input-group input:disabled {
@@ -345,6 +348,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-wrap: wrap;
 }
 
 .auto-cashout-toggle {
@@ -484,19 +488,18 @@
   color: #ffd700;
 }
 
-/* ===== RESPONSIVE ===== */
-@media (max-width: 600px) {
+/* ============================================
+   RESPONSIVE FIX - Mobile View
+   ============================================ */
+
+/* Tablet and smaller screens */
+@media (max-width: 768px) {
   .aviator-container {
     padding: 5px;
   }
   
-  .bets-horizontal {
-    grid-template-columns: 1fr;
-    gap: 6px;
-  }
-  
   .odd-number-user {
-    font-size: 2.4rem;
+    font-size: 2.5rem;
   }
   
   .bet-btn {
@@ -515,7 +518,8 @@
   }
   
   .bet-input-group input {
-    width: 35px;
+    min-width: 25px;
+    max-width: 45px;
     font-size: 0.65rem;
   }
   
@@ -533,8 +537,179 @@
   }
 }
 
-@media (max-width: 400px) {
+/* ===== MOBILE FIX: Keep side by side ===== */
+@media (max-width: 600px) {
+  /* ✅ Keep bets side by side - DO NOT stack */
+  .bets-horizontal {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  
+  .bet-section {
+    padding: 5px 6px;
+  }
+  
+  .bet-number {
+    font-size: 0.7rem;
+  }
+  
+  .control-group {
+    padding: 3px 5px;
+  }
+  
+  .control-group label {
+    font-size: 0.5rem;
+  }
+  
+  .bet-input-group button {
+    width: 18px;
+    height: 18px;
+    font-size: 0.6rem;
+  }
+  
+  .bet-input-group input {
+    min-width: 20px;
+    max-width: 35px;
+    font-size: 0.6rem;
+    padding: 2px 3px;
+  }
+  
+  .quick-bets button {
+    font-size: 0.45rem;
+    padding: 1px 3px;
+  }
+  
+  .toggle-btn {
+    font-size: 0.5rem;
+    min-width: 28px;
+    padding: 1px 6px;
+  }
+  
+  .auto-cashout-input input {
+    max-width: 35px;
+    font-size: 0.55rem;
+  }
+  
+  .auto-cashout-input span {
+    font-size: 0.55rem;
+  }
+  
+  .bet-btn {
+    padding: 6px;
+    font-size: 0.65rem;
+    margin-top: 4px;
+  }
+  
   .odd-number-user {
     font-size: 2rem;
+  }
+  
+  .bet-active, .bet-waiting {
+    font-size: 0.5rem;
+    padding: 1px 5px;
+  }
+}
+
+/* ===== Very small phones ===== */
+@media (max-width: 400px) {
+  /* ✅ Keep side by side */
+  .bets-horizontal {
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
+  
+  .bet-section {
+    padding: 4px 4px;
+  }
+  
+  .bet-number {
+    font-size: 0.6rem;
+  }
+  
+  .odd-number-user {
+    font-size: 1.8rem;
+  }
+  
+  .bet-input-group button {
+    width: 16px;
+    height: 16px;
+    font-size: 0.5rem;
+  }
+  
+  .bet-input-group input {
+    min-width: 18px;
+    max-width: 30px;
+    font-size: 0.55rem;
+  }
+  
+  .quick-bets button {
+    font-size: 0.4rem;
+    padding: 0 3px;
+  }
+  
+  .bet-btn {
+    padding: 5px;
+    font-size: 0.55rem;
+  }
+  
+  .auto-cashout-input input {
+    max-width: 30px;
+    font-size: 0.5rem;
+  }
+  
+  .aviator-header h1 {
+    font-size: 0.85rem;
+  }
+  
+  .aviator-balance {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+  }
+}
+
+/* ===== Landscape phone ===== */
+@media (max-height: 500px) and (orientation: landscape) {
+  .aviator-container {
+    padding: 3px 5px;
+  }
+  
+  .bets-horizontal {
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
+  
+  .bet-section {
+    padding: 4px 6px;
+  }
+  
+  .bet-controls {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  
+  .control-group {
+    flex: 1;
+    min-width: 80px;
+  }
+  
+  .bet-btn {
+    padding: 4px;
+    font-size: 0.6rem;
+    margin-top: 3px;
+  }
+  
+  .odd-number-user {
+    font-size: 1.8rem;
+  }
+  
+  .aviator-history-horizontal {
+    min-height: 24px;
+    padding: 2px 8px;
+  }
+  
+  .history-item-horizontal {
+    font-size: 0.5rem;
+    padding: 1px 5px;
+    min-width: 24px;
   }
 }
