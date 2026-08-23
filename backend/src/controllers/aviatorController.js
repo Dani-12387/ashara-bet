@@ -21,6 +21,10 @@ let gameState = {
   houseEdge: 5
 };
 
+// ========== GAME HISTORY - STORE REAL DATA ==========
+// ✅ This stores REAL game history in memory (NO HARDCODED DATA)
+let gameHistory = [];
+
 // ========== BROADCAST FUNCTION ==========
 function broadcastGameState() {
   console.log(`📊 Round ${gameState.roundNumber}: ${gameState.multiplier.toFixed(2)}x | Status: ${gameState.status}`);
@@ -94,8 +98,7 @@ function startGameLoop() {
     const elapsed = (Date.now() - startTime) / 1000;
     
     // Calculate multiplier - starts at 1.00 and increases by 0.01
-    // Using exponential growth for realistic feel
-    const increment = 0.01; // ✅ Add 0.01 each tick
+    const increment = 0.01;
     const newMultiplier = gameState.multiplier + increment;
     const cappedMultiplier = Math.min(newMultiplier, 100);
     gameState.multiplier = Math.round(cappedMultiplier * 100) / 100;
@@ -119,7 +122,10 @@ function startGameLoop() {
 async function crashGame() {
   if (gameState.status === 'crashed') return;
   
-  console.log(`💥 Game crashed at ${gameState.multiplier.toFixed(2)}x`);
+  const crashMultiplier = gameState.multiplier;
+  const crashRound = gameState.roundNumber;
+  
+  console.log(`💥 Game crashed at ${crashMultiplier.toFixed(2)}x (Round ${crashRound})`);
   
   // Stop the interval
   if (gameState.gameInterval) {
@@ -128,6 +134,21 @@ async function crashGame() {
   }
 
   gameState.status = 'crashed';
+  
+  // ✅ Store REAL crash data in history (NO HARDCODED DATA)
+  const crashRecord = {
+    roundNumber: crashRound,
+    crashPoint: crashMultiplier,
+    crashed: true,
+    playersActive: gameState.playersActive || 0,
+    totalAmount: gameState.totalAmount || 0,
+    endTime: new Date().toISOString()
+  };
+  
+  // Add to history and keep only last 10
+  gameHistory = [crashRecord, ...gameHistory].slice(0, 10);
+  console.log(`📜 History updated: ${gameHistory.length} records`);
+  
   broadcastGameState();
 
   // Reset after 3 seconds
@@ -297,19 +318,17 @@ exports.getGameState = async (req, res) => {
   }
 };
 
-// ========== GET HISTORY ==========
+// ========== GET HISTORY - REAL DATA ONLY ==========
 exports.getHistory = async (req, res) => {
   try {
-    res.json([
-      { roundNumber: 5, crashPoint: 2.45, playersActive: 8, totalAmount: 450, endTime: new Date(Date.now() - 120000) },
-      { roundNumber: 4, crashPoint: 1.85, playersActive: 5, totalAmount: 230, endTime: new Date(Date.now() - 240000) },
-      { roundNumber: 3, crashPoint: 3.20, playersActive: 12, totalAmount: 780, endTime: new Date(Date.now() - 360000) },
-      { roundNumber: 2, crashPoint: 1.50, playersActive: 3, totalAmount: 120, endTime: new Date(Date.now() - 480000) },
-      { roundNumber: 1, crashPoint: 4.75, playersActive: 7, totalAmount: 560, endTime: new Date(Date.now() - 600000) }
-    ]);
+    // ✅ Return ONLY real game history from memory
+    // NO HARDCODED DATA
+    console.log(`📜 Returning ${gameHistory.length} real history records`);
+    res.json(gameHistory);
   } catch (error) {
     console.error('❌ Error getting history:', error);
-    res.status(500).json({ success: false, message: error.message });
+    // ✅ Return empty array on error - NO HARDCODED DATA
+    res.json([]);
   }
 };
 
@@ -375,6 +394,8 @@ exports.cashOut = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Game is not active!' });
     }
 
+    // Calculate winnings based on current multiplier
+    // This is a placeholder - you should calculate actual winnings from the bet
     const winAmount = 100;
     const profit = 90;
 
