@@ -1,6 +1,6 @@
 /* ============================================
    AVIATOR - COMPLETE REDESIGN
-   Single Page, No Scroll, Easy to Play
+   Two Buttons with Dual State
    ============================================ */
 
 * {
@@ -68,6 +68,7 @@
   flex-shrink: 0;
   overflow-x: auto;
   border: 1px solid rgba(255, 255, 255, 0.05);
+  min-height: 40px;
 }
 
 .history-list-horizontal {
@@ -114,6 +115,8 @@
   color: #666;
   font-size: 0.75rem;
   padding: 4px 0;
+  width: 100%;
+  text-align: center;
 }
 
 /* ===== ODD DISPLAY ===== */
@@ -360,7 +363,7 @@
   font-size: 0.8rem;
 }
 
-/* ===== ACTION BUTTONS - Two Buttons ===== */
+/* ===== TWO ACTION BUTTONS with Dual State ===== */
 .aviator-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -370,17 +373,19 @@
 }
 
 .bet-btn {
-  padding: 12px;
+  padding: 14px;
   border: none;
   border-radius: 8px;
   font-weight: bold;
-  font-size: 0.9rem;
+  font-size: 1rem;
   cursor: pointer;
   transition: all 0.3s;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  width: 100%;
 }
 
+/* ===== Primary Button ===== */
 .place-btn {
   background: linear-gradient(135deg, #ffd700, #f39c12);
   color: #000;
@@ -388,7 +393,7 @@
 
 .place-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+  box-shadow: 0 4px 20px rgba(255, 215, 0, 0.4);
 }
 
 .cashout-btn {
@@ -399,17 +404,39 @@
 
 @keyframes pulseGreen {
   0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.03); box-shadow: 0 0 25px rgba(40, 167, 69, 0.4); }
+  50% { transform: scale(1.02); box-shadow: 0 0 30px rgba(40, 167, 69, 0.4); }
 }
 
-.cashout-disabled {
-  background: linear-gradient(135deg, #2a2a4a, #1a1a2e);
-  color: #666;
-}
-
-.cashout-disabled:hover:not(:disabled) {
+.cashout-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(42, 42, 74, 0.3);
+  box-shadow: 0 4px 20px rgba(40, 167, 69, 0.5);
+}
+
+/* ===== Secondary Button ===== */
+.place-btn-secondary {
+  background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+  color: #fff;
+}
+
+.place-btn-secondary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(108, 92, 231, 0.4);
+}
+
+.cashout-btn-secondary {
+  background: linear-gradient(135deg, #00b894, #00cec9);
+  color: #fff;
+  animation: pulseTeal 1s infinite;
+}
+
+@keyframes pulseTeal {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); box-shadow: 0 0 30px rgba(0, 206, 201, 0.4); }
+}
+
+.cashout-btn-secondary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 206, 201, 0.5);
 }
 
 .bet-btn:disabled {

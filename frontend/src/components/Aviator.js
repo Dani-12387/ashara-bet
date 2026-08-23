@@ -74,7 +74,6 @@ const Aviator = () => {
         // Auto Cash Out - check if enabled and multiplier reached
         if (newState.status === 'active' && userBet.isActive && userBet.autoCashOutEnabled) {
           if (newState.multiplier >= userBet.autoCashOut) {
-            // Auto cash out
             handleAutoCashOut(newState.multiplier);
           }
         }
@@ -86,7 +85,7 @@ const Aviator = () => {
     }
   };
 
-  // ========== FETCH REAL HISTORY ==========
+  // ========== FETCH REAL GAME HISTORY ==========
   const fetchHistory = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -95,9 +94,12 @@ const Aviator = () => {
       });
       if (response.data && response.data.length > 0) {
         setHistory(response.data);
+      } else {
+        setHistory([]);
       }
     } catch (error) {
       console.error('Error fetching history:', error);
+      setHistory([]);
     }
   };
 
@@ -111,7 +113,6 @@ const Aviator = () => {
       fetchGameState();
     }, 200);
 
-    // Refresh history every 30 seconds
     const historyInterval = setInterval(() => {
       fetchHistory();
     }, 30000);
@@ -146,6 +147,7 @@ const Aviator = () => {
         setMessage(`🤖 Auto Cashed out at ${multiplier.toFixed(2)}x! +ETB ${profitAmount.toFixed(2)}`);
         setTimeout(() => setMessage(''), 4000);
         fetchBalance();
+        fetchHistory();
       }
     } catch (error) {
       console.error('Error auto cashing out:', error);
@@ -249,6 +251,7 @@ const Aviator = () => {
         setMessage(`🎉 Cashed out at ${gameState.multiplier.toFixed(2)}x! +ETB ${profitAmount.toFixed(2)}`);
         setTimeout(() => setMessage(''), 3000);
         fetchBalance();
+        fetchHistory();
       } else {
         setError('❌ ' + response.data.message);
         setTimeout(() => setError(''), 3000);
@@ -287,6 +290,47 @@ const Aviator = () => {
   // ========== RENDER ==========
   const isBetDisabled = loading || gameState.status === 'crashed' || balance <= 0 || userBet.isActive;
   const isCashoutDisabled = loading || !userBet.isActive || gameState.status !== 'active';
+  
+  // Button 1: Place Bet / Cash Out (Main)
+  const getButton1Config = () => {
+    if (userBet.isActive && gameState.status === 'active') {
+      return {
+        text: `💰 Cash Out (${gameState.multiplier.toFixed(2)}x)`,
+        class: 'cashout-btn',
+        disabled: isCashoutDisabled,
+        onClick: handleCashOut
+      };
+    } else {
+      return {
+        text: '📈 Place Bet',
+        class: 'place-btn',
+        disabled: isBetDisabled,
+        onClick: placeBet
+      };
+    }
+  };
+
+  // Button 2: Place Bet / Cash Out (Secondary)
+  const getButton2Config = () => {
+    if (userBet.isActive && gameState.status === 'active') {
+      return {
+        text: `💰 Cash Out (${gameState.multiplier.toFixed(2)}x)`,
+        class: 'cashout-btn-secondary',
+        disabled: isCashoutDisabled,
+        onClick: handleCashOut
+      };
+    } else {
+      return {
+        text: '📈 Place Bet',
+        class: 'place-btn-secondary',
+        disabled: isBetDisabled,
+        onClick: placeBet
+      };
+    }
+  };
+
+  const button1Config = getButton1Config();
+  const button2Config = getButton2Config();
 
   return (
     <div className="aviator-container">
@@ -302,7 +346,7 @@ const Aviator = () => {
       <div className="aviator-history-horizontal">
         <div className="history-list-horizontal">
           {history.length === 0 ? (
-            <span className="no-history">No history yet</span>
+            <span className="no-history">⏳ No game history yet</span>
           ) : (
             history.slice(0, 20).map((item, index) => (
               <div key={index} className={`history-item-horizontal ${item.crashed ? 'crashed' : 'cashed'}`}>
@@ -392,24 +436,22 @@ const Aviator = () => {
         </div>
       </div>
 
-      {/* ===== ACTION BUTTONS - Two Buttons ===== */}
+      {/* ===== TWO ACTION BUTTONS with Dual State ===== */}
       <div className="aviator-actions">
         <button 
-          className="bet-btn place-btn"
-          onClick={placeBet}
-          disabled={isBetDisabled}
+          className={`bet-btn ${button1Config.class}`}
+          onClick={button1Config.onClick}
+          disabled={button1Config.disabled}
         >
-          📈 Place Bet
+          {button1Config.text}
         </button>
         
         <button 
-          className={`bet-btn ${userBet.isActive && gameState.status === 'active' ? 'cashout-btn' : 'cashout-disabled'}`}
-          onClick={handleCashOut}
-          disabled={isCashoutDisabled}
+          className={`bet-btn ${button2Config.class}`}
+          onClick={button2Config.onClick}
+          disabled={button2Config.disabled}
         >
-          {userBet.isActive && gameState.status === 'active' 
-            ? `💰 Cash Out (${gameState.multiplier.toFixed(2)}x)` 
-            : '💰 Cash Out'}
+          {button2Config.text}
         </button>
       </div>
 
