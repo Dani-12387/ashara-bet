@@ -35,7 +35,6 @@ const Aviator = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-  const [lastCrash, setLastCrash] = useState(null);
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -66,9 +65,9 @@ const Aviator = () => {
       if (response.data) {
         const newState = response.data;
         
-        // ✅ Check if game just crashed - register new history
+        // Check if game just crashed
         if (gameState.status === 'active' && newState.status === 'crashed') {
-          // Register the crash in history
+          // Register new crash in history
           const crashData = {
             roundNumber: newState.roundNumber || 0,
             crashPoint: newState.multiplier || 0,
@@ -76,16 +75,11 @@ const Aviator = () => {
             timestamp: new Date().toISOString()
           };
           
-          // ✅ Add new crash to history (remove oldest if more than 10)
           setHistory(prev => {
             const newHistory = [crashData, ...prev];
-            // Keep only last 10
             return newHistory.slice(0, 10);
           });
           
-          setLastCrash(crashData);
-          
-          // Check bets
           if (bet1.isActive) {
             setBet1(prev => ({ ...prev, isActive: false }));
             setTotalBets(prev => prev + 1);
@@ -100,21 +94,19 @@ const Aviator = () => {
           setTimeout(() => setError(''), 3000);
         }
         
-        // Check if game just started
         if (gameState.status === 'idle' && newState.status === 'active') {
           setProfit(0);
           setError('');
           setMessage('');
         }
         
-        // Auto Cash Out - Bet 1
+        // Auto Cash Out
         if (newState.status === 'active' && bet1.isActive && bet1.autoCashOutEnabled) {
           if (newState.multiplier >= bet1.autoCashOut) {
             handleAutoCashOut(1, newState.multiplier);
           }
         }
         
-        // Auto Cash Out - Bet 2
         if (newState.status === 'active' && bet2.isActive && bet2.autoCashOutEnabled) {
           if (newState.multiplier >= bet2.autoCashOut) {
             handleAutoCashOut(2, newState.multiplier);
@@ -136,16 +128,12 @@ const Aviator = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.data && response.data.length > 0) {
-        // ✅ Only use real data from API, limit to 10
-        const realHistory = response.data.slice(0, 10);
-        setHistory(realHistory);
+        setHistory(response.data.slice(0, 10));
       } else {
-        // ✅ NO hardcoded data - show empty
         setHistory([]);
       }
     } catch (error) {
       console.error('Error fetching history:', error);
-      // ✅ On error, show empty - NO hardcoded data
       setHistory([]);
     }
   };
@@ -160,7 +148,6 @@ const Aviator = () => {
       fetchGameState();
     }, 200);
 
-    // Refresh history every 10 seconds
     const historyInterval = setInterval(() => {
       fetchHistory();
     }, 10000);
@@ -386,200 +373,201 @@ const Aviator = () => {
         </div>
       </div>
 
-      {/* ===== HISTORY - Horizontal (REAL DATA ONLY, 10 ROWS) ===== */}
-      <div className="aviator-history-horizontal">
-        <div className="history-list-horizontal">
-          {history.length === 0 ? (
-            <span className="no-history">⏳ No game history yet</span>
-          ) : (
-            history.slice(0, 10).map((item, index) => (
-              <div 
-                key={index} 
-                className={`history-item-horizontal ${item.crashed ? 'crashed' : 'cashed'}`}
-                title={`Round #${item.roundNumber || index + 1}`}
-              >
-                <span className="history-multiplier-horizontal">
-                  {item.crashPoint?.toFixed(2) || 'N/A'}x
-                </span>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* ===== ODD DISPLAY ===== */}
-      <div className="aviator-odd-display">
-        <span className="odd-label">📊 Current Odd</span>
-        <span className={`odd-number-user ${gameState.status === 'active' ? 'pulse-odd' : ''}`}>
-          {gameState.multiplier.toFixed(2)}x
-        </span>
-        <span className={`odd-status ${gameState.status}`}>
-          {gameState.status === 'idle' && '⏸️ Waiting'}
-          {gameState.status === 'waiting' && '⏳ Starting...'}
-          {gameState.status === 'active' && '🟢 Live'}
-          {gameState.status === 'crashed' && '💥 Crashed!'}
-        </span>
-      </div>
-
-      {/* ===== MESSAGES ===== */}
-      {message && (
-        <div className="bet-success">{message}</div>
-      )}
-      {error && (
-        <div className="bet-error">{error}</div>
-      )}
-
-      {/* ===== TWO BETS - SIDE BY SIDE ===== */}
-      <div className="bets-horizontal">
-        {/* ===== BET 1 ===== */}
-        <div className="bet-section">
-          <div className="bet-section-header">
-            <span className="bet-number">🎯 Bet 1</span>
-            {bet1.isActive && gameState.status === 'active' && (
-              <span className="bet-active">🟢 Active</span>
-            )}
-            {bet1.isActive && gameState.status !== 'active' && (
-              <span className="bet-waiting">⏳ Waiting</span>
-            )}
+      {/* ===== MAIN CONTENT - Side by Side ===== */}
+      <div className="main-content">
+        {/* ===== LEFT SIDE - Game Area ===== */}
+        <div className="game-area">
+          {/* ===== ODD DISPLAY ===== */}
+          <div className="aviator-odd-display">
+            <span className="odd-label">📊 Current Odd</span>
+            <span className={`odd-number-user ${gameState.status === 'active' ? 'pulse-odd' : ''}`}>
+              {gameState.multiplier.toFixed(2)}x
+            </span>
+            <span className={`odd-status ${gameState.status}`}>
+              {gameState.status === 'idle' && '⏸️ Waiting'}
+              {gameState.status === 'waiting' && '⏳ Starting...'}
+              {gameState.status === 'active' && '🟢 Live'}
+              {gameState.status === 'crashed' && '💥 Crashed!'}
+            </span>
           </div>
-          
-          <div className="bet-controls">
-            {/* ===== AMOUNT ===== */}
-            <div className="control-group">
-              <label>Amount</label>
-              <div className="bet-input-group">
-                <button onClick={() => setBet1(prev => ({ ...prev, amount: Math.max(1, prev.amount - 5) }))} disabled={bet1.isActive}>−</button>
-                <input 
-                  type="number" 
-                  value={bet1.amount}
-                  onChange={(e) => setBet1(prev => ({ ...prev, amount: Math.max(1, parseFloat(e.target.value) || 1) }))}
-                  min="1"
-                  step="1"
-                  disabled={bet1.isActive}
-                />
-                <button onClick={() => setBet1(prev => ({ ...prev, amount: prev.amount + 5 }))} disabled={bet1.isActive}>+</button>
-              </div>
-              <div className="quick-bets">
-                <button onClick={() => quickBet(1, 10)} disabled={bet1.isActive}>10</button>
-                <button onClick={() => quickBet(1, 25)} disabled={bet1.isActive}>25</button>
-                <button onClick={() => quickBet(1, 50)} disabled={bet1.isActive}>50</button>
-                <button onClick={() => quickBet(1, 100)} disabled={bet1.isActive}>100</button>
-              </div>
-            </div>
 
-            {/* ===== PLACE BET BUTTON ===== */}
-            <button 
-              className={`bet-btn ${button1Config.class}`}
-              onClick={button1Config.onClick}
-              disabled={button1Config.disabled}
-            >
-              {button1Config.text}
-            </button>
+          {/* ===== MESSAGES ===== */}
+          {message && (
+            <div className="bet-success">{message}</div>
+          )}
+          {error && (
+            <div className="bet-error">{error}</div>
+          )}
 
-            {/* ===== AUTO CASH ===== */}
-            <div className="control-group">
-              <label>Auto Cash</label>
-              <div className="auto-cashout-control">
-                <div className="auto-cashout-toggle">
-                  <button 
-                    className={`toggle-btn ${bet1.autoCashOutEnabled ? 'active' : ''}`}
-                    onClick={() => toggleAutoCashOut(1)}
-                    disabled={bet1.isActive}
-                  >
-                    {bet1.autoCashOutEnabled ? 'ON' : 'OFF'}
-                  </button>
-                </div>
-                {bet1.autoCashOutEnabled && (
-                  <div className="auto-cashout-input">
+          {/* ===== TWO BETS - SIDE BY SIDE ===== */}
+          <div className="bets-horizontal">
+            {/* ===== BET 1 ===== */}
+            <div className="bet-section">
+              <div className="bet-section-header">
+                <span className="bet-number">🎯 Bet 1</span>
+                {bet1.isActive && gameState.status === 'active' && (
+                  <span className="bet-active">🟢 Active</span>
+                )}
+                {bet1.isActive && gameState.status !== 'active' && (
+                  <span className="bet-waiting">⏳ Waiting</span>
+                )}
+              </div>
+              
+              <div className="bet-controls">
+                <div className="control-group">
+                  <label>Amount</label>
+                  <div className="bet-input-group">
+                    <button onClick={() => setBet1(prev => ({ ...prev, amount: Math.max(1, prev.amount - 5) }))} disabled={bet1.isActive}>−</button>
                     <input 
                       type="number" 
-                      value={bet1.autoCashOut}
-                      onChange={(e) => setBet1(prev => ({ ...prev, autoCashOut: parseFloat(e.target.value) || 1.01 }))}
-                      min="1.01"
-                      step="0.1"
+                      value={bet1.amount}
+                      onChange={(e) => setBet1(prev => ({ ...prev, amount: Math.max(1, parseFloat(e.target.value) || 1) }))}
+                      min="1"
+                      step="1"
                       disabled={bet1.isActive}
                     />
-                    <span>x</span>
+                    <button onClick={() => setBet1(prev => ({ ...prev, amount: prev.amount + 5 }))} disabled={bet1.isActive}>+</button>
                   </div>
+                  <div className="quick-bets">
+                    <button onClick={() => quickBet(1, 10)} disabled={bet1.isActive}>10</button>
+                    <button onClick={() => quickBet(1, 25)} disabled={bet1.isActive}>25</button>
+                    <button onClick={() => quickBet(1, 50)} disabled={bet1.isActive}>50</button>
+                    <button onClick={() => quickBet(1, 100)} disabled={bet1.isActive}>100</button>
+                  </div>
+                </div>
+
+                <button 
+                  className={`bet-btn ${button1Config.class}`}
+                  onClick={button1Config.onClick}
+                  disabled={button1Config.disabled}
+                >
+                  {button1Config.text}
+                </button>
+
+                <div className="control-group">
+                  <label>Auto Cash</label>
+                  <div className="auto-cashout-control">
+                    <div className="auto-cashout-toggle">
+                      <button 
+                        className={`toggle-btn ${bet1.autoCashOutEnabled ? 'active' : ''}`}
+                        onClick={() => toggleAutoCashOut(1)}
+                        disabled={bet1.isActive}
+                      >
+                        {bet1.autoCashOutEnabled ? 'ON' : 'OFF'}
+                      </button>
+                    </div>
+                    {bet1.autoCashOutEnabled && (
+                      <div className="auto-cashout-input">
+                        <input 
+                          type="number" 
+                          value={bet1.autoCashOut}
+                          onChange={(e) => setBet1(prev => ({ ...prev, autoCashOut: parseFloat(e.target.value) || 1.01 }))}
+                          min="1.01"
+                          step="0.1"
+                          disabled={bet1.isActive}
+                        />
+                        <span>x</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ===== BET 2 ===== */}
+            <div className="bet-section">
+              <div className="bet-section-header">
+                <span className="bet-number">🎯 Bet 2</span>
+                {bet2.isActive && gameState.status === 'active' && (
+                  <span className="bet-active">🟢 Active</span>
                 )}
+                {bet2.isActive && gameState.status !== 'active' && (
+                  <span className="bet-waiting">⏳ Waiting</span>
+                )}
+              </div>
+              
+              <div className="bet-controls">
+                <div className="control-group">
+                  <label>Amount</label>
+                  <div className="bet-input-group">
+                    <button onClick={() => setBet2(prev => ({ ...prev, amount: Math.max(1, prev.amount - 5) }))} disabled={bet2.isActive}>−</button>
+                    <input 
+                      type="number" 
+                      value={bet2.amount}
+                      onChange={(e) => setBet2(prev => ({ ...prev, amount: Math.max(1, parseFloat(e.target.value) || 1) }))}
+                      min="1"
+                      step="1"
+                      disabled={bet2.isActive}
+                    />
+                    <button onClick={() => setBet2(prev => ({ ...prev, amount: prev.amount + 5 }))} disabled={bet2.isActive}>+</button>
+                  </div>
+                  <div className="quick-bets">
+                    <button onClick={() => quickBet(2, 10)} disabled={bet2.isActive}>10</button>
+                    <button onClick={() => quickBet(2, 25)} disabled={bet2.isActive}>25</button>
+                    <button onClick={() => quickBet(2, 50)} disabled={bet2.isActive}>50</button>
+                    <button onClick={() => quickBet(2, 100)} disabled={bet2.isActive}>100</button>
+                  </div>
+                </div>
+
+                <button 
+                  className={`bet-btn ${button2Config.class}`}
+                  onClick={button2Config.onClick}
+                  disabled={button2Config.disabled}
+                >
+                  {button2Config.text}
+                </button>
+
+                <div className="control-group">
+                  <label>Auto Cash</label>
+                  <div className="auto-cashout-control">
+                    <div className="auto-cashout-toggle">
+                      <button 
+                        className={`toggle-btn ${bet2.autoCashOutEnabled ? 'active' : ''}`}
+                        onClick={() => toggleAutoCashOut(2)}
+                        disabled={bet2.isActive}
+                      >
+                        {bet2.autoCashOutEnabled ? 'ON' : 'OFF'}
+                      </button>
+                    </div>
+                    {bet2.autoCashOutEnabled && (
+                      <div className="auto-cashout-input">
+                        <input 
+                          type="number" 
+                          value={bet2.autoCashOut}
+                          onChange={(e) => setBet2(prev => ({ ...prev, autoCashOut: parseFloat(e.target.value) || 1.01 }))}
+                          min="1.01"
+                          step="0.1"
+                          disabled={bet2.isActive}
+                        />
+                        <span>x</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* ===== BET 2 ===== */}
-        <div className="bet-section">
-          <div className="bet-section-header">
-            <span className="bet-number">🎯 Bet 2</span>
-            {bet2.isActive && gameState.status === 'active' && (
-              <span className="bet-active">🟢 Active</span>
-            )}
-            {bet2.isActive && gameState.status !== 'active' && (
-              <span className="bet-waiting">⏳ Waiting</span>
-            )}
-          </div>
-          
-          <div className="bet-controls">
-            {/* ===== AMOUNT ===== */}
-            <div className="control-group">
-              <label>Amount</label>
-              <div className="bet-input-group">
-                <button onClick={() => setBet2(prev => ({ ...prev, amount: Math.max(1, prev.amount - 5) }))} disabled={bet2.isActive}>−</button>
-                <input 
-                  type="number" 
-                  value={bet2.amount}
-                  onChange={(e) => setBet2(prev => ({ ...prev, amount: Math.max(1, parseFloat(e.target.value) || 1) }))}
-                  min="1"
-                  step="1"
-                  disabled={bet2.isActive}
-                />
-                <button onClick={() => setBet2(prev => ({ ...prev, amount: prev.amount + 5 }))} disabled={bet2.isActive}>+</button>
-              </div>
-              <div className="quick-bets">
-                <button onClick={() => quickBet(2, 10)} disabled={bet2.isActive}>10</button>
-                <button onClick={() => quickBet(2, 25)} disabled={bet2.isActive}>25</button>
-                <button onClick={() => quickBet(2, 50)} disabled={bet2.isActive}>50</button>
-                <button onClick={() => quickBet(2, 100)} disabled={bet2.isActive}>100</button>
-              </div>
-            </div>
-
-            {/* ===== PLACE BET BUTTON ===== */}
-            <button 
-              className={`bet-btn ${button2Config.class}`}
-              onClick={button2Config.onClick}
-              disabled={button2Config.disabled}
-            >
-              {button2Config.text}
-            </button>
-
-            {/* ===== AUTO CASH ===== */}
-            <div className="control-group">
-              <label>Auto Cash</label>
-              <div className="auto-cashout-control">
-                <div className="auto-cashout-toggle">
-                  <button 
-                    className={`toggle-btn ${bet2.autoCashOutEnabled ? 'active' : ''}`}
-                    onClick={() => toggleAutoCashOut(2)}
-                    disabled={bet2.isActive}
-                  >
-                    {bet2.autoCashOutEnabled ? 'ON' : 'OFF'}
-                  </button>
+        {/* ===== RIGHT SIDE - History Sidebar ===== */}
+        <div className="history-sidebar">
+          <div className="history-title">📊 Game History</div>
+          <div className="history-list-vertical">
+            {history.length === 0 ? (
+              <span className="no-history-vertical">⏳ No history yet</span>
+            ) : (
+              history.slice(0, 10).map((item, index) => (
+                <div 
+                  key={index} 
+                  className={`history-item-vertical ${item.crashed ? 'crashed' : 'cashed'}`}
+                >
+                  <span className="history-number">#{item.roundNumber || index + 1}</span>
+                  <span className="history-multiplier-vertical">
+                    {item.crashPoint?.toFixed(2) || 'N/A'}x
+                  </span>
                 </div>
-                {bet2.autoCashOutEnabled && (
-                  <div className="auto-cashout-input">
-                    <input 
-                      type="number" 
-                      value={bet2.autoCashOut}
-                      onChange={(e) => setBet2(prev => ({ ...prev, autoCashOut: parseFloat(e.target.value) || 1.01 }))}
-                      min="1.01"
-                      step="0.1"
-                      disabled={bet2.isActive}
-                    />
-                    <span>x</span>
-                  </div>
-                )}
-              </div>
-            </div>
+              ))
+            )}
           </div>
         </div>
       </div>
