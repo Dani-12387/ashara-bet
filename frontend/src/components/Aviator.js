@@ -66,7 +66,7 @@ const Aviator = () => {
       if (response.data) {
         const newState = response.data;
         
-        // ✅ Check if game just crashed - register new history
+        // Check if game just crashed - register new history
         if (gameState.status === 'active' && newState.status === 'crashed') {
           // Register the crash in history
           const crashData = {
@@ -76,10 +76,9 @@ const Aviator = () => {
             timestamp: new Date().toISOString()
           };
           
-          // ✅ Add new crash to history (remove oldest if more than 7)
+          // Add new crash to history (keep only last 7)
           setHistory(prev => {
             const newHistory = [crashData, ...prev];
-            // Keep only last 7
             return newHistory.slice(0, 7);
           });
           
@@ -136,16 +135,15 @@ const Aviator = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.data && response.data.length > 0) {
-        // ✅ Only use real data from API, limit to 7
+        // Only use real data from API, limit to 7
         const realHistory = response.data.slice(0, 7);
         setHistory(realHistory);
       } else {
-        // ✅ NO hardcoded data - show empty
+        // NO hardcoded data - show empty
         setHistory([]);
       }
     } catch (error) {
       console.error('Error fetching history:', error);
-      // ✅ On error, show empty - NO hardcoded data
       setHistory([]);
     }
   };
@@ -256,6 +254,8 @@ const Aviator = () => {
         setTotalBets(prev => prev + 1);
         setMessage(`✅ Bet ${betNumber} placed!`);
         setTimeout(() => setMessage(''), 1500);
+        // Refresh balance after bet
+        fetchBalance();
       } else {
         setError('❌ ' + response.data.message);
         setTimeout(() => setError(''), 3000);
@@ -357,8 +357,10 @@ const Aviator = () => {
     const isCashoutDisabled = loading || !bet.isActive || gameState.status !== 'active';
     
     if (bet.isActive && gameState.status === 'active') {
+      // Show current multiplier and estimated win amount
+      const estimatedWin = (bet.amount * gameState.multiplier).toFixed(2);
       return {
-        text: `💰 ${gameState.multiplier.toFixed(2)}x`,
+        text: `💰 ${gameState.multiplier.toFixed(2)}x (${estimatedWin})`,
         class: 'cashout-btn',
         disabled: isCashoutDisabled,
         onClick: () => handleCashOut(betNumber)
