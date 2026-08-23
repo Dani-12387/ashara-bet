@@ -76,11 +76,11 @@ const Aviator = () => {
             timestamp: new Date().toISOString()
           };
           
-          // ✅ Add new crash to history (remove oldest if more than 10)
+          // ✅ Add new crash to history (remove oldest if more than 7)
           setHistory(prev => {
             const newHistory = [crashData, ...prev];
-            // Keep only last 10
-            return newHistory.slice(0, 10);
+            // Keep only last 7
+            return newHistory.slice(0, 7);
           });
           
           setLastCrash(crashData);
@@ -136,8 +136,8 @@ const Aviator = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.data && response.data.length > 0) {
-        // ✅ Only use real data from API, limit to 10
-        const realHistory = response.data.slice(0, 10);
+        // ✅ Only use real data from API, limit to 7
+        const realHistory = response.data.slice(0, 7);
         setHistory(realHistory);
       } else {
         // ✅ NO hardcoded data - show empty
@@ -386,13 +386,13 @@ const Aviator = () => {
         </div>
       </div>
 
-      {/* ===== HISTORY - Horizontal (REAL DATA ONLY, 10 ROWS) ===== */}
+      {/* ===== HISTORY - Horizontal (REAL DATA ONLY, 7 ROWS) ===== */}
       <div className="aviator-history-horizontal">
         <div className="history-list-horizontal">
           {history.length === 0 ? (
             <span className="no-history">⏳ No game history yet</span>
           ) : (
-            history.slice(0, 10).map((item, index) => (
+            history.slice(0, 7).map((item, index) => (
               <div 
                 key={index} 
                 className={`history-item-horizontal ${item.crashed ? 'crashed' : 'cashed'}`}
