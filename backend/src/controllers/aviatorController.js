@@ -438,10 +438,12 @@ exports.cancelPendingBet = async (req, res) => {
     // Remove bet from pending
     pendingBets.splice(betIndex, 1);
     
+    const updatedUser = await User.findById(userId);
+    
     res.json({ 
       success: true, 
       message: 'Bet cancelled and refunded!',
-      newBalance: user ? user.balance : 0
+      newBalance: updatedUser ? updatedUser.balance : 0
     });
   } catch (error) {
     console.error('❌ Error cancelling pending bet:', error);
@@ -472,7 +474,7 @@ exports.placeBet = async (req, res) => {
       });
     }
 
-    // ✅ Allow betting when game is idle or active
+    // Allow betting when game is idle or active
     if (gameState.status !== 'idle' && gameState.status !== 'waiting' && gameState.status !== 'active') {
       return res.status(400).json({ 
         success: false, 
@@ -536,11 +538,14 @@ exports.placeBet = async (req, res) => {
       console.log(`📊 Total pending bets: ${pendingBets.length}`);
     }
 
+    // ✅ Get updated user balance
+    const updatedUser = await User.findById(userId);
+    
     res.json({ 
       success: true, 
       message: isActive ? 'Bet placed successfully!' : 'Bet placed! Waiting for next round...',
       status: isActive ? 'active' : 'pending',
-      newBalance: user.balance,
+      newBalance: updatedUser ? updatedUser.balance : 0, // ✅ Fixed: Always returns a number
       bet: {
         amount: amount,
         autoCashOut: autoCashOut || 0,

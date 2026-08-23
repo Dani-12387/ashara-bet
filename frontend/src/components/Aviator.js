@@ -39,6 +39,7 @@ const Aviator = () => {
 
   const API_URL = process.env.REACT_APP_API_URL || 'https://ashara-bet.onrender.com';
 
+  // ========== FETCH BALANCE ==========
   const fetchBalance = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -52,6 +53,7 @@ const Aviator = () => {
     }
   };
 
+  // ========== FETCH GAME STATE ==========
   const fetchGameState = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -75,6 +77,7 @@ const Aviator = () => {
           setTimeout(() => setMessage(''), 2000);
         }
         
+        // ✅ Check if game crashed
         if (gameState.status === 'active' && newState.status === 'crashed') {
           const crashData = {
             roundNumber: newState.roundNumber || 0,
@@ -102,12 +105,14 @@ const Aviator = () => {
           setTimeout(() => setError(''), 3000);
         }
         
-        // Auto Cash Out
+        // ✅ Auto Cash Out - Bet 1
         if (newState.status === 'active' && bet1.isActive && bet1.autoCashOutEnabled) {
           if (newState.multiplier >= bet1.autoCashOut) {
             handleAutoCashOut(1, newState.multiplier);
           }
         }
+        
+        // ✅ Auto Cash Out - Bet 2
         if (newState.status === 'active' && bet2.isActive && bet2.autoCashOutEnabled) {
           if (newState.multiplier >= bet2.autoCashOut) {
             handleAutoCashOut(2, newState.multiplier);
@@ -121,6 +126,7 @@ const Aviator = () => {
     }
   };
 
+  // ========== FETCH HISTORY ==========
   const fetchHistory = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -138,6 +144,7 @@ const Aviator = () => {
     }
   };
 
+  // ========== POLLING ==========
   useEffect(() => {
     fetchBalance();
     fetchHistory();
@@ -157,6 +164,7 @@ const Aviator = () => {
     };
   }, []);
 
+  // ========== AUTO CASH OUT ==========
   const handleAutoCashOut = async (betNumber, multiplier) => {
     const bet = betNumber === 1 ? bet1 : bet2;
     const setBet = betNumber === 1 ? setBet1 : setBet2;
@@ -209,9 +217,11 @@ const Aviator = () => {
       );
       
       if (response.data.success) {
+        // ✅ Refund balance
+        const refundAmount = bet.amount;
         setBet(prev => ({ ...prev, isPending: false, isActive: false }));
-        setBalance(prev => prev + bet.amount);
-        setMessage(`✅ Bet ${betNumber} cancelled! Refunded ${bet.amount.toFixed(2)}`);
+        setBalance(prev => prev + refundAmount);
+        setMessage(`✅ Bet ${betNumber} cancelled! Refunded ETB ${refundAmount.toFixed(2)}`);
         setTimeout(() => setMessage(''), 3000);
         fetchBalance();
       } else {
@@ -227,6 +237,7 @@ const Aviator = () => {
     }
   };
 
+  // ========== PLACE BET ==========
   const placeBet = async (betNumber) => {
     setError('');
     setMessage('');
@@ -277,11 +288,13 @@ const Aviator = () => {
       console.log('📥 Bet response:', response.data);
       
       if (response.data.success) {
-        // ✅ Balance is already deducted on backend
-        // ✅ Update local balance from response
-        setBalance(response.data.newBalance);
+        // ✅ Safe balance update - use 0 if null
+        const newBalance = response.data.newBalance !== null && response.data.newBalance !== undefined 
+          ? response.data.newBalance 
+          : balance - betAmount;
         
-        // ✅ Set bet status based on response
+        setBalance(newBalance);
+        
         if (response.data.status === 'active') {
           setBet(prev => ({ ...prev, isActive: true, isPending: false }));
           setMessage(`✅ Bet ${betNumber} placed! Active now!`);
@@ -307,6 +320,7 @@ const Aviator = () => {
     }
   };
 
+  // ========== CASH OUT ==========
   const handleCashOut = async (betNumber) => {
     setError('');
     setMessage('');
@@ -360,6 +374,7 @@ const Aviator = () => {
     }
   };
 
+  // ========== QUICK BET ==========
   const quickBet = (betNumber, amount) => {
     const setBet = betNumber === 1 ? setBet1 : setBet2;
     const bet = betNumber === 1 ? bet1 : bet2;
@@ -368,6 +383,7 @@ const Aviator = () => {
     }
   };
 
+  // ========== TOGGLE AUTO CASH OUT ==========
   const toggleAutoCashOut = (betNumber) => {
     const setBet = betNumber === 1 ? setBet1 : setBet2;
     const bet = betNumber === 1 ? bet1 : bet2;
@@ -379,10 +395,12 @@ const Aviator = () => {
     }
   };
 
+  // ========== FORMAT CURRENCY ==========
   const formatCurrency = (amount) => {
     return `ETB ${amount.toFixed(2)}`;
   };
 
+  // ========== GET BUTTON CONFIG ==========
   const getButtonConfig = (betNumber) => {
     const bet = betNumber === 1 ? bet1 : bet2;
     
@@ -423,6 +441,7 @@ const Aviator = () => {
 
   return (
     <div className="aviator-container">
+      {/* ===== HEADER ===== */}
       <div className="aviator-header">
         <h1><span>✈️</span> Aviator</h1>
         <div className="aviator-balance">
@@ -430,6 +449,7 @@ const Aviator = () => {
         </div>
       </div>
 
+      {/* ===== HISTORY - Horizontal (7 ROWS) ===== */}
       <div className="aviator-history-horizontal">
         <div className="history-list-horizontal">
           {history.length === 0 ? (
@@ -450,6 +470,7 @@ const Aviator = () => {
         </div>
       </div>
 
+      {/* ===== ODD DISPLAY ===== */}
       <div className="aviator-odd-display">
         <span className="odd-label">📊 Current Odd</span>
         <span className={`odd-number-user ${gameState.status === 'active' ? 'pulse-odd' : ''}`}>
@@ -463,10 +484,13 @@ const Aviator = () => {
         </span>
       </div>
 
+      {/* ===== MESSAGES ===== */}
       {message && <div className="bet-success">{message}</div>}
       {error && <div className="bet-error">{error}</div>}
 
+      {/* ===== TWO BETS - SIDE BY SIDE ===== */}
       <div className="bets-horizontal">
+        {/* ===== BET 1 ===== */}
         <div className="bet-section">
           <div className="bet-section-header">
             <span className="bet-number">🎯 Bet 1</span>
@@ -539,6 +563,7 @@ const Aviator = () => {
           </div>
         </div>
 
+        {/* ===== BET 2 ===== */}
         <div className="bet-section">
           <div className="bet-section-header">
             <span className="bet-number">🎯 Bet 2</span>
@@ -612,6 +637,7 @@ const Aviator = () => {
         </div>
       </div>
 
+      {/* ===== BOTTOM STATS ===== */}
       <div className="aviator-stats-bottom">
         <div className="stat-small">
           <span>Total Bets</span>
