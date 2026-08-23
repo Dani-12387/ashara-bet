@@ -1,5 +1,5 @@
 /* ============================================
-   AVIATOR - Compact Layout with Larger Button
+   AVIATOR - Button Between Amount and Auto Cash
    ============================================ */
 
 * {
@@ -58,7 +58,7 @@
   font-weight: bold;
 }
 
-/* ===== HISTORY - HORIZONTAL ===== */
+/* ===== HISTORY ===== */
 .aviator-history-horizontal {
   background: rgba(255, 255, 255, 0.03);
   border-radius: 8px;
@@ -243,14 +243,15 @@
   border-radius: 10px;
 }
 
-/* ===== BET CONTROLS - COMPACT ===== */
+/* ===== BET CONTROLS ===== */
 .bet-controls {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   flex: 1;
 }
 
+/* ===== AMOUNT CONTROL ===== */
 .control-group {
   background: rgba(255, 255, 255, 0.03);
   border-radius: 4px;
@@ -342,7 +343,55 @@
   cursor: not-allowed;
 }
 
-/* ===== AUTO CASH OUT - COMPACT ===== */
+/* ===== BET BUTTON - BETWEEN AMOUNT AND AUTO CASH ===== */
+.bet-btn {
+  padding: 12px 8px;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.place-btn {
+  background: linear-gradient(135deg, #ffd700, #f39c12);
+  color: #000;
+}
+
+.place-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+}
+
+.cashout-btn {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: #fff;
+  animation: pulseGreen 1s infinite;
+}
+
+@keyframes pulseGreen {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); box-shadow: 0 0 25px rgba(40, 167, 69, 0.4); }
+}
+
+.cashout-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.5);
+}
+
+.bet-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none !important;
+  animation: none !important;
+}
+
+/* ===== AUTO CASH CONTROL ===== */
 .auto-cashout-control {
   display: flex;
   align-items: center;
@@ -407,55 +456,6 @@
   font-size: 0.6rem;
 }
 
-/* ===== BET ACTION BUTTON - LARGER ===== */
-.bet-btn {
-  padding: 12px 8px;
-  border: none;
-  border-radius: 6px;
-  font-weight: bold;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.3s;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  width: 100%;
-  margin-top: 4px;
-  flex-shrink: 0;
-}
-
-.place-btn {
-  background: linear-gradient(135deg, #ffd700, #f39c12);
-  color: #000;
-}
-
-.place-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
-}
-
-.cashout-btn {
-  background: linear-gradient(135deg, #28a745, #20c997);
-  color: #fff;
-  animation: pulseGreen 1s infinite;
-}
-
-@keyframes pulseGreen {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.02); box-shadow: 0 0 25px rgba(40, 167, 69, 0.4); }
-}
-
-.cashout-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.5);
-}
-
-.bet-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-  transform: none !important;
-  animation: none !important;
-}
-
 /* ===== BOTTOM STATS ===== */
 .aviator-stats-bottom {
   display: grid;
@@ -488,10 +488,9 @@
 }
 
 /* ============================================
-   RESPONSIVE - Mobile View
+   RESPONSIVE
    ============================================ */
 
-/* Tablet */
 @media (max-width: 768px) {
   .aviator-container {
     padding: 5px;
@@ -505,34 +504,8 @@
     padding: 10px 6px;
     font-size: 0.85rem;
   }
-  
-  .aviator-header h1 {
-    font-size: 1rem;
-  }
-  
-  .history-item-horizontal {
-    font-size: 0.55rem;
-    padding: 1px 6px;
-    min-width: 28px;
-  }
-  
-  .bet-input-group input {
-    min-width: 22px;
-    max-width: 40px;
-    font-size: 0.6rem;
-  }
-  
-  .quick-bets button {
-    font-size: 0.45rem;
-    padding: 0 4px;
-  }
-  
-  .auto-cashout-input input {
-    max-width: 35px;
-  }
 }
 
-/* ===== MOBILE - Keep side by side ===== */
 @media (max-width: 600px) {
   .bets-horizontal {
     grid-template-columns: 1fr 1fr;
@@ -547,70 +520,16 @@
     font-size: 0.65rem;
   }
   
-  .control-group {
-    padding: 2px 4px;
-  }
-  
-  .control-group label {
-    font-size: 0.45rem;
-  }
-  
-  .bet-input-group button {
-    width: 16px;
-    height: 16px;
-    font-size: 0.55rem;
-  }
-  
-  .bet-input-group input {
-    min-width: 18px;
-    max-width: 32px;
-    font-size: 0.55rem;
-    padding: 1px 2px;
-  }
-  
-  .quick-bets button {
-    font-size: 0.4rem;
-    padding: 0 3px;
-  }
-  
-  .toggle-btn {
-    font-size: 0.45rem;
-    min-width: 24px;
-    padding: 1px 5px;
-  }
-  
-  .auto-cashout-input input {
-    max-width: 30px;
-    font-size: 0.5rem;
-  }
-  
-  .auto-cashout-input span {
-    font-size: 0.5rem;
-  }
-  
-  /* ✅ LARGER BUTTON ON MOBILE */
   .bet-btn {
     padding: 10px 6px;
     font-size: 0.8rem;
-    margin-top: 3px;
   }
   
   .odd-number-user {
     font-size: 2rem;
   }
-  
-  .bet-active, .bet-waiting {
-    font-size: 0.45rem;
-    padding: 1px 4px;
-  }
-  
-  .aviator-balance {
-    font-size: 0.7rem;
-    padding: 2px 8px;
-  }
 }
 
-/* ===== Very small phones ===== */
 @media (max-width: 400px) {
   .bets-horizontal {
     grid-template-columns: 1fr 1fr;
@@ -629,52 +548,12 @@
     font-size: 1.6rem;
   }
   
-  .bet-input-group button {
-    width: 14px;
-    height: 14px;
-    font-size: 0.45rem;
-  }
-  
-  .bet-input-group input {
-    min-width: 15px;
-    max-width: 25px;
-    font-size: 0.45rem;
-  }
-  
-  .quick-bets button {
-    font-size: 0.35rem;
-    padding: 0 2px;
-  }
-  
-  /* ✅ EVEN LARGER BUTTON ON VERY SMALL */
   .bet-btn {
     padding: 8px 4px;
     font-size: 0.7rem;
-    margin-top: 2px;
-  }
-  
-  .auto-cashout-input input {
-    max-width: 25px;
-    font-size: 0.45rem;
-  }
-  
-  .aviator-header h1 {
-    font-size: 0.75rem;
-  }
-  
-  .aviator-balance {
-    font-size: 0.6rem;
-    padding: 2px 6px;
-  }
-  
-  .history-item-horizontal {
-    font-size: 0.45rem;
-    padding: 1px 4px;
-    min-width: 20px;
   }
 }
 
-/* ===== Landscape phone ===== */
 @media (max-height: 500px) and (orientation: landscape) {
   .aviator-container {
     padding: 3px 5px;
@@ -689,34 +568,12 @@
     padding: 3px 5px;
   }
   
-  .bet-controls {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-  
-  .control-group {
-    flex: 1;
-    min-width: 70px;
-  }
-  
   .bet-btn {
     padding: 6px 4px;
     font-size: 0.65rem;
-    margin-top: 2px;
   }
   
   .odd-number-user {
     font-size: 1.6rem;
-  }
-  
-  .aviator-history-horizontal {
-    min-height: 20px;
-    padding: 2px 8px;
-  }
-  
-  .history-item-horizontal {
-    font-size: 0.45rem;
-    padding: 1px 4px;
-    min-width: 20px;
   }
 }

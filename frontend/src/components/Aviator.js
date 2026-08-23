@@ -67,12 +67,10 @@ const Aviator = () => {
         
         // Check if game crashed while user had active bets
         if (gameState.status === 'active' && newState.status === 'crashed') {
-          // Check bet1
           if (bet1.isActive) {
             setBet1(prev => ({ ...prev, isActive: false }));
             setTotalBets(prev => prev + 1);
           }
-          // Check bet2
           if (bet2.isActive) {
             setBet2(prev => ({ ...prev, isActive: false }));
             setTotalBets(prev => prev + 1);
@@ -80,11 +78,9 @@ const Aviator = () => {
           fetchBalance();
           setError('💥 Game crashed! All bets lost.');
           setTimeout(() => setError(''), 3000);
-          // ✅ Refresh history after crash
           fetchHistory();
         }
         
-        // Check if game just started
         if (gameState.status === 'idle' && newState.status === 'active') {
           setProfit(0);
           setError('');
@@ -142,7 +138,7 @@ const Aviator = () => {
 
     const historyInterval = setInterval(() => {
       fetchHistory();
-    }, 10000); // Refresh history every 10 seconds
+    }, 10000);
 
     return () => {
       clearInterval(interval);
@@ -365,7 +361,7 @@ const Aviator = () => {
         </div>
       </div>
 
-      {/* ===== HISTORY - Horizontal (REAL GAME HISTORY ONLY) ===== */}
+      {/* ===== HISTORY - Horizontal ===== */}
       <div className="aviator-history-horizontal">
         <div className="history-list-horizontal">
           {history.length === 0 ? (
@@ -404,7 +400,7 @@ const Aviator = () => {
         <div className="bet-error">{error}</div>
       )}
 
-      {/* ===== TWO BETS - HORIZONTAL LAYOUT ===== */}
+      {/* ===== TWO BETS - SIDE BY SIDE ===== */}
       <div className="bets-horizontal">
         {/* ===== BET 1 ===== */}
         <div className="bet-section">
@@ -419,6 +415,7 @@ const Aviator = () => {
           </div>
           
           <div className="bet-controls">
+            {/* ===== AMOUNT (Top) ===== */}
             <div className="control-group">
               <label>Amount</label>
               <div className="bet-input-group">
@@ -441,6 +438,16 @@ const Aviator = () => {
               </div>
             </div>
 
+            {/* ===== PLACE BET BUTTON (Middle) ===== */}
+            <button 
+              className={`bet-btn ${button1Config.class}`}
+              onClick={button1Config.onClick}
+              disabled={button1Config.disabled}
+            >
+              {button1Config.text}
+            </button>
+
+            {/* ===== AUTO CASH (Bottom) ===== */}
             <div className="control-group">
               <label>Auto Cash</label>
               <div className="auto-cashout-control">
@@ -469,14 +476,6 @@ const Aviator = () => {
               </div>
             </div>
           </div>
-
-          <button 
-            className={`bet-btn ${button1Config.class}`}
-            onClick={button1Config.onClick}
-            disabled={button1Config.disabled}
-          >
-            {button1Config.text}
-          </button>
         </div>
 
         {/* ===== BET 2 ===== */}
@@ -492,6 +491,7 @@ const Aviator = () => {
           </div>
           
           <div className="bet-controls">
+            {/* ===== AMOUNT (Top) ===== */}
             <div className="control-group">
               <label>Amount</label>
               <div className="bet-input-group">
@@ -514,6 +514,16 @@ const Aviator = () => {
               </div>
             </div>
 
+            {/* ===== PLACE BET BUTTON (Middle) ===== */}
+            <button 
+              className={`bet-btn ${button2Config.class}`}
+              onClick={button2Config.onClick}
+              disabled={button2Config.disabled}
+            >
+              {button2Config.text}
+            </button>
+
+            {/* ===== AUTO CASH (Bottom) ===== */}
             <div className="control-group">
               <label>Auto Cash</label>
               <div className="auto-cashout-control">
@@ -542,14 +552,6 @@ const Aviator = () => {
               </div>
             </div>
           </div>
-
-          <button 
-            className={`bet-btn ${button2Config.class}`}
-            onClick={button2Config.onClick}
-            disabled={button2Config.disabled}
-          >
-            {button2Config.text}
-          </button>
         </div>
       </div>
 
