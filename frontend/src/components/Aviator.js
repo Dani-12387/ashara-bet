@@ -35,6 +35,7 @@ const Aviator = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [lastCrash, setLastCrash] = useState(null);
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -65,8 +66,26 @@ const Aviator = () => {
       if (response.data) {
         const newState = response.data;
         
-        // Check if game crashed while user had active bets
+        // ✅ Check if game just crashed - register new history
         if (gameState.status === 'active' && newState.status === 'crashed') {
+          // Register the crash in history
+          const crashData = {
+            roundNumber: newState.roundNumber || 0,
+            crashPoint: newState.multiplier || 0,
+            crashed: true,
+            timestamp: new Date().toISOString()
+          };
+          
+          // ✅ Add new crash to history (remove oldest if more than 10)
+          setHistory(prev => {
+            const newHistory = [crashData, ...prev];
+            // Keep only last 10
+            return newHistory.slice(0, 10);
+          });
+          
+          setLastCrash(crashData);
+          
+          // Check bets
           if (bet1.isActive) {
             setBet1(prev => ({ ...prev, isActive: false }));
             setTotalBets(prev => prev + 1);
@@ -75,12 +94,13 @@ const Aviator = () => {
             setBet2(prev => ({ ...prev, isActive: false }));
             setTotalBets(prev => prev + 1);
           }
+          
           fetchBalance();
-          setError('💥 Game crashed! All bets lost.');
+          setError(`💥 Game crashed at ${newState.multiplier.toFixed(2)}x!`);
           setTimeout(() => setError(''), 3000);
-          fetchHistory();
         }
         
+        // Check if game just started
         if (gameState.status === 'idle' && newState.status === 'active') {
           setProfit(0);
           setError('');
@@ -116,12 +136,16 @@ const Aviator = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.data && response.data.length > 0) {
-        setHistory(response.data);
+        // ✅ Only use real data from API, limit to 10
+        const realHistory = response.data.slice(0, 10);
+        setHistory(realHistory);
       } else {
+        // ✅ NO hardcoded data - show empty
         setHistory([]);
       }
     } catch (error) {
       console.error('Error fetching history:', error);
+      // ✅ On error, show empty - NO hardcoded data
       setHistory([]);
     }
   };
@@ -136,6 +160,7 @@ const Aviator = () => {
       fetchGameState();
     }, 200);
 
+    // Refresh history every 10 seconds
     const historyInterval = setInterval(() => {
       fetchHistory();
     }, 10000);
@@ -361,14 +386,18 @@ const Aviator = () => {
         </div>
       </div>
 
-      {/* ===== HISTORY - Horizontal ===== */}
+      {/* ===== HISTORY - Horizontal (REAL DATA ONLY, 10 ROWS) ===== */}
       <div className="aviator-history-horizontal">
         <div className="history-list-horizontal">
           {history.length === 0 ? (
             <span className="no-history">⏳ No game history yet</span>
           ) : (
-            history.slice(0, 20).map((item, index) => (
-              <div key={index} className={`history-item-horizontal ${item.crashed ? 'crashed' : 'cashed'}`}>
+            history.slice(0, 10).map((item, index) => (
+              <div 
+                key={index} 
+                className={`history-item-horizontal ${item.crashed ? 'crashed' : 'cashed'}`}
+                title={`Round #${item.roundNumber || index + 1}`}
+              >
                 <span className="history-multiplier-horizontal">
                   {item.crashPoint?.toFixed(2) || 'N/A'}x
                 </span>
@@ -415,7 +444,7 @@ const Aviator = () => {
           </div>
           
           <div className="bet-controls">
-            {/* ===== AMOUNT (Top) ===== */}
+            {/* ===== AMOUNT ===== */}
             <div className="control-group">
               <label>Amount</label>
               <div className="bet-input-group">
@@ -438,7 +467,7 @@ const Aviator = () => {
               </div>
             </div>
 
-            {/* ===== PLACE BET BUTTON (Middle) ===== */}
+            {/* ===== PLACE BET BUTTON ===== */}
             <button 
               className={`bet-btn ${button1Config.class}`}
               onClick={button1Config.onClick}
@@ -447,7 +476,7 @@ const Aviator = () => {
               {button1Config.text}
             </button>
 
-            {/* ===== AUTO CASH (Bottom) ===== */}
+            {/* ===== AUTO CASH ===== */}
             <div className="control-group">
               <label>Auto Cash</label>
               <div className="auto-cashout-control">
@@ -491,7 +520,7 @@ const Aviator = () => {
           </div>
           
           <div className="bet-controls">
-            {/* ===== AMOUNT (Top) ===== */}
+            {/* ===== AMOUNT ===== */}
             <div className="control-group">
               <label>Amount</label>
               <div className="bet-input-group">
@@ -514,7 +543,7 @@ const Aviator = () => {
               </div>
             </div>
 
-            {/* ===== PLACE BET BUTTON (Middle) ===== */}
+            {/* ===== PLACE BET BUTTON ===== */}
             <button 
               className={`bet-btn ${button2Config.class}`}
               onClick={button2Config.onClick}
@@ -523,7 +552,7 @@ const Aviator = () => {
               {button2Config.text}
             </button>
 
-            {/* ===== AUTO CASH (Bottom) ===== */}
+            {/* ===== AUTO CASH ===== */}
             <div className="control-group">
               <label>Auto Cash</label>
               <div className="auto-cashout-control">

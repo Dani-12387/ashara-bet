@@ -577,3 +577,81 @@
     font-size: 1.6rem;
   }
 }
+
+/* ===== HISTORY - Horizontal (REAL DATA, 10 ROWS) ===== */
+.aviator-history-horizontal {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  padding: 4px 10px;
+  margin-bottom: 6px;
+  flex-shrink: 0;
+  overflow-x: auto;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  min-height: 34px;
+}
+
+.history-list-horizontal {
+  display: flex;
+  gap: 6px;
+  padding: 2px 0;
+  min-height: 28px;
+  align-items: center;
+}
+
+.history-item-horizontal {
+  padding: 2px 10px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+}
+
+.history-item-horizontal.crashed {
+  border-left: 2px solid #dc3545;
+  background: rgba(220, 53, 69, 0.15);
+}
+
+.history-item-horizontal.cashed {
+  border-left: 2px solid #28a745;
+  background: rgba(40, 167, 69, 0.15);
+}
+
+.history-multiplier-horizontal {
+  font-weight: bold;
+  color: #ffd700;
+  font-size: 0.7rem;
+}
+
+.history-item-horizontal.crashed .history-multiplier-horizontal {
+  color: #dc3545;
+}
+
+.no-history {
+  color: #666;
+  font-size: 0.7rem;
+  padding: 2px 0;
+  width: 100%;
+  text-align: center;
+}
+
+/* ===== RESPONSIVE HISTORY ===== */
+@media (max-width: 600px) {
+  .history-item-horizontal {
+    font-size: 0.55rem;
+    padding: 1px 6px;
+    min-width: 28px;
+  }
+}
+
+@media (max-width: 400px) {
+  .history-item-horizontal {
+    font-size: 0.45rem;
+    padding: 1px 4px;
+    min-width: 20px;
+  }
+}
