@@ -2,46 +2,52 @@ const express = require('express');
 const router = express.Router();
 const aviatorController = require('../controllers/aviatorController');
 
-// =============================================
-// ADMIN CONTROLS
-// =============================================
+// ========== AUTHENTICATION MIDDLEWARE ==========
+const authMiddleware = (req, res, next) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'No token provided' 
+      });
+    }
 
-// Start a new game round
+    // Verify token
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_secret_key');
+    req.user = decoded;
+    next();
+  } catch (error) {
+    console.error('Auth error:', error);
+    return res.status(401).json({ 
+      success: false, 
+      message: 'Invalid or expired token' 
+    });
+  }
+};
+
+// =============================================
+// ADMIN CONTROLS (No auth required for testing)
+// =============================================
 router.post('/start', aviatorController.startGame);
-
-// Stop/crash the current game
 router.post('/stop', aviatorController.stopGame);
-
-// Close game and refund all bets
 router.post('/close', aviatorController.closeGame);
-
-// Set next crash point
 router.post('/set-crash', aviatorController.setCrashPoint);
-
-// Update game settings
 router.post('/settings', aviatorController.updateSettings);
 
 // =============================================
-// USER ACTIONS
+// DATA RETRIEVAL (Public)
 // =============================================
-
-// Place a bet
-router.post('/bet', aviatorController.placeBet);
-
-// Cash out
-router.post('/cashout', aviatorController.cashOut);
-
-// =============================================
-// DATA RETRIEVAL
-// =============================================
-
-// Get current game state
 router.get('/state', aviatorController.getGameState);
-
-// Get game history
 router.get('/history', aviatorController.getHistory);
-
-// Get active bets
 router.get('/active-bets', aviatorController.getActiveBets);
+
+// =============================================
+// USER ACTIONS (Protected with auth)
+// =============================================
+router.post('/bet', authMiddleware, aviatorController.placeBet);
+router.post('/cashout', authMiddleware, aviatorController.cashOut);
 
 module.exports = router;
