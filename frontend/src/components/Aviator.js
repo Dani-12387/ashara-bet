@@ -245,8 +245,9 @@ const Aviator = () => {
     const bet = betNumber === 1 ? bet1 : bet2;
     const setBet = betNumber === 1 ? setBet1 : setBet2;
     
-    if (gameState.status === 'crashed' || gameState.status === 'closed') {
-      setError('⏳ Game is not available!');
+    // ✅ Only allow betting when game is idle (for next round)
+    if (gameState.status !== 'idle') {
+      setError('⏳ Please wait for the next round!');
       setTimeout(() => setError(''), 2000);
       return;
     }
@@ -288,21 +289,16 @@ const Aviator = () => {
       console.log('📥 Bet response:', response.data);
       
       if (response.data.success) {
-        // ✅ Safe balance update - use 0 if null
+        // ✅ Update balance from response
         const newBalance = response.data.newBalance !== null && response.data.newBalance !== undefined 
           ? response.data.newBalance 
           : balance - betAmount;
         
         setBalance(newBalance);
         
-        if (response.data.status === 'active') {
-          setBet(prev => ({ ...prev, isActive: true, isPending: false }));
-          setMessage(`✅ Bet ${betNumber} placed! Active now!`);
-        } else {
-          setBet(prev => ({ ...prev, isActive: false, isPending: true }));
-          setMessage(`✅ Bet ${betNumber} placed! Waiting for next round...`);
-        }
-        
+        // ✅ Set bet as PENDING (for next round)
+        setBet(prev => ({ ...prev, isActive: false, isPending: true }));
+        setMessage(`✅ Bet ${betNumber} placed! Waiting for next round...`);
         setTotalBets(prev => prev + 1);
         setTimeout(() => setMessage(''), 3000);
         fetchBalance();
@@ -352,6 +348,7 @@ const Aviator = () => {
         const winAmount = response.data.winAmount || 0;
         const profitAmount = winAmount - bet.amount;
         
+        // ✅ ADD WINNINGS TO BALANCE
         setBalance(prev => prev + winAmount);
         setProfit(profitAmount);
         setTotalWins(prev => prev + 1);
@@ -426,7 +423,8 @@ const Aviator = () => {
         onClick: () => handleCashOut(betNumber)
       };
     } else {
-      const canPlaceBet = gameState.status === 'idle' || gameState.status === 'waiting' || gameState.status === 'active';
+      // ✅ Only allow placing bet when game is idle
+      const canPlaceBet = gameState.status === 'idle';
       return {
         text: `📈 Bet ${betNumber}`,
         class: 'place-btn',
@@ -449,7 +447,7 @@ const Aviator = () => {
         </div>
       </div>
 
-      {/* ===== HISTORY - Horizontal (7 ROWS) ===== */}
+      {/* ===== HISTORY ===== */}
       <div className="aviator-history-horizontal">
         <div className="history-list-horizontal">
           {history.length === 0 ? (
@@ -488,7 +486,7 @@ const Aviator = () => {
       {message && <div className="bet-success">{message}</div>}
       {error && <div className="bet-error">{error}</div>}
 
-      {/* ===== TWO BETS - SIDE BY SIDE ===== */}
+      {/* ===== TWO BETS ===== */}
       <div className="bets-horizontal">
         {/* ===== BET 1 ===== */}
         <div className="bet-section">

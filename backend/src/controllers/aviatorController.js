@@ -180,7 +180,7 @@ async function crashGame() {
 
   gameState.status = 'crashed';
   
-  // Process all active bets as lost
+  // Process all active bets as lost (they lose their bet)
   for (const bet of activeBets) {
     if (bet.status === 'active') {
       bet.status = 'lost';
@@ -426,13 +426,14 @@ exports.cancelPendingBet = async (req, res) => {
     }
 
     const bet = pendingBets[betIndex];
+    const betAmount = bet.amount;
     
-    // ✅ Refund the bet amount
+    // ✅ REFUND THE BET AMOUNT
     const user = await User.findById(userId);
     if (user) {
-      user.balance += bet.amount;
+      user.balance += betAmount;
       await user.save();
-      console.log(`💰 Refunded pending bet ${bet.amount} to user ${user.username}`);
+      console.log(`💰 Refunded pending bet ${betAmount} to user ${user.username}`);
     }
     
     // Remove bet from pending
@@ -443,7 +444,8 @@ exports.cancelPendingBet = async (req, res) => {
     res.json({ 
       success: true, 
       message: 'Bet cancelled and refunded!',
-      newBalance: updatedUser ? updatedUser.balance : 0
+      newBalance: updatedUser ? updatedUser.balance : 0,
+      refundAmount: betAmount
     });
   } catch (error) {
     console.error('❌ Error cancelling pending bet:', error);
@@ -474,7 +476,7 @@ exports.placeBet = async (req, res) => {
       });
     }
 
-    // Allow betting when game is idle or active
+    // ✅ Allow betting when game is idle or active
     if (gameState.status !== 'idle' && gameState.status !== 'waiting' && gameState.status !== 'active') {
       return res.status(400).json({ 
         success: false, 
@@ -515,42 +517,45 @@ exports.placeBet = async (req, res) => {
     console.log(`💰 User balance after bet: ${user.balance}`);
 
     // ✅ If game is active, add to active bets immediately
-    // ✅ If game is idle, add to pending bets
+    // ✅ If game is idle, add to pending bets (for next round)
     const isActive = gameState.status === 'active';
     
+    // ✅ If game is active, user cannot bet (they bet for next round)
+    // ✅ Only allow betting in idle state for pending bets
+    if (isActive) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Game is currently active! Please wait for the next round to place a bet.' 
+      });
+    }
+    
+    // ✅ Only pending bets allowed (game is idle)
     const bet = {
       userId: userId,
       amount: amount,
       autoCashOut: autoCashOut || 0,
-      gameRound: gameState.roundNumber + (isActive ? 0 : 1),
-      status: isActive ? 'active' : 'pending',
+      gameRound: gameState.roundNumber + 1, // Next round
+      status: 'pending',
       placedAt: new Date().toISOString()
     };
     
-    if (isActive) {
-      activeBets.push(bet);
-      gameState.totalBets += 1;
-      gameState.totalAmount += amount;
-      console.log(`✅ Active bet placed: ${amount} by user ${user.username || userId}`);
-    } else {
-      pendingBets.push(bet);
-      console.log(`⏳ Pending bet placed: ${amount} by user ${user.username || userId}`);
-      console.log(`📊 Total pending bets: ${pendingBets.length}`);
-    }
+    pendingBets.push(bet);
+    console.log(`⏳ Pending bet placed: ${amount} by user ${user.username || userId}`);
+    console.log(`📊 Total pending bets: ${pendingBets.length}`);
 
     // ✅ Get updated user balance
     const updatedUser = await User.findById(userId);
     
     res.json({ 
       success: true, 
-      message: isActive ? 'Bet placed successfully!' : 'Bet placed! Waiting for next round...',
-      status: isActive ? 'active' : 'pending',
-      newBalance: updatedUser ? updatedUser.balance : 0, // ✅ Fixed: Always returns a number
+      message: 'Bet placed! Waiting for next round...',
+      status: 'pending',
+      newBalance: updatedUser ? updatedUser.balance : 0,
       bet: {
         amount: amount,
         autoCashOut: autoCashOut || 0,
-        gameRound: gameState.roundNumber + (isActive ? 0 : 1),
-        status: isActive ? 'active' : 'pending'
+        gameRound: gameState.roundNumber + 1,
+        status: 'pending'
       }
     });
   } catch (error) {
@@ -604,6 +609,7 @@ exports.cashOut = async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
+    // ✅ ADD WINNINGS TO BALANCE
     user.balance += winAmount;
     await user.save();
 
@@ -612,6 +618,9 @@ exports.cashOut = async (req, res) => {
     bet.status = 'cashed';
     bet.winAmount = winAmount;
     bet.cashedAt = currentMultiplier;
+
+    // Remove bet from active bets (it's done)
+    activeBets.splice(betIndex, 1);
 
     res.json({ 
       success: true, 
