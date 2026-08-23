@@ -16,6 +16,7 @@ const Aviator = () => {
     autoCashOut: 1.50,
     autoCashOutEnabled: false,
     isActive: false,
+    isPending: false, // ✅ NEW: Track pending bets
     placedAt: 0
   });
 
@@ -24,6 +25,7 @@ const Aviator = () => {
     autoCashOut: 1.50,
     autoCashOutEnabled: false,
     isActive: false,
+    isPending: false, // ✅ NEW: Track pending bets
     placedAt: 0
   });
 
@@ -66,7 +68,34 @@ const Aviator = () => {
       if (response.data) {
         const newState = response.data;
         
-        // Check if game just crashed - register new history
+        // ✅ Check if game just started - activate pending bets
+        if (gameState.status === 'idle' && newState.status === 'active') {
+          // Activate pending bets
+          if (bet1.isPending) {
+            setBet1(prev => ({ 
+              ...prev, 
+              isPending: false, 
+              isActive: true,
+              placedAt: Date.now()
+            }));
+            setMessage('✅ Bet 1 is now active!');
+            setTimeout(() => setMessage(''), 2000);
+          }
+          if (bet2.isPending) {
+            setBet2(prev => ({ 
+              ...prev, 
+              isPending: false, 
+              isActive: true,
+              placedAt: Date.now()
+            }));
+            setMessage('✅ Bet 2 is now active!');
+            setTimeout(() => setMessage(''), 2000);
+          }
+          setProfit(0);
+          setError('');
+        }
+        
+        // Check if game just crashed
         if (gameState.status === 'active' && newState.status === 'crashed') {
           const crashData = {
             roundNumber: newState.roundNumber || 0,
@@ -82,12 +111,13 @@ const Aviator = () => {
           
           setLastCrash(crashData);
           
+          // ✅ Check if active bets lost on crash
           if (bet1.isActive) {
-            setBet1(prev => ({ ...prev, isActive: false }));
+            setBet1(prev => ({ ...prev, isActive: false, isPending: false }));
             setTotalBets(prev => prev + 1);
           }
           if (bet2.isActive) {
-            setBet2(prev => ({ ...prev, isActive: false }));
+            setBet2(prev => ({ ...prev, isActive: false, isPending: false }));
             setTotalBets(prev => prev + 1);
           }
           
@@ -96,13 +126,7 @@ const Aviator = () => {
           setTimeout(() => setError(''), 3000);
         }
         
-        if (gameState.status === 'idle' && newState.status === 'active') {
-          setProfit(0);
-          setError('');
-          setMessage('');
-        }
-        
-        // Auto Cash Out - Bet 1
+        // Auto Cash Out - Bet 1 (only if active, not pending)
         if (newState.status === 'active' && bet1.isActive && bet1.autoCashOutEnabled) {
           if (newState.multiplier >= bet1.autoCashOut) {
             handleAutoCashOut(1, newState.multiplier);
@@ -183,7 +207,7 @@ const Aviator = () => {
         setBalance(prev => prev + winAmount);
         setProfit(profitAmount);
         setTotalWins(prev => prev + 1);
-        setBet(prev => ({ ...prev, isActive: false }));
+        setBet(prev => ({ ...prev, isActive: false, isPending: false }));
         
         setMessage(`🤖 Bet ${betNumber} Auto Cashed at ${multiplier.toFixed(2)}x! +ETB ${profitAmount.toFixed(2)}`);
         setTimeout(() => setMessage(''), 4000);
@@ -205,8 +229,16 @@ const Aviator = () => {
     const bet = betNumber === 1 ? bet1 : bet2;
     const setBet = betNumber === 1 ? setBet1 : setBet2;
     
-    if (gameState.status !== 'idle' && gameState.status !== 'waiting') {
-      setError('⏳ Wait for the next round!');
+    // ✅ Allow betting in idle or waiting state (pending bet)
+    if (gameState.status !== 'idle' && gameState.status !== 'waiting' && gameState.status !== 'active') {
+      setError('⏳ Wait for the game to start!');
+      setTimeout(() => setError(''), 2000);
+      return;
+    }
+
+    // ✅ If game is active, check if user can place bet
+    if (gameState.status === 'active') {
+      setError('⏳ Game is already active! Wait for the next round.');
       setTimeout(() => setError(''), 2000);
       return;
     }
@@ -248,15 +280,20 @@ const Aviator = () => {
       console.log('📥 Bet response:', response.data);
       
       if (response.data.success) {
+        // ✅ Deduct balance immediately
         setBalance(prev => prev - betAmount);
+        
+        // ✅ Set bet as PENDING (waiting for game to start)
         setBet(prev => ({
           ...prev,
-          isActive: true,
+          isActive: false,
+          isPending: true,
           placedAt: Date.now()
         }));
+        
         setTotalBets(prev => prev + 1);
-        setMessage(`✅ Bet ${betNumber} placed!`);
-        setTimeout(() => setMessage(''), 1500);
+        setMessage(`✅ Bet ${betNumber} placed! Waiting for game to start...`);
+        setTimeout(() => setMessage(''), 3000);
         fetchBalance();
       } else {
         setError('❌ ' + response.data.message);
@@ -310,7 +347,7 @@ const Aviator = () => {
         setBalance(prev => prev + winAmount);
         setProfit(profitAmount);
         setTotalWins(prev => prev + 1);
-        setBet(prev => ({ ...prev, isActive: false }));
+        setBet(prev => ({ ...prev, isActive: false, isPending: false }));
         
         setMessage(`🎉 Bet ${betNumber} Cashed at ${gameState.multiplier.toFixed(2)}x! +ETB ${profitAmount.toFixed(2)}`);
         setTimeout(() => setMessage(''), 3000);
@@ -333,7 +370,7 @@ const Aviator = () => {
   const quickBet = (betNumber, amount) => {
     const setBet = betNumber === 1 ? setBet1 : setBet2;
     const bet = betNumber === 1 ? bet1 : bet2;
-    if (!bet.isActive) {
+    if (!bet.isActive && !bet.isPending) {
       setBet(prev => ({ ...prev, amount: amount }));
     }
   };
@@ -342,7 +379,7 @@ const Aviator = () => {
   const toggleAutoCashOut = (betNumber) => {
     const setBet = betNumber === 1 ? setBet1 : setBet2;
     const bet = betNumber === 1 ? bet1 : bet2;
-    if (!bet.isActive) {
+    if (!bet.isActive && !bet.isPending) {
       setBet(prev => ({ 
         ...prev, 
         autoCashOutEnabled: !prev.autoCashOutEnabled 
@@ -359,6 +396,16 @@ const Aviator = () => {
   const getButtonConfig = (betNumber) => {
     const bet = betNumber === 1 ? bet1 : bet2;
     
+    // ✅ Check if bet is pending
+    if (bet.isPending) {
+      return {
+        text: `⏳ Pending...`,
+        class: 'pending-btn',
+        disabled: true,
+        onClick: null
+      };
+    }
+    
     const isDisabled = loading || gameState.status === 'crashed' || balance <= 0;
     const isCashoutDisabled = loading || !bet.isActive || gameState.status !== 'active';
     
@@ -371,10 +418,12 @@ const Aviator = () => {
         onClick: () => handleCashOut(betNumber)
       };
     } else {
+      // ✅ Only allow placing bet if game is idle or waiting
+      const canPlaceBet = gameState.status === 'idle' || gameState.status === 'waiting';
       return {
         text: `📈 Bet ${betNumber}`,
         class: 'place-btn',
-        disabled: isDisabled || bet.isActive,
+        disabled: isDisabled || bet.isActive || bet.isPending || !canPlaceBet,
         onClick: () => placeBet(betNumber)
       };
     }
@@ -445,7 +494,10 @@ const Aviator = () => {
             {bet1.isActive && gameState.status === 'active' && (
               <span className="bet-active">🟢 Active</span>
             )}
-            {bet1.isActive && gameState.status !== 'active' && (
+            {bet1.isPending && (
+              <span className="bet-pending">⏳ Pending</span>
+            )}
+            {bet1.isActive && gameState.status !== 'active' && gameState.status !== 'crashed' && (
               <span className="bet-waiting">⏳ Waiting</span>
             )}
           </div>
@@ -454,22 +506,22 @@ const Aviator = () => {
             <div className="control-group">
               <label>Amount</label>
               <div className="bet-input-group">
-                <button onClick={() => setBet1(prev => ({ ...prev, amount: Math.max(1, prev.amount - 5) }))} disabled={bet1.isActive}>−</button>
+                <button onClick={() => setBet1(prev => ({ ...prev, amount: Math.max(1, prev.amount - 5) }))} disabled={bet1.isActive || bet1.isPending}>−</button>
                 <input 
                   type="number" 
                   value={bet1.amount}
                   onChange={(e) => setBet1(prev => ({ ...prev, amount: Math.max(1, parseFloat(e.target.value) || 1) }))}
                   min="1"
                   step="1"
-                  disabled={bet1.isActive}
+                  disabled={bet1.isActive || bet1.isPending}
                 />
-                <button onClick={() => setBet1(prev => ({ ...prev, amount: prev.amount + 5 }))} disabled={bet1.isActive}>+</button>
+                <button onClick={() => setBet1(prev => ({ ...prev, amount: prev.amount + 5 }))} disabled={bet1.isActive || bet1.isPending}>+</button>
               </div>
               <div className="quick-bets">
-                <button onClick={() => quickBet(1, 10)} disabled={bet1.isActive}>10</button>
-                <button onClick={() => quickBet(1, 25)} disabled={bet1.isActive}>25</button>
-                <button onClick={() => quickBet(1, 50)} disabled={bet1.isActive}>50</button>
-                <button onClick={() => quickBet(1, 100)} disabled={bet1.isActive}>100</button>
+                <button onClick={() => quickBet(1, 10)} disabled={bet1.isActive || bet1.isPending}>10</button>
+                <button onClick={() => quickBet(1, 25)} disabled={bet1.isActive || bet1.isPending}>25</button>
+                <button onClick={() => quickBet(1, 50)} disabled={bet1.isActive || bet1.isPending}>50</button>
+                <button onClick={() => quickBet(1, 100)} disabled={bet1.isActive || bet1.isPending}>100</button>
               </div>
             </div>
 
@@ -488,7 +540,7 @@ const Aviator = () => {
                   <button 
                     className={`toggle-btn ${bet1.autoCashOutEnabled ? 'active' : ''}`}
                     onClick={() => toggleAutoCashOut(1)}
-                    disabled={bet1.isActive}
+                    disabled={bet1.isActive || bet1.isPending}
                   >
                     {bet1.autoCashOutEnabled ? 'ON' : 'OFF'}
                   </button>
@@ -501,7 +553,7 @@ const Aviator = () => {
                       onChange={(e) => setBet1(prev => ({ ...prev, autoCashOut: parseFloat(e.target.value) || 1.01 }))}
                       min="1.01"
                       step="0.1"
-                      disabled={bet1.isActive}
+                      disabled={bet1.isActive || bet1.isPending}
                     />
                     <span>x</span>
                   </div>
@@ -518,7 +570,10 @@ const Aviator = () => {
             {bet2.isActive && gameState.status === 'active' && (
               <span className="bet-active">🟢 Active</span>
             )}
-            {bet2.isActive && gameState.status !== 'active' && (
+            {bet2.isPending && (
+              <span className="bet-pending">⏳ Pending</span>
+            )}
+            {bet2.isActive && gameState.status !== 'active' && gameState.status !== 'crashed' && (
               <span className="bet-waiting">⏳ Waiting</span>
             )}
           </div>
@@ -527,22 +582,22 @@ const Aviator = () => {
             <div className="control-group">
               <label>Amount</label>
               <div className="bet-input-group">
-                <button onClick={() => setBet2(prev => ({ ...prev, amount: Math.max(1, prev.amount - 5) }))} disabled={bet2.isActive}>−</button>
+                <button onClick={() => setBet2(prev => ({ ...prev, amount: Math.max(1, prev.amount - 5) }))} disabled={bet2.isActive || bet2.isPending}>−</button>
                 <input 
                   type="number" 
                   value={bet2.amount}
                   onChange={(e) => setBet2(prev => ({ ...prev, amount: Math.max(1, parseFloat(e.target.value) || 1) }))}
                   min="1"
                   step="1"
-                  disabled={bet2.isActive}
+                  disabled={bet2.isActive || bet2.isPending}
                 />
-                <button onClick={() => setBet2(prev => ({ ...prev, amount: prev.amount + 5 }))} disabled={bet2.isActive}>+</button>
+                <button onClick={() => setBet2(prev => ({ ...prev, amount: prev.amount + 5 }))} disabled={bet2.isActive || bet2.isPending}>+</button>
               </div>
               <div className="quick-bets">
-                <button onClick={() => quickBet(2, 10)} disabled={bet2.isActive}>10</button>
-                <button onClick={() => quickBet(2, 25)} disabled={bet2.isActive}>25</button>
-                <button onClick={() => quickBet(2, 50)} disabled={bet2.isActive}>50</button>
-                <button onClick={() => quickBet(2, 100)} disabled={bet2.isActive}>100</button>
+                <button onClick={() => quickBet(2, 10)} disabled={bet2.isActive || bet2.isPending}>10</button>
+                <button onClick={() => quickBet(2, 25)} disabled={bet2.isActive || bet2.isPending}>25</button>
+                <button onClick={() => quickBet(2, 50)} disabled={bet2.isActive || bet2.isPending}>50</button>
+                <button onClick={() => quickBet(2, 100)} disabled={bet2.isActive || bet2.isPending}>100</button>
               </div>
             </div>
 
@@ -561,7 +616,7 @@ const Aviator = () => {
                   <button 
                     className={`toggle-btn ${bet2.autoCashOutEnabled ? 'active' : ''}`}
                     onClick={() => toggleAutoCashOut(2)}
-                    disabled={bet2.isActive}
+                    disabled={bet2.isActive || bet2.isPending}
                   >
                     {bet2.autoCashOutEnabled ? 'ON' : 'OFF'}
                   </button>
@@ -574,7 +629,7 @@ const Aviator = () => {
                       onChange={(e) => setBet2(prev => ({ ...prev, autoCashOut: parseFloat(e.target.value) || 1.01 }))}
                       min="1.01"
                       step="0.1"
-                      disabled={bet2.isActive}
+                      disabled={bet2.isActive || bet2.isPending}
                     />
                     <span>x</span>
                   </div>

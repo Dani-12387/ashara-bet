@@ -655,3 +655,26 @@
     min-width: 20px;
   }
 }
+
+
+/* ===== PENDING STATE ===== */
+.bet-pending {
+  font-size: 0.55rem;
+  color: #ffc107;
+  background: rgba(255, 193, 7, 0.15);
+  padding: 1px 6px;
+  border-radius: 10px;
+  animation: pulsePending 1s infinite;
+}
+
+@keyframes pulsePending {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.pending-btn {
+  background: linear-gradient(135deg, #ffc107, #f39c12);
+  color: #000;
+  opacity: 0.6;
+  cursor: not-allowed;
+}
