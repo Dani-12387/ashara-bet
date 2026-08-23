@@ -1,5 +1,5 @@
 /* ============================================
-   AVIATOR - Side History Layout
+   AVIATOR - Button Between Amount and Auto Cash
    ============================================ */
 
 * {
@@ -58,93 +58,64 @@
   font-weight: bold;
 }
 
-/* ===== MAIN CONTENT - Side by Side ===== */
-.main-content {
-  display: grid;
-  grid-template-columns: 1fr 120px;
-  gap: 8px;
-  flex: 1;
-  min-height: 0;
-}
-
-/* ===== LEFT - Game Area ===== */
-.game-area {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-/* ===== RIGHT - History Sidebar ===== */
-.history-sidebar {
+/* ===== HISTORY ===== */
+.aviator-history-horizontal {
   background: rgba(255, 255, 255, 0.03);
   border-radius: 8px;
-  padding: 6px 8px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.history-title {
-  font-size: 0.6rem;
-  color: #888;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  text-align: center;
-  padding-bottom: 4px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 4px 10px;
+  margin-bottom: 6px;
   flex-shrink: 0;
+  overflow-x: auto;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  min-height: 32px;
 }
 
-.history-list-vertical {
+.history-list-horizontal {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 4px 0;
-  overflow-y: auto;
-  flex: 1;
-}
-
-.history-item-vertical {
-  display: flex;
-  justify-content: space-between;
+  gap: 6px;
+  padding: 2px 0;
+  min-height: 26px;
   align-items: center;
-  padding: 2px 6px;
+}
+
+.history-item-horizontal {
+  padding: 2px 10px;
   border-radius: 4px;
   font-size: 0.65rem;
-  background: rgba(255, 255, 255, 0.03);
-  border-left: 2px solid;
+  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  white-space: nowrap;
 }
 
-.history-item-vertical.crashed {
-  border-left-color: #dc3545;
-  background: rgba(220, 53, 69, 0.1);
+.history-item-horizontal.crashed {
+  border-left: 2px solid #dc3545;
+  background: rgba(220, 53, 69, 0.15);
 }
 
-.history-item-vertical.cashed {
-  border-left-color: #28a745;
-  background: rgba(40, 167, 69, 0.1);
+.history-item-horizontal.cashed {
+  border-left: 2px solid #28a745;
+  background: rgba(40, 167, 69, 0.15);
 }
 
-.history-number {
-  color: #666;
-  font-size: 0.55rem;
-}
-
-.history-multiplier-vertical {
+.history-multiplier-horizontal {
   font-weight: bold;
   color: #ffd700;
+  font-size: 0.7rem;
 }
 
-.history-item-vertical.crashed .history-multiplier-vertical {
+.history-item-horizontal.crashed .history-multiplier-horizontal {
   color: #dc3545;
 }
 
-.no-history-vertical {
+.no-history {
   color: #666;
-  font-size: 0.65rem;
+  font-size: 0.7rem;
+  padding: 2px 0;
+  width: 100%;
   text-align: center;
-  padding: 10px 0;
 }
 
 /* ===== ODD DISPLAY ===== */
@@ -223,7 +194,7 @@
   margin-bottom: 4px;
 }
 
-/* ===== TWO BETS ===== */
+/* ===== TWO BETS - SIDE BY SIDE ===== */
 .bets-horizontal {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -280,6 +251,7 @@
   flex: 1;
 }
 
+/* ===== AMOUNT CONTROL ===== */
 .control-group {
   background: rgba(255, 255, 255, 0.03);
   border-radius: 4px;
@@ -371,13 +343,13 @@
   cursor: not-allowed;
 }
 
-/* ===== BET BUTTON ===== */
+/* ===== BET BUTTON - BETWEEN AMOUNT AND AUTO CASH ===== */
 .bet-btn {
-  padding: 10px 8px;
+  padding: 12px 8px;
   border: none;
   border-radius: 6px;
   font-weight: bold;
-  font-size: 0.85rem;
+  font-size: 1rem;
   cursor: pointer;
   transition: all 0.3s;
   text-transform: uppercase;
@@ -419,7 +391,7 @@
   animation: none !important;
 }
 
-/* ===== AUTO CASH ===== */
+/* ===== AUTO CASH CONTROL ===== */
 .auto-cashout-control {
   display: flex;
   align-items: center;
@@ -520,75 +492,166 @@
    ============================================ */
 
 @media (max-width: 768px) {
-  .main-content {
-    grid-template-columns: 1fr 90px;
-    gap: 6px;
-  }
-  
-  .history-sidebar {
-    padding: 4px 5px;
-  }
-  
-  .history-title {
-    font-size: 0.5rem;
-  }
-  
-  .history-item-vertical {
-    font-size: 0.55rem;
-    padding: 1px 4px;
+  .aviator-container {
+    padding: 5px;
   }
   
   .odd-number-user {
     font-size: 2.5rem;
   }
+  
+  .bet-btn {
+    padding: 10px 6px;
+    font-size: 0.85rem;
+  }
 }
 
 @media (max-width: 600px) {
-  .main-content {
-    grid-template-columns: 1fr 80px;
-    gap: 4px;
-  }
-  
   .bets-horizontal {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
     gap: 4px;
   }
   
-  .history-sidebar {
-    padding: 3px 4px;
+  .bet-section {
+    padding: 4px 5px;
   }
   
-  .history-item-vertical {
-    font-size: 0.5rem;
-    padding: 1px 3px;
+  .bet-number {
+    font-size: 0.65rem;
   }
   
-  .history-number {
-    font-size: 0.45rem;
+  .bet-btn {
+    padding: 10px 6px;
+    font-size: 0.8rem;
   }
   
   .odd-number-user {
     font-size: 2rem;
   }
-  
-  .bet-btn {
-    padding: 8px 6px;
-    font-size: 0.75rem;
-  }
 }
 
 @media (max-width: 400px) {
-  .main-content {
-    grid-template-columns: 1fr 65px;
+  .bets-horizontal {
+    grid-template-columns: 1fr 1fr;
     gap: 3px;
   }
   
-  .history-item-vertical {
-    font-size: 0.45rem;
-    padding: 1px 2px;
+  .bet-section {
+    padding: 3px 3px;
+  }
+  
+  .bet-number {
+    font-size: 0.55rem;
   }
   
   .odd-number-user {
     font-size: 1.6rem;
+  }
+  
+  .bet-btn {
+    padding: 8px 4px;
+    font-size: 0.7rem;
+  }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .aviator-container {
+    padding: 3px 5px;
+  }
+  
+  .bets-horizontal {
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
+  
+  .bet-section {
+    padding: 3px 5px;
+  }
+  
+  .bet-btn {
+    padding: 6px 4px;
+    font-size: 0.65rem;
+  }
+  
+  .odd-number-user {
+    font-size: 1.6rem;
+  }
+}
+
+/* ===== HISTORY - Horizontal (REAL DATA, 10 ROWS) ===== */
+.aviator-history-horizontal {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  padding: 4px 10px;
+  margin-bottom: 6px;
+  flex-shrink: 0;
+  overflow-x: auto;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  min-height: 34px;
+}
+
+.history-list-horizontal {
+  display: flex;
+  gap: 6px;
+  padding: 2px 0;
+  min-height: 28px;
+  align-items: center;
+}
+
+.history-item-horizontal {
+  padding: 2px 10px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+}
+
+.history-item-horizontal.crashed {
+  border-left: 2px solid #dc3545;
+  background: rgba(220, 53, 69, 0.15);
+}
+
+.history-item-horizontal.cashed {
+  border-left: 2px solid #28a745;
+  background: rgba(40, 167, 69, 0.15);
+}
+
+.history-multiplier-horizontal {
+  font-weight: bold;
+  color: #ffd700;
+  font-size: 0.7rem;
+}
+
+.history-item-horizontal.crashed .history-multiplier-horizontal {
+  color: #dc3545;
+}
+
+.no-history {
+  color: #666;
+  font-size: 0.7rem;
+  padding: 2px 0;
+  width: 100%;
+  text-align: center;
+}
+
+/* ===== RESPONSIVE HISTORY ===== */
+@media (max-width: 600px) {
+  .history-item-horizontal {
+    font-size: 0.55rem;
+    padding: 1px 6px;
+    min-width: 28px;
+  }
+}
+
+@media (max-width: 400px) {
+  .history-item-horizontal {
+    font-size: 0.45rem;
+    padding: 1px 4px;
+    min-width: 20px;
   }
 }
