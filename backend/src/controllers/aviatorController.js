@@ -1,5 +1,5 @@
 // ============================================
-// AVIATOR GAME CONTROLLER - FULL WORKING VERSION
+// AVIATOR GAME CONTROLLER - WITH PENDING BETS
 // ============================================
 
 const User = require('../models/User');
@@ -31,26 +31,49 @@ let gameHistory = [];
 // ========== ACTIVE BETS ==========
 let activeBets = [];
 
+// ========== PENDING BETS ==========
+let pendingBets = [];
+
 // ========== BROADCAST FUNCTION ==========
 function broadcastGameState() {
   console.log(`📊 Round ${gameState.roundNumber}: ${gameState.multiplier.toFixed(2)}x | Status: ${gameState.status}`);
+  console.log(`📊 Active bets: ${activeBets.length}, Pending bets: ${pendingBets.length}`);
 }
 
 // ========== START GAME ==========
 exports.startGame = async (req, res) => {
   try {
     console.log('🚀 Start game called');
+    console.log(`📊 Pending bets before start: ${pendingBets.length}`);
     
     if (gameState.status === 'active') {
       return res.status(400).json({ success: false, message: 'Game is already active' });
     }
 
+    // ✅ Move all pending bets to active bets
+    for (const pendingBet of pendingBets) {
+      const user = await User.findById(pendingBet.userId);
+      if (user) {
+        // Check if user still has enough balance (they already paid)
+        // Just activate the bet
+        activeBets.push({
+          ...pendingBet,
+          status: 'active',
+          activatedAt: new Date().toISOString()
+        });
+        console.log(`✅ Pending bet activated for user ${user.username || pendingBet.userId}`);
+      }
+    }
+    
+    // Clear pending bets
+    pendingBets = [];
+
     gameState.status = 'active';
     gameState.multiplier = 1.00;
     gameState.roundNumber += 1;
     gameState.startTime = Date.now();
-    gameState.totalBets = 0;
-    gameState.totalAmount = 0;
+    gameState.totalBets = activeBets.length;
+    gameState.totalAmount = activeBets.reduce((sum, b) => sum + b.amount, 0);
 
     if (gameState.nextCrashPoint > 1.01) {
       gameState.crashPoint = gameState.nextCrashPoint;
@@ -60,14 +83,14 @@ exports.startGame = async (req, res) => {
     }
 
     console.log(`🎯 Crash point set to: ${gameState.crashPoint.toFixed(2)}x`);
-    console.log(`🔄 Round ${gameState.roundNumber} started!`);
+    console.log(`🔄 Round ${gameState.roundNumber} started with ${activeBets.length} active bets!`);
 
     startGameLoop();
     broadcastGameState();
 
     res.json({ 
       success: true, 
-      message: `Round ${gameState.roundNumber} started!`,
+      message: `Round ${gameState.roundNumber} started! ${activeBets.length} bets active.`,
       gameState: {
         status: gameState.status,
         multiplier: gameState.multiplier,
@@ -167,6 +190,9 @@ async function crashGame() {
     }
   }
   
+  // ✅ Keep pending bets for next round (they already paid)
+  // They will stay in pendingBets array
+  
   // Store crash in history
   const crashRecord = {
     roundNumber: crashRound,
@@ -180,13 +206,14 @@ async function crashGame() {
   gameHistory = [crashRecord, ...gameHistory].slice(0, 7);
   console.log(`📜 History updated: ${gameHistory.length} records`);
   
-  // Clear active bets for next round
+  // Clear active bets (they are done)
   activeBets = [];
   
   broadcastGameState();
 
   setTimeout(() => {
     console.log('🔄 Resetting game state...');
+    console.log(`📊 Pending bets for next round: ${pendingBets.length}`);
     if (gameState.autoStart) {
       gameState.status = 'idle';
       exports.startGame();
@@ -237,6 +264,19 @@ exports.closeGame = async (req, res) => {
       gameState.gameInterval = null;
     }
 
+    // ✅ Refund all pending bets
+    for (const bet of pendingBets) {
+      if (bet.status === 'pending') {
+        const user = await User.findById(bet.userId);
+        if (user) {
+          user.balance += bet.amount;
+          await user.save();
+          console.log(`💰 Refunded pending bet ${bet.amount} to user ${user.username}`);
+        }
+        bet.status = 'refunded';
+      }
+    }
+    
     // Refund all active bets
     for (const bet of activeBets) {
       if (bet.status === 'active') {
@@ -244,12 +284,13 @@ exports.closeGame = async (req, res) => {
         if (user) {
           user.balance += bet.amount;
           await user.save();
-          console.log(`💰 Refunded ${bet.amount} to user ${user.username}`);
+          console.log(`💰 Refunded active bet ${bet.amount} to user ${user.username}`);
         }
         bet.status = 'refunded';
       }
     }
     
+    pendingBets = [];
     activeBets = [];
     gameState.status = 'closed';
     gameState.multiplier = 1.00;
@@ -336,6 +377,7 @@ exports.getGameState = async (req, res) => {
       crashPoint: gameState.crashPoint || 0,
       roundNumber: gameState.roundNumber || 0,
       playersActive: activeBets.filter(b => b.status === 'active').length || 0,
+      pendingBets: pendingBets.filter(b => b.status === 'pending').length || 0,
       totalBets: activeBets.filter(b => b.status === 'active').length || 0,
       totalAmount: activeBets.reduce((sum, b) => sum + (b.status === 'active' ? b.amount : 0), 0),
       nextCrashPoint: gameState.nextCrashPoint || 0,
@@ -396,13 +438,16 @@ exports.placeBet = async (req, res) => {
       });
     }
 
-    if (gameState.status !== 'active') {
+    // ✅ Allow betting when game is idle (for pending bets)
+    // Also allow when active (for immediate bets)
+    if (gameState.status !== 'idle' && gameState.status !== 'waiting' && gameState.status !== 'active') {
       return res.status(400).json({ 
         success: false, 
-        message: 'Game is not active. Wait for the next round.' 
+        message: 'Game is not available. Please wait.' 
       });
     }
 
+    // Check bet limits
     if (amount < gameState.minBet || amount > gameState.maxBet) {
       return res.status(400).json({
         success: false,
@@ -428,35 +473,46 @@ exports.placeBet = async (req, res) => {
       });
     }
 
+    // Deduct balance
     user.balance -= amount;
     await user.save();
 
     console.log(`💰 User balance after bet: ${user.balance}`);
 
+    // ✅ If game is active, add to active bets immediately
+    // ✅ If game is idle, add to pending bets
+    const isActive = gameState.status === 'active';
+    
     const bet = {
       userId: userId,
       amount: amount,
       autoCashOut: autoCashOut || 0,
-      gameRound: gameState.roundNumber,
-      status: 'active',
+      gameRound: gameState.roundNumber + (isActive ? 0 : 1), // Next round if pending
+      status: isActive ? 'active' : 'pending',
       placedAt: new Date().toISOString()
     };
     
-    activeBets.push(bet);
-    
-    gameState.totalBets += 1;
-    gameState.totalAmount += amount;
-
-    console.log(`✅ Bet placed: ${amount} by user ${user.username || userId}`);
+    if (isActive) {
+      activeBets.push(bet);
+      gameState.totalBets += 1;
+      gameState.totalAmount += amount;
+      console.log(`✅ Active bet placed: ${amount} by user ${user.username || userId}`);
+    } else {
+      pendingBets.push(bet);
+      console.log(`⏳ Pending bet placed: ${amount} by user ${user.username || userId}`);
+      console.log(`📊 Total pending bets: ${pendingBets.length}`);
+    }
 
     res.json({ 
       success: true, 
-      message: 'Bet placed successfully!',
+      message: isActive ? 'Bet placed successfully!' : 'Bet placed! Waiting for next round...',
+      status: isActive ? 'active' : 'pending',
       newBalance: user.balance,
       bet: {
         amount: amount,
         autoCashOut: autoCashOut || 0,
-        gameRound: gameState.roundNumber
+        gameRound: gameState.roundNumber + (isActive ? 0 : 1),
+        status: isActive ? 'active' : 'pending'
       }
     });
   } catch (error) {
@@ -486,6 +542,7 @@ exports.cashOut = async (req, res) => {
       });
     }
 
+    // Find user's active bet
     const betIndex = activeBets.findIndex(b => b.userId === userId && b.status === 'active');
     
     if (betIndex === -1) {
