@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const aviatorController = require('../controllers/aviatorController');
 
+console.log('🔄 Loading aviator routes...');
+
 // ========== AUTHENTICATION MIDDLEWARE ==========
 const authMiddleware = (req, res, next) => {
   try {
@@ -27,8 +29,13 @@ const authMiddleware = (req, res, next) => {
   }
 };
 
+// ========== TEST ROUTE ==========
+router.get('/test', (req, res) => {
+  res.json({ success: true, message: 'Aviator routes are working!' });
+});
+
 // =============================================
-// ADMIN CONTROLS (No auth required for testing)
+// ADMIN CONTROLS
 // =============================================
 router.post('/start', aviatorController.startGame);
 router.post('/stop', aviatorController.stopGame);
@@ -48,5 +55,7 @@ router.get('/active-bets', aviatorController.getActiveBets);
 // =============================================
 router.post('/bet', authMiddleware, aviatorController.placeBet);
 router.post('/cashout', authMiddleware, aviatorController.cashOut);
+
+console.log('✅ All aviator routes registered');
 
 module.exports = router;

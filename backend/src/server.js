@@ -214,7 +214,11 @@ const adminWithdrawalRoutes = require("./routes/adminWithdrawalRoutes");
 const matchRoutes = require('./routes/matches');
 const adminMatchRoutes = require('./routes/adminMatches');
 const betRoutes = require('./routes/betRoutes');
-const aviatorRoutes = require('./routes/aviatorRoutes'); // ✅ AVIATOR ROUTES
+
+// ===== AVIATOR ROUTES =====
+console.log('🔄 Loading aviator routes...');
+const aviatorRoutes = require('./routes/aviatorRoutes');
+console.log('✅ Aviator routes loaded');
 
 app.use("/api/withdrawals", withdrawalRoutes);
 app.use("/api/admin", adminWithdrawalRoutes);
@@ -226,7 +230,10 @@ app.use("/api/admin", adminTransactionRoutes);
 app.use('/api', matchRoutes);
 app.use('/api', adminMatchRoutes);
 app.use('/api/bets', betRoutes);
-app.use('/api/aviator', aviatorRoutes); // ✅ AVIATOR ROUTES REGISTERED
+
+// ===== AVIATOR ROUTES REGISTERED =====
+app.use('/api/aviator', aviatorRoutes);
+console.log('✅ Aviator routes mounted at /api/aviator');
 
 // =============================================
 // ===== ERROR HANDLING =====
@@ -261,6 +268,7 @@ console.log('📊 NODE_ENV:', process.env.NODE_ENV || 'development');
 console.log('📊 PORT:', PORT);
 console.log('📊 MONGODB_URI:', process.env.MONGODB_URI ? '✅ Set' : '❌ Missing');
 console.log('📊 ODDS_API_KEY:', process.env.ODDS_API_KEY ? '✅ Set' : '❌ Missing');
+console.log('📊 JWT_SECRET:', process.env.JWT_SECRET ? '✅ Set' : '❌ Missing');
 
 // Connect to MongoDB
 connectDB();
@@ -275,6 +283,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`   - /api/odds/test (Odds test)`);
   console.log(`   - /api/odds/odds/:sport (Live Odds)`);
   console.log(`   - /api/odds/sports (Available Sports)`);
+  console.log(`   - /api/aviator/test (Aviator Test)`);
   console.log(`   - /api/aviator/state (Aviator State)`);
   console.log(`   - /api/aviator/start (Start Game - Admin)`);
   console.log(`   - /api/aviator/stop (Stop Game - Admin)`);
@@ -285,4 +294,9 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`   - /api/aviator/active-bets (Active Bets)`);
   console.log(`   - /api/aviator/bet (Place Bet - User)`);
   console.log(`   - /api/aviator/cashout (Cash Out - User)`);
+  console.log(`   - /api/auth/login (Login)`);
+  console.log(`   - /api/auth/register (Register)`);
+  console.log(`   - /api/user/balance (User Balance)`);
+  console.log(`   - /api/matches (Matches)`);
+  console.log(`   - /api/bets (Bets)`);
 });

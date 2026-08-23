@@ -4,6 +4,8 @@
 
 const User = require('../models/User');
 
+console.log('🔄 Loading aviator controller...');
+
 // ========== GAME STATE ==========
 let gameState = {
   status: 'idle',
@@ -380,7 +382,6 @@ exports.placeBet = async (req, res) => {
     const { amount, autoCashOut } = req.body;
     const userId = req.user?.id;
 
-    // Validate required fields
     if (!userId) {
       return res.status(401).json({ 
         success: false, 
@@ -395,7 +396,6 @@ exports.placeBet = async (req, res) => {
       });
     }
 
-    // Check if game is active
     if (gameState.status !== 'active') {
       return res.status(400).json({ 
         success: false, 
@@ -403,7 +403,6 @@ exports.placeBet = async (req, res) => {
       });
     }
 
-    // Check bet limits
     if (amount < gameState.minBet || amount > gameState.maxBet) {
       return res.status(400).json({
         success: false,
@@ -411,7 +410,6 @@ exports.placeBet = async (req, res) => {
       });
     }
 
-    // Get user and check balance
     const user = await User.findById(userId);
     
     if (!user) {
@@ -430,13 +428,11 @@ exports.placeBet = async (req, res) => {
       });
     }
 
-    // Deduct balance
     user.balance -= amount;
     await user.save();
 
     console.log(`💰 User balance after bet: ${user.balance}`);
 
-    // Create bet
     const bet = {
       userId: userId,
       amount: amount,
@@ -448,7 +444,6 @@ exports.placeBet = async (req, res) => {
     
     activeBets.push(bet);
     
-    // Update game stats
     gameState.totalBets += 1;
     gameState.totalAmount += amount;
 
@@ -491,7 +486,6 @@ exports.cashOut = async (req, res) => {
       });
     }
 
-    // Find user's active bet
     const betIndex = activeBets.findIndex(b => b.userId === userId && b.status === 'active');
     
     if (betIndex === -1) {
@@ -504,13 +498,11 @@ exports.cashOut = async (req, res) => {
     const bet = activeBets[betIndex];
     const currentMultiplier = gameState.multiplier;
     
-    // Calculate winnings
     const winAmount = bet.amount * currentMultiplier;
     const profit = winAmount - bet.amount;
 
     console.log(`💰 Cash out: ${bet.amount} * ${currentMultiplier} = ${winAmount} (Profit: ${profit})`);
 
-    // Update user balance
     const user = await User.findById(userId);
     
     if (!user) {
@@ -522,7 +514,6 @@ exports.cashOut = async (req, res) => {
 
     console.log(`💰 User balance after cash out: ${user.balance}`);
 
-    // Update bet status
     bet.status = 'cashed';
     bet.winAmount = winAmount;
     bet.cashedAt = currentMultiplier;
@@ -540,3 +531,5 @@ exports.cashOut = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+console.log('✅ Aviator controller loaded successfully');
