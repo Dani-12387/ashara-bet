@@ -189,6 +189,44 @@ const Aviator = () => {
     }
   };
 
+  // ========== CANCEL PENDING BET ==========
+  const cancelPendingBet = async (betNumber) => {
+    const setBet = betNumber === 1 ? setBet1 : setBet2;
+    const bet = betNumber === 1 ? bet1 : bet2;
+    
+    if (!bet.isPending) {
+      setError('No pending bet to cancel!');
+      setTimeout(() => setError(''), 2000);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(`${API_URL}/api/aviator/cancel-pending`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data.success) {
+        setBet(prev => ({ ...prev, isPending: false, isActive: false }));
+        setBalance(prev => prev + bet.amount);
+        setMessage(`✅ Bet ${betNumber} cancelled! Refunded ${bet.amount.toFixed(2)}`);
+        setTimeout(() => setMessage(''), 3000);
+        fetchBalance();
+      } else {
+        setError('❌ ' + response.data.message);
+        setTimeout(() => setError(''), 3000);
+      }
+    } catch (error) {
+      console.error('Error cancelling bet:', error);
+      setError('❌ Error cancelling bet');
+      setTimeout(() => setError(''), 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const placeBet = async (betNumber) => {
     setError('');
     setMessage('');
@@ -196,7 +234,6 @@ const Aviator = () => {
     const bet = betNumber === 1 ? bet1 : bet2;
     const setBet = betNumber === 1 ? setBet1 : setBet2;
     
-    // ✅ Allow betting in idle, waiting, or active state
     if (gameState.status === 'crashed' || gameState.status === 'closed') {
       setError('⏳ Game is not available!');
       setTimeout(() => setError(''), 2000);
@@ -240,7 +277,9 @@ const Aviator = () => {
       console.log('📥 Bet response:', response.data);
       
       if (response.data.success) {
-        setBalance(prev => prev - betAmount);
+        // ✅ Balance is already deducted on backend
+        // ✅ Update local balance from response
+        setBalance(response.data.newBalance);
         
         // ✅ Set bet status based on response
         if (response.data.status === 'active') {
@@ -347,12 +386,13 @@ const Aviator = () => {
   const getButtonConfig = (betNumber) => {
     const bet = betNumber === 1 ? bet1 : bet2;
     
+    // ✅ Show Cancel button for pending bets
     if (bet.isPending) {
       return {
-        text: `⏳ Pending...`,
-        class: 'pending-btn',
-        disabled: true,
-        onClick: null
+        text: `🔴 Cancel`,
+        class: 'cancel-btn',
+        disabled: false,
+        onClick: () => cancelPendingBet(betNumber)
       };
     }
     

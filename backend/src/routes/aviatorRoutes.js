@@ -55,6 +55,7 @@ router.get('/active-bets', aviatorController.getActiveBets);
 // =============================================
 router.post('/bet', authMiddleware, aviatorController.placeBet);
 router.post('/cashout', authMiddleware, aviatorController.cashOut);
+router.post('/cancel-pending', authMiddleware, aviatorController.cancelPendingBet);
 
 console.log('✅ All aviator routes registered');
 
