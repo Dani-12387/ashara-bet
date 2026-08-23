@@ -13,6 +13,7 @@ const Aviator = () => {
   const [userBet, setUserBet] = useState({
     amount: 10,
     autoCashOut: 1.50,
+    autoCashOutEnabled: false,
     isActive: false
   });
 
@@ -23,6 +24,7 @@ const Aviator = () => {
   const [totalWins, setTotalWins] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -66,6 +68,15 @@ const Aviator = () => {
         if (gameState.status === 'idle' && newState.status === 'active') {
           setProfit(0);
           setError('');
+          setMessage('');
+        }
+        
+        // Auto Cash Out - check if enabled and multiplier reached
+        if (newState.status === 'active' && userBet.isActive && userBet.autoCashOutEnabled) {
+          if (newState.multiplier >= userBet.autoCashOut) {
+            // Auto cash out
+            handleAutoCashOut(newState.multiplier);
+          }
         }
         
         setGameState(newState);
@@ -75,7 +86,7 @@ const Aviator = () => {
     }
   };
 
-  // ========== FETCH HISTORY ==========
+  // ========== FETCH REAL HISTORY ==========
   const fetchHistory = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -84,26 +95,9 @@ const Aviator = () => {
       });
       if (response.data && response.data.length > 0) {
         setHistory(response.data);
-      } else {
-        // Fallback sample data if API returns empty
-        setHistory([
-          { roundNumber: 5, crashPoint: 2.45, playersActive: 8 },
-          { roundNumber: 4, crashPoint: 1.85, playersActive: 5 },
-          { roundNumber: 3, crashPoint: 3.20, playersActive: 12 },
-          { roundNumber: 2, crashPoint: 1.50, playersActive: 3 },
-          { roundNumber: 1, crashPoint: 4.75, playersActive: 7 }
-        ]);
       }
     } catch (error) {
       console.error('Error fetching history:', error);
-      // Set fallback data on error
-      setHistory([
-        { roundNumber: 5, crashPoint: 2.45, playersActive: 8 },
-        { roundNumber: 4, crashPoint: 1.85, playersActive: 5 },
-        { roundNumber: 3, crashPoint: 3.20, playersActive: 12 },
-        { roundNumber: 2, crashPoint: 1.50, playersActive: 3 },
-        { roundNumber: 1, crashPoint: 4.75, playersActive: 7 }
-      ]);
     }
   };
 
@@ -117,12 +111,53 @@ const Aviator = () => {
       fetchGameState();
     }, 200);
 
-    return () => clearInterval(interval);
+    // Refresh history every 30 seconds
+    const historyInterval = setInterval(() => {
+      fetchHistory();
+    }, 30000);
+
+    return () => {
+      clearInterval(interval);
+      clearInterval(historyInterval);
+    };
   }, []);
+
+  // ========== AUTO CASH OUT ==========
+  const handleAutoCashOut = async (multiplier) => {
+    if (!userBet.isActive) return;
+    
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(`${API_URL}/api/aviator/cashout`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data.success) {
+        const winAmount = response.data.winAmount || 0;
+        const profitAmount = winAmount - userBet.amount;
+        
+        setBalance(prev => prev + winAmount);
+        setProfit(profitAmount);
+        setTotalWins(prev => prev + 1);
+        setUserBet(prev => ({ ...prev, isActive: false }));
+        
+        setMessage(`🤖 Auto Cashed out at ${multiplier.toFixed(2)}x! +ETB ${profitAmount.toFixed(2)}`);
+        setTimeout(() => setMessage(''), 4000);
+        fetchBalance();
+      }
+    } catch (error) {
+      console.error('Error auto cashing out:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // ========== PLACE BET ==========
   const placeBet = async () => {
     setError('');
+    setMessage('');
     
     if (gameState.status !== 'idle' && gameState.status !== 'waiting') {
       setError('⏳ Wait for the next round!');
@@ -150,7 +185,7 @@ const Aviator = () => {
       const response = await axios.post(`${API_URL}/api/aviator/bet`, 
         { 
           amount: betAmount,
-          autoCashOut: userBet.autoCashOut || 0
+          autoCashOut: userBet.autoCashOutEnabled ? userBet.autoCashOut : 0
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -162,8 +197,8 @@ const Aviator = () => {
           isActive: true
         }));
         setTotalBets(prev => prev + 1);
-        setError('✅ Bet placed!');
-        setTimeout(() => setError(''), 1500);
+        setMessage('✅ Bet placed!');
+        setTimeout(() => setMessage(''), 1500);
       } else {
         setError('❌ ' + response.data.message);
         setTimeout(() => setError(''), 3000);
@@ -180,6 +215,7 @@ const Aviator = () => {
   // ========== CASH OUT ==========
   const handleCashOut = async () => {
     setError('');
+    setMessage('');
     
     if (!userBet.isActive) {
       setError('You have no active bet!');
@@ -210,8 +246,8 @@ const Aviator = () => {
         setTotalWins(prev => prev + 1);
         setUserBet(prev => ({ ...prev, isActive: false }));
         
-        setError(`🎉 Cashed out at ${gameState.multiplier.toFixed(2)}x! +ETB ${profitAmount.toFixed(2)}`);
-        setTimeout(() => setError(''), 3000);
+        setMessage(`🎉 Cashed out at ${gameState.multiplier.toFixed(2)}x! +ETB ${profitAmount.toFixed(2)}`);
+        setTimeout(() => setMessage(''), 3000);
         fetchBalance();
       } else {
         setError('❌ ' + response.data.message);
@@ -230,6 +266,16 @@ const Aviator = () => {
   const quickBet = (amount) => {
     if (!userBet.isActive) {
       setUserBet(prev => ({ ...prev, amount: amount }));
+    }
+  };
+
+  // ========== TOGGLE AUTO CASH OUT ==========
+  const toggleAutoCashOut = () => {
+    if (!userBet.isActive) {
+      setUserBet(prev => ({ 
+        ...prev, 
+        autoCashOutEnabled: !prev.autoCashOutEnabled 
+      }));
     }
   };
 
@@ -258,7 +304,7 @@ const Aviator = () => {
           {history.length === 0 ? (
             <span className="no-history">No history yet</span>
           ) : (
-            history.slice(0, 15).map((item, index) => (
+            history.slice(0, 20).map((item, index) => (
               <div key={index} className={`history-item-horizontal ${item.crashed ? 'crashed' : 'cashed'}`}>
                 <span className="history-multiplier-horizontal">
                   {item.crashPoint?.toFixed(2) || 'N/A'}x
@@ -282,6 +328,14 @@ const Aviator = () => {
           {gameState.status === 'crashed' && '💥 Crashed!'}
         </span>
       </div>
+
+      {/* ===== MESSAGES ===== */}
+      {message && (
+        <div className="bet-success">{message}</div>
+      )}
+      {error && (
+        <div className="bet-error">{error}</div>
+      )}
 
       {/* ===== BET CONTROLS ===== */}
       <div className="aviator-controls">
@@ -310,36 +364,52 @@ const Aviator = () => {
 
         <div className="control-group">
           <label>Auto Cash Out</label>
-          <div className="auto-cashout-input">
-            <input 
-              type="number" 
-              value={userBet.autoCashOut}
-              onChange={(e) => setUserBet(prev => ({ ...prev, autoCashOut: parseFloat(e.target.value) || 0 }))}
-              min="1.01"
-              step="0.1"
-              placeholder="1.5x"
-              disabled={userBet.isActive}
-            />
-            <span>x</span>
+          <div className="auto-cashout-control">
+            <div className="auto-cashout-toggle">
+              <button 
+                className={`toggle-btn ${userBet.autoCashOutEnabled ? 'active' : ''}`}
+                onClick={toggleAutoCashOut}
+                disabled={userBet.isActive}
+              >
+                {userBet.autoCashOutEnabled ? 'ON' : 'OFF'}
+              </button>
+              <span className="toggle-label">Auto Cash Out</span>
+            </div>
+            {userBet.autoCashOutEnabled && (
+              <div className="auto-cashout-input">
+                <input 
+                  type="number" 
+                  value={userBet.autoCashOut}
+                  onChange={(e) => setUserBet(prev => ({ ...prev, autoCashOut: parseFloat(e.target.value) || 1.01 }))}
+                  min="1.01"
+                  step="0.1"
+                  disabled={userBet.isActive}
+                />
+                <span>x</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* ===== ERROR MESSAGE ===== */}
-      {error && (
-        <div className="bet-error">{error}</div>
-      )}
-
-      {/* ===== ACTION BUTTONS - Only Place Bet and Cash Out ===== */}
+      {/* ===== ACTION BUTTONS - Two Buttons ===== */}
       <div className="aviator-actions">
         <button 
-          className={`bet-btn ${userBet.isActive && gameState.status === 'active' ? 'cashout-btn' : 'place-btn'}`}
-          onClick={userBet.isActive && gameState.status === 'active' ? handleCashOut : placeBet}
-          disabled={userBet.isActive && gameState.status === 'active' ? isCashoutDisabled : isBetDisabled}
+          className="bet-btn place-btn"
+          onClick={placeBet}
+          disabled={isBetDisabled}
+        >
+          📈 Place Bet
+        </button>
+        
+        <button 
+          className={`bet-btn ${userBet.isActive && gameState.status === 'active' ? 'cashout-btn' : 'cashout-disabled'}`}
+          onClick={handleCashOut}
+          disabled={isCashoutDisabled}
         >
           {userBet.isActive && gameState.status === 'active' 
             ? `💰 Cash Out (${gameState.multiplier.toFixed(2)}x)` 
-            : '📈 Place Bet'}
+            : '💰 Cash Out'}
         </button>
       </div>
 
