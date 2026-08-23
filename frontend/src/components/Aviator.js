@@ -37,7 +37,7 @@ const Aviator = () => {
   const [message, setMessage] = useState('');
   const [lastCrash, setLastCrash] = useState(null);
 
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  const API_URL = process.env.REACT_APP_API_URL || 'https://ashara-bet.onrender.com';
 
   // ========== FETCH BALANCE ==========
   const fetchBalance = async () => {
@@ -68,7 +68,6 @@ const Aviator = () => {
         
         // Check if game just crashed - register new history
         if (gameState.status === 'active' && newState.status === 'crashed') {
-          // Register the crash in history
           const crashData = {
             roundNumber: newState.roundNumber || 0,
             crashPoint: newState.multiplier || 0,
@@ -76,7 +75,6 @@ const Aviator = () => {
             timestamp: new Date().toISOString()
           };
           
-          // Add new crash to history (keep only last 7)
           setHistory(prev => {
             const newHistory = [crashData, ...prev];
             return newHistory.slice(0, 7);
@@ -84,7 +82,6 @@ const Aviator = () => {
           
           setLastCrash(crashData);
           
-          // Check bets
           if (bet1.isActive) {
             setBet1(prev => ({ ...prev, isActive: false }));
             setTotalBets(prev => prev + 1);
@@ -99,7 +96,6 @@ const Aviator = () => {
           setTimeout(() => setError(''), 3000);
         }
         
-        // Check if game just started
         if (gameState.status === 'idle' && newState.status === 'active') {
           setProfit(0);
           setError('');
@@ -135,11 +131,8 @@ const Aviator = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.data && response.data.length > 0) {
-        // Only use real data from API, limit to 7
-        const realHistory = response.data.slice(0, 7);
-        setHistory(realHistory);
+        setHistory(response.data.slice(0, 7));
       } else {
-        // NO hardcoded data - show empty
         setHistory([]);
       }
     } catch (error) {
@@ -158,7 +151,6 @@ const Aviator = () => {
       fetchGameState();
     }, 200);
 
-    // Refresh history every 10 seconds
     const historyInterval = setInterval(() => {
       fetchHistory();
     }, 10000);
@@ -236,13 +228,24 @@ const Aviator = () => {
     try {
       const token = localStorage.getItem('token');
       
+      const requestData = {
+        amount: betAmount,
+        autoCashOut: bet.autoCashOutEnabled ? bet.autoCashOut : 0
+      };
+      
+      console.log('📤 Sending bet request:', requestData);
+      
       const response = await axios.post(`${API_URL}/api/aviator/bet`, 
+        requestData,
         { 
-          amount: betAmount,
-          autoCashOut: bet.autoCashOutEnabled ? bet.autoCashOut : 0
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          } 
+        }
       );
+      
+      console.log('📥 Bet response:', response.data);
       
       if (response.data.success) {
         setBalance(prev => prev - betAmount);
@@ -254,7 +257,6 @@ const Aviator = () => {
         setTotalBets(prev => prev + 1);
         setMessage(`✅ Bet ${betNumber} placed!`);
         setTimeout(() => setMessage(''), 1500);
-        // Refresh balance after bet
         fetchBalance();
       } else {
         setError('❌ ' + response.data.message);
@@ -262,7 +264,11 @@ const Aviator = () => {
       }
     } catch (error) {
       console.error('Error placing bet:', error);
-      setError('❌ Error placing bet');
+      console.error('Response data:', error.response?.data);
+      console.error('Response status:', error.response?.status);
+      
+      const errorMsg = error.response?.data?.message || 'Error placing bet';
+      setError('❌ ' + errorMsg);
       setTimeout(() => setError(''), 3000);
     } finally {
       setLoading(false);
@@ -357,7 +363,6 @@ const Aviator = () => {
     const isCashoutDisabled = loading || !bet.isActive || gameState.status !== 'active';
     
     if (bet.isActive && gameState.status === 'active') {
-      // Show current multiplier and estimated win amount
       const estimatedWin = (bet.amount * gameState.multiplier).toFixed(2);
       return {
         text: `💰 ${gameState.multiplier.toFixed(2)}x (${estimatedWin})`,
@@ -388,7 +393,7 @@ const Aviator = () => {
         </div>
       </div>
 
-      {/* ===== HISTORY - Horizontal (REAL DATA ONLY, 7 ROWS) ===== */}
+      {/* ===== HISTORY - Horizontal (7 ROWS) ===== */}
       <div className="aviator-history-horizontal">
         <div className="history-list-horizontal">
           {history.length === 0 ? (
@@ -446,7 +451,6 @@ const Aviator = () => {
           </div>
           
           <div className="bet-controls">
-            {/* ===== AMOUNT ===== */}
             <div className="control-group">
               <label>Amount</label>
               <div className="bet-input-group">
@@ -469,7 +473,6 @@ const Aviator = () => {
               </div>
             </div>
 
-            {/* ===== PLACE BET BUTTON ===== */}
             <button 
               className={`bet-btn ${button1Config.class}`}
               onClick={button1Config.onClick}
@@ -478,7 +481,6 @@ const Aviator = () => {
               {button1Config.text}
             </button>
 
-            {/* ===== AUTO CASH ===== */}
             <div className="control-group">
               <label>Auto Cash</label>
               <div className="auto-cashout-control">
@@ -522,7 +524,6 @@ const Aviator = () => {
           </div>
           
           <div className="bet-controls">
-            {/* ===== AMOUNT ===== */}
             <div className="control-group">
               <label>Amount</label>
               <div className="bet-input-group">
@@ -545,7 +546,6 @@ const Aviator = () => {
               </div>
             </div>
 
-            {/* ===== PLACE BET BUTTON ===== */}
             <button 
               className={`bet-btn ${button2Config.class}`}
               onClick={button2Config.onClick}
@@ -554,7 +554,6 @@ const Aviator = () => {
               {button2Config.text}
             </button>
 
-            {/* ===== AUTO CASH ===== */}
             <div className="control-group">
               <label>Auto Cash</label>
               <div className="auto-cashout-control">

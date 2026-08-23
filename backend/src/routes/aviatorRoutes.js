@@ -14,7 +14,6 @@ const authMiddleware = (req, res, next) => {
       });
     }
 
-    // Verify token
     const jwt = require('jsonwebtoken');
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_secret_key');
     req.user = decoded;

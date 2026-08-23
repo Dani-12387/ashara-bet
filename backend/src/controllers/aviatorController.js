@@ -373,13 +373,26 @@ exports.getActiveBets = async (req, res) => {
 // ========== PLACE BET ==========
 exports.placeBet = async (req, res) => {
   try {
+    console.log('📥 Place bet request received');
+    console.log('📥 Request body:', req.body);
+    console.log('📥 User:', req.user);
+    
     const { amount, autoCashOut } = req.body;
-    const userId = req.user.id;
+    const userId = req.user?.id;
 
-    console.log(`📊 Place bet called - User: ${userId}, Amount: ${amount}`);
-
+    // Validate required fields
     if (!userId) {
-      return res.status(401).json({ success: false, message: 'User not authenticated' });
+      return res.status(401).json({ 
+        success: false, 
+        message: 'User not authenticated' 
+      });
+    }
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid bet amount' 
+      });
     }
 
     // Check if game is active
@@ -402,7 +415,10 @@ exports.placeBet = async (req, res) => {
     const user = await User.findById(userId);
     
     if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
+      return res.status(404).json({ 
+        success: false, 
+        message: 'User not found' 
+      });
     }
 
     console.log(`💰 User balance before bet: ${user.balance}`);
@@ -450,7 +466,10 @@ exports.placeBet = async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error placing bet:', error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || 'Internal server error' 
+    });
   }
 };
 
