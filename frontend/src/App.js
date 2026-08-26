@@ -15,11 +15,12 @@ import AdminWithdrawals from './components/AdminWithdrawals';
 import MatchesManagement from './components/MatchesManagement';
 import AdminBets from './components/AdminBets';
 import BetHistory from './components/BetHistory';
-// ✅ CORRECT IMPORT - File is in components folder (not admin subfolder)
-import AviatorManagement from './components/AviatorManagement';
-import Aviator from './components/Aviator';
-// ✅ NEW: Import the new AviatorPage
+// ✅ Keep existing Aviator (old version) - renamed import
+import AviatorOld from './components/Aviator';
+// ✅ New AviatorPage
 import AviatorPage from './pages/Aviator/AviatorPage';
+// ✅ Admin management
+import AviatorManagement from './components/AviatorManagement';
 import './App.css';
 
 // Protected Route Component
@@ -58,17 +59,17 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         
-        {/* ✅ Aviator - Protected Route (Old version - keep for compatibility) */}
-        <Route path="/aviator-old" element={
-          <ProtectedRoute>
-            <Aviator />
-          </ProtectedRoute>
-        } />
-        
-        {/* ✅ NEW Aviator Page - Protected Route */}
+        {/* ✅ NEW Aviator Page - Main route */}
         <Route path="/aviator" element={
           <ProtectedRoute>
             <AviatorPage />
+          </ProtectedRoute>
+        } />
+        
+        {/* ✅ OLD Aviator - Available at /aviator-old for testing */}
+        <Route path="/aviator-old" element={
+          <ProtectedRoute>
+            <AviatorOld />
           </ProtectedRoute>
         } />
         
@@ -116,7 +117,6 @@ function App() {
           <Route path="withdrawals" element={<AdminWithdrawals />} />
           <Route path="bets" element={<AdminBets />} />
           <Route path="matches" element={<MatchesManagement />} />
-          {/* ✅ This will now work correctly */}
           <Route path="aviator" element={<AviatorManagement />} />
           <Route path="odds" element={<div style={{ padding: '20px', color: '#fff' }}>Odds Management Page</div>} />
           <Route path="reports" element={<div style={{ padding: '20px', color: '#fff' }}>Reports Page</div>} />
