@@ -3,6 +3,8 @@ const cors = require("cors");
 const path = require("path");
 const mongoose = require("mongoose");
 const axios = require("axios");
+const http = require("http");
+const socketIo = require("socket.io");
 require("dotenv").config();
 
 const connectDB = require("./config/db");
@@ -30,7 +32,6 @@ app.get('/health', (req, res) => {
 });
 
 // ===== MIDDLEWARE =====
-// ✅ FIXED: Better CORS configuration
 app.use(cors({
   origin: [
     'http://localhost:3000',
@@ -258,7 +259,7 @@ app.use((err, req, res, next) => {
 });
 
 // =============================================
-// ===== START SERVER =====
+// ===== CREATE HTTP SERVER WITH SOCKET.IO =====
 // =============================================
 
 const PORT = process.env.PORT || 5000;
@@ -273,8 +274,54 @@ console.log('📊 JWT_SECRET:', process.env.JWT_SECRET ? '✅ Set' : '❌ Missin
 // Connect to MongoDB
 connectDB();
 
-// Start server - bind to 0.0.0.0 for Render
-app.listen(PORT, '0.0.0.0', () => {
+// Create HTTP server
+const server = http.createServer(app);
+
+// ===== SOCKET.IO SETUP =====
+const io = socketIo(server, {
+  cors: {
+    origin: [
+      'http://localhost:3000',
+      'https://ashara-bet-frontend.onrender.com'
+    ],
+    credentials: true,
+    methods: ['GET', 'POST']
+  }
+});
+
+console.log('🔄 Setting up Socket.IO...');
+
+// ===== AVIATOR SOCKET =====
+let aviatorGameEngine = null;
+
+try {
+  const { initializeAviatorSocket } = require('./sockets/aviatorSocket');
+  aviatorGameEngine = initializeAviatorSocket(io);
+  console.log('✅ Aviator Socket.IO initialized');
+} catch (error) {
+  console.error('❌ Failed to initialize Aviator Socket:', error.message);
+  console.log('⚠️ Aviator game will run without Socket.IO');
+  
+  // Fallback: Simple socket connection
+  io.on('connection', (socket) => {
+    console.log(`📡 Client connected: ${socket.id}`);
+    socket.emit('round:state', {
+      status: 'WAITING',
+      multiplier: 1.00,
+      serverTime: Date.now()
+    });
+    
+    socket.on('disconnect', () => {
+      console.log(`📡 Client disconnected: ${socket.id}`);
+    });
+  });
+}
+
+// Make io accessible to routes
+app.set('io', io);
+
+// ===== START SERVER =====
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📡 API endpoints:`);
   console.log(`   - /health (health check)`);
@@ -294,9 +341,42 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`   - /api/aviator/active-bets (Active Bets)`);
   console.log(`   - /api/aviator/bet (Place Bet - User)`);
   console.log(`   - /api/aviator/cashout (Cash Out - User)`);
+  console.log(`   - /api/aviator/current-round (Current Round)`);
+  console.log(`   - /api/aviator/my-bets (My Bets)`);
+  console.log(`   - /api/aviator/live-players (Live Players)`);
+  console.log(`   - /api/aviator/verify/:roundId (Verify Round)`);
   console.log(`   - /api/auth/login (Login)`);
   console.log(`   - /api/auth/register (Register)`);
   console.log(`   - /api/user/balance (User Balance)`);
   console.log(`   - /api/matches (Matches)`);
   console.log(`   - /api/bets (Bets)`);
+  console.log(`📡 Socket.IO running on port ${PORT}`);
+  console.log(`📡 Socket.IO endpoints:`);
+  console.log(`   - round:state (Round State)`);
+  console.log(`   - round:countdown (Countdown)`);
+  console.log(`   - round:multiplier (Multiplier Update)`);
+  console.log(`   - bet:accepted (Bet Accepted)`);
+  console.log(`   - bet:rejected (Bet Rejected)`);
+  console.log(`   - bet:placed (Bet Placed)`);
+  console.log(`   - bet:cashed_out (Bet Cashed Out)`);
+  console.log(`   - cashout:success (Cashout Success)`);
+  console.log(`   - wallet:updated (Wallet Updated)`);
+  console.log(`   - system:error (System Error)`);
 });
+
+// ===== GRACEFUL SHUTDOWN =====
+process.on('SIGTERM', () => {
+  console.log('📡 SIGTERM received. Closing server...');
+  server.close(() => {
+    console.log('✅ Server closed');
+    if (aviatorGameEngine) {
+      aviatorGameEngine.stop();
+    }
+    mongoose.connection.close(false, () => {
+      console.log('✅ MongoDB connection closed');
+      process.exit(0);
+    });
+  });
+});
+
+module.exports = { app, server, io };

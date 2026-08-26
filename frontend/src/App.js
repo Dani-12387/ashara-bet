@@ -18,6 +18,8 @@ import BetHistory from './components/BetHistory';
 // ✅ CORRECT IMPORT - File is in components folder (not admin subfolder)
 import AviatorManagement from './components/AviatorManagement';
 import Aviator from './components/Aviator';
+// ✅ NEW: Import the new AviatorPage
+import AviatorPage from './pages/Aviator/AviatorPage';
 import './App.css';
 
 // Protected Route Component
@@ -56,10 +58,17 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         
-        {/* ✅ Aviator - Protected Route */}
-        <Route path="/aviator" element={
+        {/* ✅ Aviator - Protected Route (Old version - keep for compatibility) */}
+        <Route path="/aviator-old" element={
           <ProtectedRoute>
             <Aviator />
+          </ProtectedRoute>
+        } />
+        
+        {/* ✅ NEW Aviator Page - Protected Route */}
+        <Route path="/aviator" element={
+          <ProtectedRoute>
+            <AviatorPage />
           </ProtectedRoute>
         } />
         
