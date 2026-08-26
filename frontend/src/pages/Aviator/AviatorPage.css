@@ -1,105 +1,31 @@
-/* ===== AVIATOR PAGE ===== */
 .aviator-page {
   max-width: 1200px;
   margin: 0 auto;
   padding: 16px;
-  color: #fff;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: linear-gradient(135deg, #0a0e27, #1a1a3e);
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+  background: linear-gradient(135deg, #0a0e27, #1a1a3e);
 }
 
-/* ===== LOADING STATE ===== */
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 400px;
+.aviator-page-header {
+  text-align: center;
+  padding: 20px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  margin-bottom: 20px;
 }
 
-.loading-spinner {
-  font-size: 4rem;
-  animation: spin 2s linear infinite;
+.aviator-page-header h1 {
+  color: #ffd700;
+  font-size: 2rem;
+  margin: 0;
 }
 
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.loading-state p {
+.aviator-subtitle {
   color: #888;
-  margin-top: 16px;
-  font-size: 1.1rem;
-}
-
-/* ===== GAME AREA ===== */
-.game-area {
-  position: relative;
-  margin-bottom: 12px;
-  flex-shrink: 0;
-}
-
-/* ===== FAIRNESS FOOTER ===== */
-.fairness-footer {
-  display: flex;
-  justify-content: center;
-  padding: 12px 0 4px;
-  flex-shrink: 0;
-}
-
-.fairness-btn {
-  padding: 6px 20px;
-  border: none;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.05);
-  color: #888;
-  font-size: 0.75rem;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.fairness-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-}
-
-/* ===== ERROR TOAST ===== */
-.error-toast {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(220, 53, 69, 0.9);
-  color: #fff;
-  padding: 12px 24px;
-  border-radius: 8px;
   font-size: 0.9rem;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  z-index: 999;
-  max-width: 90%;
-  animation: slideUp 0.3s ease;
+  margin-top: 4px;
 }
 
-@keyframes slideUp {
-  from { transform: translateX(-50%) translateY(20px); opacity: 0; }
-  to { transform: translateX(-50%) translateY(0); opacity: 1; }
-}
-
-.error-close {
-  background: none;
-  border: none;
-  color: #fff;
-  font-size: 1.2rem;
-  cursor: pointer;
-  opacity: 0.7;
-}
-
-.error-close:hover {
-  opacity: 1;
+.aviator-page-content {
+  max-width: 900px;
+  margin: 0 auto;
 }

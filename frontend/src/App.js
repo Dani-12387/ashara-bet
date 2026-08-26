@@ -15,15 +15,13 @@ import AdminWithdrawals from './components/AdminWithdrawals';
 import MatchesManagement from './components/MatchesManagement';
 import AdminBets from './components/AdminBets';
 import BetHistory from './components/BetHistory';
-// ✅ Keep existing Aviator (old version) - renamed import
-import AviatorOld from './components/Aviator';
-// ✅ New AviatorPage
-import AviatorPage from './pages/Aviator/AviatorPage';
-// ✅ Admin management
 import AviatorManagement from './components/AviatorManagement';
+// ✅ Use the existing working Aviator component
+import Aviator from './components/Aviator';
+// ✅ Import the new page wrapper
+import AviatorPage from './pages/Aviator/AviatorPage';
 import './App.css';
 
-// Protected Route Component
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
   if (!token) {
@@ -32,7 +30,6 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
-// Admin Route Component
 const AdminRoute = ({ children }) => {
   const token = localStorage.getItem('token');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -59,21 +56,20 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         
-        {/* ✅ NEW Aviator Page - Main route */}
+        {/* ✅ Aviator - Using the new page with existing component */}
         <Route path="/aviator" element={
           <ProtectedRoute>
             <AviatorPage />
           </ProtectedRoute>
         } />
         
-        {/* ✅ OLD Aviator - Available at /aviator-old for testing */}
+        {/* ✅ Old Aviator - Available at /aviator-old for testing */}
         <Route path="/aviator-old" element={
           <ProtectedRoute>
-            <AviatorOld />
+            <Aviator />
           </ProtectedRoute>
         } />
         
-        {/* Protected User Routes */}
         <Route path="/MyAccount" element={
           <ProtectedRoute>
             <MyAccount />
@@ -126,7 +122,6 @@ function App() {
           <Route path="support" element={<div style={{ padding: '20px', color: '#fff' }}>Support Page</div>} />
         </Route>
 
-        {/* Catch all - redirect to home */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

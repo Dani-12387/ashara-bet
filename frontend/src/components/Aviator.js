@@ -43,13 +43,24 @@ const Aviator = () => {
   const fetchBalance = async () => {
     try {
       const token = localStorage.getItem('token');
-      if (!token) return;
+      if (!token) {
+        console.log('No token found');
+        return;
+      }
+      
       const response = await axios.get(`${API_URL}/api/user/balance`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setBalance(response.data.balance || 0);
+      
+      if (response.data && response.data.balance !== undefined) {
+        setBalance(response.data.balance);
+      } else {
+        console.error('Invalid balance response:', response.data);
+        setBalance(0);
+      }
     } catch (error) {
       console.error('Error fetching balance:', error);
+      setBalance(0);
     }
   };
 
@@ -64,7 +75,6 @@ const Aviator = () => {
       if (response.data) {
         const newState = response.data;
         
-        // ✅ Check if game just started - activate pending bets
         if (gameState.status === 'idle' && newState.status === 'active') {
           if (bet1.isPending) {
             setBet1(prev => ({ ...prev, isPending: false, isActive: true }));
@@ -77,7 +87,6 @@ const Aviator = () => {
           setTimeout(() => setMessage(''), 2000);
         }
         
-        // ✅ Check if game crashed
         if (gameState.status === 'active' && newState.status === 'crashed') {
           const crashData = {
             roundNumber: newState.roundNumber || 0,
@@ -105,14 +114,12 @@ const Aviator = () => {
           setTimeout(() => setError(''), 3000);
         }
         
-        // ✅ Auto Cash Out - Bet 1
         if (newState.status === 'active' && bet1.isActive && bet1.autoCashOutEnabled) {
           if (newState.multiplier >= bet1.autoCashOut) {
             handleAutoCashOut(1, newState.multiplier);
           }
         }
         
-        // ✅ Auto Cash Out - Bet 2
         if (newState.status === 'active' && bet2.isActive && bet2.autoCashOutEnabled) {
           if (newState.multiplier >= bet2.autoCashOut) {
             handleAutoCashOut(2, newState.multiplier);
@@ -217,7 +224,6 @@ const Aviator = () => {
       );
       
       if (response.data.success) {
-        // ✅ Refund balance
         const refundAmount = bet.amount;
         setBet(prev => ({ ...prev, isPending: false, isActive: false }));
         setBalance(prev => prev + refundAmount);
@@ -245,7 +251,6 @@ const Aviator = () => {
     const bet = betNumber === 1 ? bet1 : bet2;
     const setBet = betNumber === 1 ? setBet1 : setBet2;
     
-    // ✅ Only allow betting when game is idle (for next round)
     if (gameState.status !== 'idle') {
       setError('⏳ Please wait for the next round!');
       setTimeout(() => setError(''), 2000);
@@ -289,14 +294,11 @@ const Aviator = () => {
       console.log('📥 Bet response:', response.data);
       
       if (response.data.success) {
-        // ✅ Update balance from response
         const newBalance = response.data.newBalance !== null && response.data.newBalance !== undefined 
           ? response.data.newBalance 
           : balance - betAmount;
         
         setBalance(newBalance);
-        
-        // ✅ Set bet as PENDING (for next round)
         setBet(prev => ({ ...prev, isActive: false, isPending: true }));
         setMessage(`✅ Bet ${betNumber} placed! Waiting for next round...`);
         setTotalBets(prev => prev + 1);
@@ -348,7 +350,6 @@ const Aviator = () => {
         const winAmount = response.data.winAmount || 0;
         const profitAmount = winAmount - bet.amount;
         
-        // ✅ ADD WINNINGS TO BALANCE
         setBalance(prev => prev + winAmount);
         setProfit(profitAmount);
         setTotalWins(prev => prev + 1);
@@ -401,13 +402,12 @@ const Aviator = () => {
   const getButtonConfig = (betNumber) => {
     const bet = betNumber === 1 ? bet1 : bet2;
     
-    // ✅ Show Cancel button for pending bets
     if (bet.isPending) {
       return {
-        text: `🔴 Cancel`,
-        class: 'cancel-btn',
-        disabled: false,
-        onClick: () => cancelPendingBet(betNumber)
+        text: `⏳ Pending...`,
+        class: 'pending-btn',
+        disabled: true,
+        onClick: null
       };
     }
     
@@ -423,7 +423,6 @@ const Aviator = () => {
         onClick: () => handleCashOut(betNumber)
       };
     } else {
-      // ✅ Only allow placing bet when game is idle
       const canPlaceBet = gameState.status === 'idle';
       return {
         text: `📈 Bet ${betNumber}`,
@@ -439,7 +438,6 @@ const Aviator = () => {
 
   return (
     <div className="aviator-container">
-      {/* ===== HEADER ===== */}
       <div className="aviator-header">
         <h1><span>✈️</span> Aviator</h1>
         <div className="aviator-balance">
@@ -447,7 +445,6 @@ const Aviator = () => {
         </div>
       </div>
 
-      {/* ===== HISTORY ===== */}
       <div className="aviator-history-horizontal">
         <div className="history-list-horizontal">
           {history.length === 0 ? (
@@ -468,7 +465,6 @@ const Aviator = () => {
         </div>
       </div>
 
-      {/* ===== ODD DISPLAY ===== */}
       <div className="aviator-odd-display">
         <span className="odd-label">📊 Current Odd</span>
         <span className={`odd-number-user ${gameState.status === 'active' ? 'pulse-odd' : ''}`}>
@@ -482,11 +478,9 @@ const Aviator = () => {
         </span>
       </div>
 
-      {/* ===== MESSAGES ===== */}
       {message && <div className="bet-success">{message}</div>}
       {error && <div className="bet-error">{error}</div>}
 
-      {/* ===== TWO BETS ===== */}
       <div className="bets-horizontal">
         {/* ===== BET 1 ===== */}
         <div className="bet-section">
@@ -635,7 +629,6 @@ const Aviator = () => {
         </div>
       </div>
 
-      {/* ===== BOTTOM STATS ===== */}
       <div className="aviator-stats-bottom">
         <div className="stat-small">
           <span>Total Bets</span>
