@@ -10,7 +10,6 @@ class AviatorSocketService {
     this.reconnectDelay = 3000;
   }
 
-  // Connect to socket
   connect(token) {
     if (this.socket) {
       this.disconnect();
@@ -29,7 +28,6 @@ class AviatorSocketService {
     this.setupListeners();
   }
 
-  // Setup listeners
   setupListeners() {
     if (!this.socket) return;
 
@@ -62,7 +60,6 @@ class AviatorSocketService {
       this.emitEvent('connection:error', { error });
     });
 
-    // Game events
     this.socket.on('round:state', (data) => {
       this.emitEvent('round:state', data);
     });
@@ -104,7 +101,6 @@ class AviatorSocketService {
     });
   }
 
-  // Emit event to listeners
   emitEvent(event, data) {
     if (this.listeners[event]) {
       this.listeners[event].forEach(callback => {
@@ -117,7 +113,6 @@ class AviatorSocketService {
     }
   }
 
-  // Register event listener
   on(event, callback) {
     if (!this.listeners[event]) {
       this.listeners[event] = [];
@@ -125,14 +120,12 @@ class AviatorSocketService {
     this.listeners[event].push(callback);
   }
 
-  // Remove event listener
   off(event, callback) {
     if (this.listeners[event]) {
       this.listeners[event] = this.listeners[event].filter(cb => cb !== callback);
     }
   }
 
-  // Emit message to server
   emit(event, data) {
     if (this.socket && this.isConnected) {
       this.socket.emit(event, data);
@@ -141,25 +134,6 @@ class AviatorSocketService {
     }
   }
 
-  // Place bet
-  placeBet(roundId, stake, betSlot = 1, idempotencyKey) {
-    this.emit('bet:request', {
-      roundId,
-      stake,
-      betSlot,
-      idempotencyKey: idempotencyKey || `${Date.now()}-${Math.random()}`
-    });
-  }
-
-  // Cash out
-  cashOut(betId, idempotencyKey) {
-    this.emit('cashout:request', {
-      betId,
-      idempotencyKey: idempotencyKey || `${Date.now()}-${Math.random()}`
-    });
-  }
-
-  // Disconnect
   disconnect() {
     if (this.socket) {
       this.socket.disconnect();
@@ -168,7 +142,6 @@ class AviatorSocketService {
     }
   }
 
-  // Get connection status
   getConnectionStatus() {
     return {
       isConnected: this.isConnected,
@@ -177,7 +150,6 @@ class AviatorSocketService {
   }
 }
 
-// Singleton instance
 let instance = null;
 
 export const getAviatorSocket = () => {

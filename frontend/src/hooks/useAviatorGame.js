@@ -42,7 +42,6 @@ export const useAviatorGame = () => {
       try {
         setLoading(true);
         
-        // Get token
         const token = localStorage.getItem('token');
         if (!token) {
           setError('Please login to play');
@@ -50,7 +49,6 @@ export const useAviatorGame = () => {
           return;
         }
 
-        // Fetch initial data
         await Promise.all([
           fetchBalance(),
           fetchHistory(),
@@ -59,7 +57,6 @@ export const useAviatorGame = () => {
           fetchLivePlayers()
         ]);
 
-        // Connect socket
         connectSocket(token);
         
         setLoading(false);
@@ -72,7 +69,6 @@ export const useAviatorGame = () => {
 
     init();
 
-    // Cleanup
     return () => {
       if (socketRef.current) {
         socketRef.current.disconnect();
@@ -88,7 +84,6 @@ export const useAviatorGame = () => {
     socket.connect(token);
     setConnectionStatus('connecting');
 
-    // Socket event listeners
     socket.on('connection:connected', () => {
       setConnectionStatus('connected');
     });
@@ -103,7 +98,6 @@ export const useAviatorGame = () => {
 
     socket.on('connection:reconnected', () => {
       setConnectionStatus('connected');
-      // Refresh state after reconnect
       fetchCurrentRound();
       fetchBalance();
     });
@@ -147,7 +141,6 @@ export const useAviatorGame = () => {
     socket.on('cashout:success', (data) => {
       setBalance(data.balance);
       fetchMyBets();
-      // Update bet status
       if (data.betId === bet1Ref.current.betId) {
         bet1Ref.current.isActive = false;
         bet1Ref.current.status = 'cashed';
@@ -397,7 +390,6 @@ export const useAviatorGame = () => {
   }, []);
 
   return {
-    // State
     roundState,
     balance,
     history,
@@ -406,8 +398,6 @@ export const useAviatorGame = () => {
     connectionStatus,
     loading,
     error,
-    
-    // Functions
     placeBet,
     cashOut,
     cancelBet,
@@ -418,8 +408,6 @@ export const useAviatorGame = () => {
     fetchMyBets,
     fetchCurrentRound,
     fetchLivePlayers,
-    
-    // Refs
     bet1Ref,
     bet2Ref
   };
