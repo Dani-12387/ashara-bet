@@ -210,7 +210,7 @@ export const useAviatorGame = () => {
         setRoundState(prev => ({
           ...prev,
           roundId: response.data.roundId,
-          status: response.data.status,
+          status: response.data.status || 'WAITING',
           multiplier: response.data.multiplier || 1.00,
           crashMultiplier: response.data.crashMultiplier || 0,
           serverTime: response.data.serverTime || Date.now()
@@ -243,7 +243,8 @@ export const useAviatorGame = () => {
         return { success: false, message: 'Please login' };
       }
 
-      if (roundState.status !== 'BETTING_OPEN') {
+      // ✅ Allow betting when WAITING or BETTING_OPEN
+      if (roundState.status !== 'WAITING' && roundState.status !== 'BETTING_OPEN') {
         setError('Betting is not open');
         return { success: false, message: 'Betting is not open' };
       }
@@ -260,14 +261,21 @@ export const useAviatorGame = () => {
         return { success: false, message: 'Bet already placed' };
       }
 
-      const response = await aviatorApi.placeBet(roundState.roundId, stake, betSlot);
+      // ✅ Use the roundId from state
+      const roundId = roundState.roundId;
+      if (!roundId) {
+        setError('No active round');
+        return { success: false, message: 'No active round' };
+      }
+
+      const response = await aviatorApi.placeBet(roundId, stake, betSlot);
       
       if (response.success) {
         const betData = response.data.bet;
         betRef.current.betId = betData.betId;
         betRef.current.stake = stake;
-        betRef.current.isActive = true;
-        betRef.current.isPending = betData.status === 'ACTIVE' ? false : true;
+        betRef.current.isActive = betData.status === 'ACTIVE';
+        betRef.current.isPending = betData.status === 'PENDING';
         betRef.current.status = betData.status;
         
         setBalance(response.data.balance);

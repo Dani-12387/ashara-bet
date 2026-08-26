@@ -22,6 +22,9 @@ const BettingPanel = ({
   const canCashOut = isActive && roundState.status === 'RUNNING';
   const canCancel = isPending && (roundState.status === 'WAITING' || roundState.status === 'BETTING_OPEN');
 
+  // ✅ Show Place Bet button even when game is waiting
+  const canPlaceBetWaiting = roundState.status === 'WAITING' && !isActive && !isPending && !isCashed;
+
   useEffect(() => {
     if (betState?.stake) {
       setStake(betState.stake);
@@ -144,6 +147,16 @@ const BettingPanel = ({
             </button>
           )}
 
+          {canPlaceBetWaiting && (
+            <button 
+              className="bet-action-btn place-bet-btn"
+              onClick={handlePlaceBet}
+              disabled={isSubmitting || stake <= 0 || stake > balance}
+            >
+              {isSubmitting ? '⏳...' : '📈 PLACE BET'}
+            </button>
+          )}
+
           {canCashOut && (
             <button 
               className="bet-action-btn cashout-btn"
@@ -164,13 +177,12 @@ const BettingPanel = ({
             </button>
           )}
 
-          {isActive && !canCashOut && roundState.status !== 'RUNNING' && (
-            <div className="bet-status-message">⏳ Waiting for round to start...</div>
-          )}
-
-          {isCashed && (
-            <div className="bet-status-message cashed-message">
-              ✅ Cashed out at {betState?.cashoutMultiplier?.toFixed(2) || '?'}x
+          {!canPlaceBet && !canPlaceBetWaiting && !canCashOut && !canCancel && (
+            <div className="bet-status-message">
+              {roundState.status === 'BETTING_CLOSED' && '🔒 Bets Closed'}
+              {roundState.status === 'CRASHED' && '💥 Round Crashed'}
+              {isCashed && '✅ Already Cashed Out'}
+              {(isActive || isPending) && '⏳ Waiting for round...'}
             </div>
           )}
         </div>

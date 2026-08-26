@@ -80,7 +80,6 @@ const GameCanvas = ({ multiplier, status, crashMultiplier, roundId }) => {
         ctx.lineWidth = 3;
         ctx.stroke();
 
-        // Glow effect
         ctx.shadowColor = isCrashed ? 'rgba(220,53,69,0.3)' : 'rgba(78,205,196,0.3)';
         ctx.shadowBlur = 20;
         ctx.stroke();
@@ -101,7 +100,6 @@ const GameCanvas = ({ multiplier, status, crashMultiplier, roundId }) => {
         ctx.translate(clampedX, clampedY);
         ctx.rotate(-Math.PI / 6);
         
-        // Body
         ctx.fillStyle = '#ffd700';
         ctx.shadowColor = 'rgba(255,215,0,0.5)';
         ctx.shadowBlur = 20;
@@ -109,7 +107,6 @@ const GameCanvas = ({ multiplier, status, crashMultiplier, roundId }) => {
         ctx.ellipse(0, 0, 20, 8, 0, 0, Math.PI * 2);
         ctx.fill();
         
-        // Wing
         ctx.fillStyle = '#ffed4a';
         ctx.shadowBlur = 10;
         ctx.beginPath();
@@ -125,7 +122,6 @@ const GameCanvas = ({ multiplier, status, crashMultiplier, roundId }) => {
         ctx.closePath();
         ctx.fill();
         
-        // Tail
         ctx.fillStyle = '#f39c12';
         ctx.beginPath();
         ctx.moveTo(-18, -3);
@@ -135,7 +131,6 @@ const GameCanvas = ({ multiplier, status, crashMultiplier, roundId }) => {
         ctx.closePath();
         ctx.fill();
         
-        // Window
         ctx.fillStyle = '#4ecdc4';
         ctx.shadowBlur = 0;
         ctx.beginPath();
@@ -143,16 +138,6 @@ const GameCanvas = ({ multiplier, status, crashMultiplier, roundId }) => {
         ctx.fill();
         
         ctx.restore();
-        
-        // Trail
-        ctx.fillStyle = 'rgba(255,215,0,0.1)';
-        for (let i = 0; i < 10; i++) {
-          const trailX = clampedX - 20 - i * 6;
-          const trailY = clampedY - 5 + Math.sin(i * 0.5) * 3;
-          ctx.beginPath();
-          ctx.arc(trailX, trailY, 4 - i * 0.3, 0, Math.PI * 2);
-          ctx.fill();
-        }
       } else {
         // Crash explosion
         ctx.save();
@@ -175,19 +160,6 @@ const GameCanvas = ({ multiplier, status, crashMultiplier, roundId }) => {
         }
         
         ctx.restore();
-        
-        // Crash text
-        ctx.fillStyle = '#dc3545';
-        ctx.font = 'bold 36px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('💥', width / 2, height / 2 - 60);
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold 28px Arial';
-        ctx.fillText(`CRASHED AT`, width / 2, height / 2);
-        ctx.fillStyle = '#ff6b6b';
-        ctx.font = 'bold 48px Arial';
-        ctx.fillText(`${(crashMultiplier || multiplier || 1).toFixed(2)}x`, width / 2, height / 2 + 50);
       }
     };
 
@@ -217,7 +189,6 @@ const GameCanvas = ({ multiplier, status, crashMultiplier, roundId }) => {
         return newPoints;
       });
     } else if (status === 'CRASHED') {
-      // Add final point
       setTrajectoryPoints(prev => {
         if (prev.length > 0 && prev[prev.length - 1] !== crashMultiplier) {
           return [...prev, crashMultiplier || multiplier];
