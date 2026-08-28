@@ -66,6 +66,13 @@ const AviatorManagement = () => {
         totalBets: data.totalBets !== undefined ? data.totalBets : prev.totalBets,
         totalAmount: data.totalAmount !== undefined ? data.totalAmount : prev.totalAmount
       }));
+
+      // ✅ If crash occurs, refresh history, active bets, and game state immediately
+      if (data.status === 'CRASHED' || data.status === 'crashed') {
+        fetchHistory();
+        fetchActiveBets();
+        fetchGameState();
+      }
     });
 
     socket.on('round:countdown', (data) => {

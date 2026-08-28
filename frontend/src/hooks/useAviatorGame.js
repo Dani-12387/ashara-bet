@@ -43,7 +43,6 @@ export const useAviatorGame = () => {
       const response = await aviatorApi.getBalance();
       if (response.success && typeof response.balance === 'number') {
         setBalance(response.balance);
-        // Update localStorage user object
         const userData = localStorage.getItem('user');
         if (userData) {
           try {
@@ -53,7 +52,6 @@ export const useAviatorGame = () => {
           } catch (e) {}
         }
       } else {
-        // Fallback to localStorage
         const userData = localStorage.getItem('user');
         if (userData) {
           try {
@@ -66,7 +64,6 @@ export const useAviatorGame = () => {
       }
     } catch (error) {
       console.error('Error fetching balance:', error);
-      // Last resort: try localStorage
       try {
         const userData = localStorage.getItem('user');
         if (userData) {
@@ -76,6 +73,61 @@ export const useAviatorGame = () => {
           }
         }
       } catch (e) {}
+    }
+  }, []);
+
+  // ========== FETCH HISTORY ==========
+  const fetchHistory = useCallback(async () => {
+    try {
+      const response = await aviatorApi.getHistory(20);
+      if (response.success) {
+        setHistory(response.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching history:', error);
+    }
+  }, []);
+
+  // ========== FETCH MY BETS ==========
+  const fetchMyBets = useCallback(async () => {
+    try {
+      const response = await aviatorApi.getMyBets(20, 0);
+      if (response.success) {
+        setMyBets(response.data?.bets || []);
+      }
+    } catch (error) {
+      console.error('Error fetching my bets:', error);
+    }
+  }, []);
+
+  // ========== FETCH CURRENT ROUND ==========
+  const fetchCurrentRound = useCallback(async () => {
+    try {
+      const response = await aviatorApi.getCurrentRound();
+      if (response.success) {
+        setRoundState(prev => ({
+          ...prev,
+          roundId: response.data.roundId,
+          status: response.data.status || 'WAITING',
+          multiplier: response.data.multiplier || 1.00,
+          crashMultiplier: response.data.crashMultiplier || 0,
+          serverTime: response.data.serverTime || Date.now()
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching current round:', error);
+    }
+  }, []);
+
+  // ========== FETCH LIVE PLAYERS ==========
+  const fetchLivePlayers = useCallback(async () => {
+    try {
+      const response = await aviatorApi.getLivePlayers();
+      if (response.success) {
+        setLivePlayers(response.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching live players:', error);
     }
   }, []);
 
@@ -92,12 +144,10 @@ export const useAviatorGame = () => {
         }
 
         await fetchBalance();
-        await Promise.all([
-          fetchHistory(),
-          fetchMyBets(),
-          fetchCurrentRound(),
-          fetchLivePlayers()
-        ]);
+        await fetchHistory();
+        await fetchMyBets();
+        await fetchCurrentRound();
+        await fetchLivePlayers();
 
         connectSocket(token);
         setLoading(false);
@@ -115,7 +165,7 @@ export const useAviatorGame = () => {
         socketRef.current.disconnect();
       }
     };
-  }, [fetchBalance]);
+  }, [fetchBalance, fetchHistory, fetchMyBets, fetchCurrentRound, fetchLivePlayers]);
 
   // ========== SOCKET CONNECTION ==========
   const connectSocket = (token) => {
@@ -146,20 +196,24 @@ export const useAviatorGame = () => {
     socket.on('round:state', (data) => {
       setRoundState(prev => ({
         ...prev,
-        roundId: data.roundId,
-        status: data.status,
-        multiplier: data.multiplier || prev.multiplier,
+        roundId: data.roundId || prev.roundId,
+        status: data.status || prev.status,
+        multiplier: data.multiplier !== undefined ? data.multiplier : prev.multiplier,
         crashMultiplier: data.crashMultiplier || 0,
         serverTime: data.serverTime || Date.now()
       }));
-      // If round crashes, update bet statuses (lost)
-      if (data.status === 'CRASHED') {
+
+      // ✅ If crash occurs, update bet statuses and fetch history immediately
+      if (data.status === 'CRASHED' || data.status === 'crashed') {
         if (bet1Ref.current.status === 'active') {
           bet1Ref.current.status = 'lost';
         }
         if (bet2Ref.current.status === 'active') {
           bet2Ref.current.status = 'lost';
         }
+        fetchHistory(); // Immediately fetch updated history
+        fetchMyBets();
+        fetchBalance();
       }
     });
 
@@ -207,58 +261,6 @@ export const useAviatorGame = () => {
     });
   };
 
-  // ========== FETCH FUNCTIONS ==========
-  const fetchHistory = async () => {
-    try {
-      const response = await aviatorApi.getHistory(20);
-      if (response.success) {
-        setHistory(response.data || []);
-      }
-    } catch (error) {
-      console.error('Error fetching history:', error);
-    }
-  };
-
-  const fetchMyBets = async () => {
-    try {
-      const response = await aviatorApi.getMyBets(20, 0);
-      if (response.success) {
-        setMyBets(response.data?.bets || []);
-      }
-    } catch (error) {
-      console.error('Error fetching my bets:', error);
-    }
-  };
-
-  const fetchCurrentRound = async () => {
-    try {
-      const response = await aviatorApi.getCurrentRound();
-      if (response.success) {
-        setRoundState(prev => ({
-          ...prev,
-          roundId: response.data.roundId,
-          status: response.data.status || 'WAITING',
-          multiplier: response.data.multiplier || 1.00,
-          crashMultiplier: response.data.crashMultiplier || 0,
-          serverTime: response.data.serverTime || Date.now()
-        }));
-      }
-    } catch (error) {
-      console.error('Error fetching current round:', error);
-    }
-  };
-
-  const fetchLivePlayers = async () => {
-    try {
-      const response = await aviatorApi.getLivePlayers();
-      if (response.success) {
-        setLivePlayers(response.data || []);
-      }
-    } catch (error) {
-      console.error('Error fetching live players:', error);
-    }
-  };
-
   // ========== PLACE BET ==========
   const placeBet = useCallback(async (betSlot, stake) => {
     try {
@@ -270,7 +272,6 @@ export const useAviatorGame = () => {
         return { success: false, message: 'Please login' };
       }
 
-      // ✅ Allow betting only in WAITING or BETTING_OPEN (before round starts)
       if (roundState.status !== 'WAITING' && roundState.status !== 'BETTING_OPEN') {
         setError('Betting is only available before the round starts');
         return { success: false, message: 'Betting not available' };
@@ -312,7 +313,7 @@ export const useAviatorGame = () => {
       setError(error.message || 'Failed to place bet');
       return { success: false, message: error.message };
     }
-  }, [roundState, balance, fetchBalance]);
+  }, [roundState, balance, fetchBalance, fetchMyBets]);
 
   // ========== CASH OUT ==========
   const cashOut = useCallback(async (betSlot) => {
@@ -362,7 +363,7 @@ export const useAviatorGame = () => {
       setError(error.message || 'Failed to cash out');
       return { success: false, message: error.message };
     }
-  }, [roundState, fetchBalance]);
+  }, [roundState, fetchBalance, fetchMyBets]);
 
   // ========== CANCEL PENDING BET ==========
   const cancelBet = useCallback(async (betSlot) => {
@@ -395,7 +396,7 @@ export const useAviatorGame = () => {
       setError(error.message || 'Failed to cancel bet');
       return { success: false, message: error.message };
     }
-  }, [fetchBalance]);
+  }, [fetchBalance, fetchMyBets]);
 
   // ========== GET BET STATE ==========
   const getBetState = useCallback((betSlot) => {
