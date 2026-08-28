@@ -65,8 +65,8 @@ const BettingPanel = ({
       return { text: '⏳ WAITING...', disabled: true, action: null };
     }
 
-    // No bet placed – only allow if round is RUNNING
-    const canBet = roundState.status === 'RUNNING';
+    // No bet placed – allow only when WAITING or BETTING_OPEN
+    const canBet = roundState.status === 'WAITING' || roundState.status === 'BETTING_OPEN';
     const hasEnoughBalance = balance > 0 && stake <= balance;
     const noBalance = balance <= 0;
     const insufficientBalance = !hasEnoughBalance && balance > 0;
@@ -76,7 +76,13 @@ const BettingPanel = ({
     let buttonStyle = 'place-bet-btn';
 
     if (!canBet) {
-      buttonText = '⏳ WAITING FOR ROUND';
+      if (roundState.status === 'RUNNING') {
+        buttonText = '⏳ ROUND IN PROGRESS';
+      } else if (roundState.status === 'CRASHED') {
+        buttonText = '💥 ROUND CRASHED';
+      } else {
+        buttonText = '⏳ WAITING FOR ROUND';
+      }
       disabled = true;
     } else if (noBalance) {
       buttonText = '⚠️ NO BALANCE';
@@ -84,6 +90,10 @@ const BettingPanel = ({
     } else if (insufficientBalance) {
       buttonText = `⚠️ NEED ${(stake - balance).toFixed(2)} MORE`;
       disabled = true;
+    } else if (roundState.status === 'WAITING') {
+      buttonText = '📈 PLACE BET (Next Round)';
+    } else if (roundState.status === 'BETTING_OPEN') {
+      buttonText = '📈 PLACE BET';
     }
 
     return {
@@ -245,8 +255,12 @@ const BettingPanel = ({
               ⚠️ No balance! Please deposit to play
             </div>
           )}
-          {!buttonState.noBalance && !buttonState.insufficientBalance && buttonState.disabled && !isSubmitting && roundState.status !== 'RUNNING' && (
-            <div className="bet-status-message">⏳ Waiting for the next live round</div>
+          {!buttonState.noBalance && !buttonState.insufficientBalance && buttonState.disabled && !isSubmitting && (
+            <div className="bet-status-message">
+              {roundState.status === 'RUNNING' ? '⏳ Round in progress' :
+               roundState.status === 'CRASHED' ? '💥 Round crashed' :
+               '⏳ Waiting for round to start'}
+            </div>
           )}
         </div>
 

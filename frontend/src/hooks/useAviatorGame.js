@@ -43,6 +43,15 @@ export const useAviatorGame = () => {
       const response = await aviatorApi.getBalance();
       if (response.success && typeof response.balance === 'number') {
         setBalance(response.balance);
+        // Update localStorage user object
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          try {
+            const user = JSON.parse(userData);
+            user.balance = response.balance;
+            localStorage.setItem('user', JSON.stringify(user));
+          } catch (e) {}
+        }
       } else {
         // Fallback to localStorage
         const userData = localStorage.getItem('user');
@@ -57,6 +66,16 @@ export const useAviatorGame = () => {
       }
     } catch (error) {
       console.error('Error fetching balance:', error);
+      // Last resort: try localStorage
+      try {
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          const user = JSON.parse(userData);
+          if (typeof user.balance === 'number') {
+            setBalance(user.balance);
+          }
+        }
+      } catch (e) {}
     }
   }, []);
 
@@ -251,10 +270,10 @@ export const useAviatorGame = () => {
         return { success: false, message: 'Please login' };
       }
 
-      // ✅ Only allow betting when game is RUNNING (active)
-      if (roundState.status !== 'RUNNING') {
-        setError('Betting is only available during live rounds');
-        return { success: false, message: 'Game is not active' };
+      // ✅ Allow betting only in WAITING or BETTING_OPEN (before round starts)
+      if (roundState.status !== 'WAITING' && roundState.status !== 'BETTING_OPEN') {
+        setError('Betting is only available before the round starts');
+        return { success: false, message: 'Betting not available' };
       }
 
       if (stake > balance) {
