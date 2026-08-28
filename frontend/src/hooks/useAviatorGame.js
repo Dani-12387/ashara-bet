@@ -11,7 +11,7 @@ export const useAviatorGame = () => {
     countdown: 0,
     serverTime: Date.now()
   });
-  
+
   const [balance, setBalance] = useState(0);
   const [history, setHistory] = useState([]);
   const [myBets, setMyBets] = useState([]);
@@ -19,75 +19,63 @@ export const useAviatorGame = () => {
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   const socketRef = useRef(null);
+
+  // Each bet has its own state: stake, betId, status, autoCashOut settings
   const bet1Ref = useRef({
-    betId: null,
     stake: 10,
-    isActive: false,
-    isPending: false,
-    status: 'idle'
+    betId: null,
+    status: 'idle',        // idle, pending, active, cashed, cancelled
+    autoCashOut: 0,
+    autoCashOutEnabled: false
   });
   const bet2Ref = useRef({
-    betId: null,
     stake: 10,
-    isActive: false,
-    isPending: false,
-    status: 'idle'
+    betId: null,
+    status: 'idle',
+    autoCashOut: 0,
+    autoCashOutEnabled: false
   });
 
   // ========== FETCH BALANCE ==========
   const fetchBalance = useCallback(async () => {
     try {
-      console.log('🔄 Fetching balance...');
       const response = await aviatorApi.getBalance();
-      console.log('📊 Balance API response:', response);
-      
-      if (response && response.success && typeof response.balance === 'number') {
-        console.log('✅ Balance from API:', response.balance);
+      if (response.success && typeof response.balance === 'number') {
         setBalance(response.balance);
-        // Update localStorage
-        try {
-          const userData = localStorage.getItem('user');
-          if (userData) {
+        // Update localStorage user object
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          try {
             const user = JSON.parse(userData);
             user.balance = response.balance;
             localStorage.setItem('user', JSON.stringify(user));
-          }
-        } catch (e) {}
-        return;
+          } catch (e) {}
+        }
+      } else {
+        // Fallback to localStorage
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          try {
+            const user = JSON.parse(userData);
+            if (typeof user.balance === 'number') {
+              setBalance(user.balance);
+            }
+          } catch (e) {}
+        }
       }
-      
-      // Fallback: try localStorage
-      console.log('⚠️ API balance failed, trying localStorage...');
+    } catch (error) {
+      console.error('Error fetching balance:', error);
       const userData = localStorage.getItem('user');
       if (userData) {
         try {
           const user = JSON.parse(userData);
-          if (user && typeof user.balance === 'number') {
-            console.log('✅ Balance from localStorage:', user.balance);
+          if (typeof user.balance === 'number') {
             setBalance(user.balance);
-            return;
           }
         } catch (e) {}
       }
-      
-      console.log('❌ No balance found, setting to 0');
-      setBalance(0);
-    } catch (error) {
-      console.error('❌ Error fetching balance:', error);
-      // Last resort: try localStorage
-      try {
-        const userData = localStorage.getItem('user');
-        if (userData) {
-          const user = JSON.parse(userData);
-          if (user && typeof user.balance === 'number') {
-            setBalance(user.balance);
-            return;
-          }
-        }
-      } catch (e) {}
-      setBalance(0);
     }
   }, []);
 
@@ -96,7 +84,6 @@ export const useAviatorGame = () => {
     const init = async () => {
       try {
         setLoading(true);
-        
         const token = localStorage.getItem('token');
         if (!token) {
           setError('Please login to play');
@@ -104,15 +91,7 @@ export const useAviatorGame = () => {
           return;
         }
 
-        // Fetch balance multiple times to ensure we get it
         await fetchBalance();
-        // Wait a bit and try again if balance is 0
-        if (balance === 0) {
-          setTimeout(async () => {
-            await fetchBalance();
-          }, 500);
-        }
-        
         await Promise.all([
           fetchHistory(),
           fetchMyBets(),
@@ -121,7 +100,6 @@ export const useAviatorGame = () => {
         ]);
 
         connectSocket(token);
-        
         setLoading(false);
       } catch (error) {
         console.error('Error initializing:', error);
@@ -143,7 +121,6 @@ export const useAviatorGame = () => {
   const connectSocket = (token) => {
     const socket = getAviatorSocket();
     socketRef.current = socket;
-    
     socket.connect(token);
     setConnectionStatus('connecting');
 
@@ -175,13 +152,19 @@ export const useAviatorGame = () => {
         crashMultiplier: data.crashMultiplier || 0,
         serverTime: data.serverTime || Date.now()
       }));
+      // If round crashes, update bet statuses (lost)
+      if (data.status === 'CRASHED') {
+        if (bet1Ref.current.status === 'active') {
+          bet1Ref.current.status = 'lost';
+        }
+        if (bet2Ref.current.status === 'active') {
+          bet2Ref.current.status = 'lost';
+        }
+      }
     });
 
     socket.on('round:countdown', (data) => {
-      setRoundState(prev => ({
-        ...prev,
-        countdown: data.countdown
-      }));
+      setRoundState(prev => ({ ...prev, countdown: data.countdown }));
     });
 
     socket.on('round:multiplier', (data) => {
@@ -206,27 +189,18 @@ export const useAviatorGame = () => {
       setBalance(data.balance);
       fetchMyBets();
       if (data.betId === bet1Ref.current.betId) {
-        bet1Ref.current.isActive = false;
         bet1Ref.current.status = 'cashed';
       }
       if (data.betId === bet2Ref.current.betId) {
-        bet2Ref.current.isActive = false;
         bet2Ref.current.status = 'cashed';
       }
     });
 
-    socket.on('bet:placed', () => {
-      fetchLivePlayers();
-    });
-
-    socket.on('bet:cashed_out', () => {
-      fetchLivePlayers();
-    });
-
+    socket.on('bet:placed', () => { fetchLivePlayers(); });
+    socket.on('bet:cashed_out', () => { fetchLivePlayers(); });
     socket.on('wallet:updated', (data) => {
       setBalance(data.balance || data.newBalance);
     });
-
     socket.on('system:error', (data) => {
       setError(data.message || 'System error');
       setTimeout(() => setError(null), 3000);
@@ -289,54 +263,47 @@ export const useAviatorGame = () => {
   const placeBet = useCallback(async (betSlot, stake) => {
     try {
       setError(null);
-      
+
       const token = localStorage.getItem('token');
       if (!token) {
         setError('Please login to bet');
         return { success: false, message: 'Please login' };
       }
 
-      // ✅ Allow betting when WAITING, BETTING_OPEN, or RUNNING
+      // Check round status
       if (roundState.status === 'CRASHED' || roundState.status === 'CLOSED') {
         setError('Game is not available');
         return { success: false, message: 'Game is not available' };
       }
 
-      // ✅ Check if balance is sufficient
       if (stake > balance) {
         setError(`Insufficient balance! Balance: ${balance.toFixed(2)} ETB`);
         return { success: false, message: 'Insufficient balance' };
       }
 
       const betRef = betSlot === 1 ? bet1Ref : bet2Ref;
-      
-      if (betRef.current.isActive || betRef.current.isPending) {
+      if (betRef.current.status === 'pending' || betRef.current.status === 'active') {
         setError('Bet already placed');
         return { success: false, message: 'Bet already placed' };
       }
 
-      const roundId = roundState.roundId;
-      if (!roundId) {
-        setError('No active round');
-        return { success: false, message: 'No active round' };
-      }
+      // Prepare autoCashOut value (if enabled)
+      const autoCashOut = betRef.current.autoCashOutEnabled ? betRef.current.autoCashOut : 0;
 
-      const response = await aviatorApi.placeBet(roundId, stake, betSlot);
-      
+      const response = await aviatorApi.placeBet(stake, autoCashOut);
+
       if (response.success) {
         const betData = response.data.bet;
         betRef.current.betId = betData.betId;
         betRef.current.stake = stake;
-        betRef.current.isActive = betData.status === 'ACTIVE';
-        betRef.current.isPending = betData.status === 'PENDING';
-        betRef.current.status = betData.status;
-        
-        if (response.data.balance !== undefined) {
-          setBalance(response.data.balance);
+        betRef.current.status = betData.status === 'ACTIVE' ? 'active' : 'pending';
+        // Update local balance
+        if (response.data.newBalance !== undefined) {
+          setBalance(response.data.newBalance);
+        } else {
+          fetchBalance();
         }
         fetchMyBets();
-        fetchBalance();
-        
         return { success: true, bet: betData };
       } else {
         setError(response.error?.message || 'Failed to place bet');
@@ -353,7 +320,7 @@ export const useAviatorGame = () => {
   const cashOut = useCallback(async (betSlot) => {
     try {
       setError(null);
-      
+
       const token = localStorage.getItem('token');
       if (!token) {
         setError('Please login to cash out');
@@ -366,28 +333,25 @@ export const useAviatorGame = () => {
       }
 
       const betRef = betSlot === 1 ? bet1Ref : bet2Ref;
-      
-      if (!betRef.current.isActive) {
+      if (betRef.current.status !== 'active') {
         setError('No active bet found');
         return { success: false, message: 'No active bet found' };
       }
 
-      const response = await aviatorApi.cashOut(betRef.current.betId);
-      
+      const response = await aviatorApi.cashOut();
+
       if (response.success) {
         const data = response.data;
-        betRef.current.isActive = false;
         betRef.current.status = 'cashed';
-        
-        if (data.balance !== undefined) {
-          setBalance(data.balance);
+        if (data.newBalance !== undefined) {
+          setBalance(data.newBalance);
+        } else {
+          fetchBalance();
         }
         fetchMyBets();
-        fetchBalance();
-        
-        return { 
-          success: true, 
-          payout: data.payout,
+        return {
+          success: true,
+          payout: data.winAmount || data.payout,
           profit: data.profit,
           multiplier: data.multiplier
         };
@@ -402,31 +366,27 @@ export const useAviatorGame = () => {
     }
   }, [roundState, fetchBalance]);
 
-  // ========== CANCEL BET ==========
+  // ========== CANCEL PENDING BET ==========
   const cancelBet = useCallback(async (betSlot) => {
     try {
       setError(null);
-      
+
       const betRef = betSlot === 1 ? bet1Ref : bet2Ref;
-      
-      if (!betRef.current.isPending) {
+      if (betRef.current.status !== 'pending') {
         setError('No pending bet to cancel');
         return { success: false, message: 'No pending bet to cancel' };
       }
 
-      const response = await aviatorApi.cancelPendingBet(betRef.current.betId);
-      
+      const response = await aviatorApi.cancelPendingBet();
+
       if (response.success) {
-        betRef.current.isPending = false;
-        betRef.current.isActive = false;
         betRef.current.status = 'cancelled';
-        
-        if (response.data.balance !== undefined) {
-          setBalance(response.data.balance);
+        if (response.data.newBalance !== undefined) {
+          setBalance(response.data.newBalance);
+        } else {
+          fetchBalance();
         }
         fetchMyBets();
-        fetchBalance();
-        
         return { success: true, message: 'Bet cancelled' };
       } else {
         setError(response.error?.message || 'Failed to cancel bet');
@@ -445,17 +405,26 @@ export const useAviatorGame = () => {
     return {
       betId: betRef.current.betId,
       stake: betRef.current.stake,
-      isActive: betRef.current.isActive,
-      isPending: betRef.current.isPending,
-      status: betRef.current.status
+      status: betRef.current.status,
+      autoCashOut: betRef.current.autoCashOut,
+      autoCashOutEnabled: betRef.current.autoCashOutEnabled
     };
   }, []);
 
   // ========== SET BET STAKE ==========
   const setBetStake = useCallback((betSlot, stake) => {
     const betRef = betSlot === 1 ? bet1Ref : bet2Ref;
-    if (!betRef.current.isActive && !betRef.current.isPending) {
+    if (betRef.current.status === 'idle' || betRef.current.status === 'cancelled') {
       betRef.current.stake = stake;
+    }
+  }, []);
+
+  // ========== SET AUTO CASH OUT ==========
+  const setAutoCashOut = useCallback((betSlot, enabled, value) => {
+    const betRef = betSlot === 1 ? bet1Ref : bet2Ref;
+    if (betRef.current.status === 'idle' || betRef.current.status === 'cancelled') {
+      betRef.current.autoCashOutEnabled = enabled;
+      betRef.current.autoCashOut = value || 0;
     }
   }, []);
 
@@ -473,6 +442,7 @@ export const useAviatorGame = () => {
     cancelBet,
     getBetState,
     setBetStake,
+    setAutoCashOut,
     fetchBalance,
     fetchHistory,
     fetchMyBets,

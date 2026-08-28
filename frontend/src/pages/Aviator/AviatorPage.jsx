@@ -15,7 +15,7 @@ const AviatorPage = () => {
   const navigate = useNavigate();
   const [showFairnessModal, setShowFairnessModal] = useState(false);
   const [selectedRoundId, setSelectedRoundId] = useState(null);
-  
+
   const {
     roundState,
     balance,
@@ -30,13 +30,9 @@ const AviatorPage = () => {
     cancelBet,
     getBetState,
     setBetStake,
-    fetchBalance,
-    fetchHistory,
-    fetchMyBets,
+    setAutoCashOut,
     fetchCurrentRound,
-    fetchLivePlayers,
-    bet1Ref,
-    bet2Ref
+    fetchLivePlayers
   } = useAviatorGame();
 
   // Check authentication
@@ -47,12 +43,10 @@ const AviatorPage = () => {
     }
   }, [navigate]);
 
-  // Handle countdown complete
   const handleCountdownComplete = () => {
     fetchCurrentRound();
   };
 
-  // Handle verify round
   const handleVerifyRound = async (roundId) => {
     try {
       const aviatorApi = (await import('../../services/aviatorApi')).default;
@@ -80,7 +74,7 @@ const AviatorPage = () => {
 
   return (
     <div className="aviator-page">
-      {/* ===== HEADER ===== */}
+      {/* Header */}
       <header className="aviator-header">
         <div className="header-left">
           <div className="header-logo">
@@ -91,49 +85,37 @@ const AviatorPage = () => {
             <a href="/aviator" className="active">Aviator</a>
           </nav>
         </div>
-        <div className="header-center">
-          AVIATOR
-        </div>
+        <div className="header-center">AVIATOR</div>
         <div className="header-right">
           <ConnectionStatus status={connectionStatus} />
           <div className="header-balance">
             Balance: <span className="amount">{balance.toFixed(2)} ETB</span>
           </div>
-          <button className="header-btn deposit" onClick={() => navigate('/deposit')}>
-            Deposit
-          </button>
-          <button className="header-btn withdraw" onClick={() => navigate('/withdraw')}>
-            Withdraw
-          </button>
-          <button className="header-btn profile" onClick={() => navigate('/my-account')}>
-            👤
-          </button>
+          <button className="header-btn deposit" onClick={() => navigate('/deposit')}>Deposit</button>
+          <button className="header-btn withdraw" onClick={() => navigate('/withdraw')}>Withdraw</button>
+          <button className="header-btn profile" onClick={() => navigate('/my-account')}>👤</button>
         </div>
       </header>
 
-      {/* ===== RECENT ROUNDS ===== */}
+      {/* Recent Rounds */}
       <RecentRounds history={history} />
 
-      {/* ===== GAME AREA ===== */}
+      {/* Game Area */}
       <div className="game-area">
-        <GameCanvas 
+        <GameCanvas
           multiplier={roundState.multiplier}
           status={roundState.status}
           crashMultiplier={roundState.crashMultiplier}
           roundId={roundState.roundId}
         />
-        
         {roundState.status === 'WAITING' && roundState.countdown > 0 && (
-          <Countdown 
-            seconds={roundState.countdown} 
-            onComplete={handleCountdownComplete}
-          />
+          <Countdown seconds={roundState.countdown} onComplete={handleCountdownComplete} />
         )}
       </div>
 
-      {/* ===== BETS LAYOUT ===== */}
+      {/* Bets Layout */}
       <div className="bets-layout">
-        <BettingPanel 
+        <BettingPanel
           betSlot={1}
           balance={balance}
           roundState={roundState}
@@ -142,8 +124,9 @@ const AviatorPage = () => {
           onCashOut={() => cashOut(1)}
           onCancelBet={() => cancelBet(1)}
           onStakeChange={(stake) => setBetStake(1, stake)}
+          onAutoCashOutChange={(enabled, value) => setAutoCashOut(1, enabled, value)}
         />
-        <BettingPanel 
+        <BettingPanel
           betSlot={2}
           balance={balance}
           roundState={roundState}
@@ -152,18 +135,17 @@ const AviatorPage = () => {
           onCashOut={() => cashOut(2)}
           onCancelBet={() => cancelBet(2)}
           onStakeChange={(stake) => setBetStake(2, stake)}
+          onAutoCashOutChange={(enabled, value) => setAutoCashOut(2, enabled, value)}
         />
       </div>
 
-      {/* ===== LIVE PLAYERS ===== */}
+      {/* Live Players & My Bets */}
       <LivePlayers players={livePlayers} roundState={roundState} />
-
-      {/* ===== MY BETS ===== */}
       <MyBets bets={myBets} />
 
-      {/* ===== FAIRNESS BUTTON ===== */}
+      {/* Fairness */}
       <div className="fairness-footer">
-        <button 
+        <button
           className="fairness-btn"
           onClick={() => {
             setSelectedRoundId(roundState.roundId);
@@ -174,15 +156,13 @@ const AviatorPage = () => {
         </button>
       </div>
 
-      {/* ===== FAIRNESS MODAL ===== */}
-      <FairnessModal 
+      <FairnessModal
         isOpen={showFairnessModal}
         onClose={() => setShowFairnessModal(false)}
         roundId={selectedRoundId}
         onVerify={handleVerifyRound}
       />
 
-      {/* ===== ERROR DISPLAY ===== */}
       {error && (
         <div className="error-toast">
           {error}
