@@ -15,24 +15,66 @@ const BettingPanel = ({
   const [quickAmounts] = useState([10, 25, 50, 100, 250, 500, 1000]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Extract bet status
   const isActive = betState?.isActive || false;
   const isPending = betState?.isPending || false;
-  const isCashed = betState?.status === 'cashed';
-  const canPlaceBet = roundState.status === 'BETTING_OPEN' && !isActive && !isPending && !isCashed;
-  const canCashOut = isActive && roundState.status === 'RUNNING';
-  const canCancel = isPending && (roundState.status === 'WAITING' || roundState.status === 'BETTING_OPEN');
+  const isCashed = betState?.status === 'cashed' || betState?.status === 'CASHED_OUT';
+  const isCancelled = betState?.status === 'cancelled';
 
-  // ✅ Show Place Bet button even when game is waiting
-  const canPlaceBetWaiting = roundState.status === 'WAITING' && !isActive && !isPending && !isCashed;
-
-  useEffect(() => {
-    if (betState?.stake) {
-      setStake(betState.stake);
+  // Determine button state
+  const getButtonState = () => {
+    // If bet is cashed or cancelled, show nothing or a message
+    if (isCashed) {
+      return { text: '✅ CASHED OUT', disabled: true, action: null };
     }
-  }, [betState]);
+    if (isCancelled) {
+      return { text: '❌ CANCELLED', disabled: true, action: null };
+    }
+
+    // If bet is pending (placed but round not started)
+    if (isPending) {
+      return { 
+        text: '🔴 CANCEL', 
+        disabled: false, 
+        action: () => onCancelBet(),
+        style: 'cancel-btn'
+      };
+    }
+
+    // If bet is active and round is running
+    if (isActive && roundState.status === 'RUNNING') {
+      const multiplier = roundState.multiplier || 1;
+      const estimatedWin = (stake * multiplier).toFixed(2);
+      return { 
+        text: `💰 CASH OUT (${multiplier.toFixed(2)}x)`, 
+        disabled: false, 
+        action: () => onCashOut(),
+        style: 'cashout-btn'
+      };
+    }
+
+    // If bet is active but round not running (shouldn't happen, but fallback)
+    if (isActive) {
+      return { text: '⏳ WAITING...', disabled: true, action: null };
+    }
+
+    // No bet placed - check if betting is allowed
+    const canBet = roundState.status === 'WAITING' || roundState.status === 'BETTING_OPEN';
+    const insufficientBalance = stake > balance;
+    const disabled = !canBet || insufficientBalance || isSubmitting;
+
+    return { 
+      text: canBet ? '📈 PLACE BET' : '⏳ BETTING CLOSED', 
+      disabled: disabled,
+      action: () => onPlaceBet(stake),
+      style: 'place-bet-btn'
+    };
+  };
+
+  const buttonState = getButtonState();
 
   const handleStakeChange = (value) => {
-    const newStake = Math.max(1, Math.min(value, balance));
+    const newStake = Math.max(1, Math.min(value, balance || 10000));
     setStake(newStake);
     if (onStakeChange) {
       onStakeChange(newStake);
@@ -43,37 +85,13 @@ const BettingPanel = ({
     handleStakeChange(amount);
   };
 
-  const handlePlaceBet = async () => {
-    if (isSubmitting) return;
+  const handleAction = async () => {
+    if (isSubmitting || !buttonState.action) return;
     setIsSubmitting(true);
     try {
-      await onPlaceBet(stake);
+      await buttonState.action();
     } catch (error) {
-      console.error('Error placing bet:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleCashOut = async () => {
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-    try {
-      await onCashOut();
-    } catch (error) {
-      console.error('Error cashing out:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleCancel = async () => {
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-    try {
-      await onCancelBet();
-    } catch (error) {
-      console.error('Error cancelling bet:', error);
+      console.error('Action error:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -83,9 +101,18 @@ const BettingPanel = ({
     <div className={`betting-panel bet-panel-${betSlot}`}>
       <div className="bet-panel-header">
         <span className="bet-panel-title">🎯 BET {betSlot}</span>
-        {isActive && <span className="bet-status active">🟢 ACTIVE</span>}
-        {isPending && <span className="bet-status pending">⏳ PENDING</span>}
-        {isCashed && <span className="bet-status cashed">✅ CASHED</span>}
+        {isActive && roundState.status === 'RUNNING' && (
+          <span className="bet-status active">🟢 ACTIVE</span>
+        )}
+        {isPending && (
+          <span className="bet-status pending">⏳ PENDING</span>
+        )}
+        {isCashed && (
+          <span className="bet-status cashed">✅ CASHED</span>
+        )}
+        {isCancelled && (
+          <span className="bet-status cancelled">❌ CANCELLED</span>
+        )}
       </div>
 
       <div className="bet-panel-body">
@@ -100,7 +127,7 @@ const BettingPanel = ({
             <button 
               className="stake-btn" 
               onClick={() => handleStakeChange(stake - 5)}
-              disabled={isActive || isPending || isCashed}
+              disabled={isActive || isPending || isCashed || isCancelled}
             >
               −
             </button>
@@ -109,14 +136,14 @@ const BettingPanel = ({
               className="stake-input"
               value={stake}
               onChange={(e) => handleStakeChange(parseFloat(e.target.value) || 0)}
-              disabled={isActive || isPending || isCashed}
+              disabled={isActive || isPending || isCashed || isCancelled}
               min="1"
               step="1"
             />
             <button 
               className="stake-btn" 
               onClick={() => handleStakeChange(stake + 5)}
-              disabled={isActive || isPending || isCashed}
+              disabled={isActive || isPending || isCashed || isCancelled}
             >
               +
             </button>
@@ -129,7 +156,7 @@ const BettingPanel = ({
               key={amount}
               className="quick-amount-btn"
               onClick={() => handleQuickAmount(amount)}
-              disabled={isActive || isPending || isCashed}
+              disabled={isActive || isPending || isCashed || isCancelled}
             >
               {amount}
             </button>
@@ -137,53 +164,18 @@ const BettingPanel = ({
         </div>
 
         <div className="bet-actions">
-          {canPlaceBet && (
-            <button 
-              className="bet-action-btn place-bet-btn"
-              onClick={handlePlaceBet}
-              disabled={isSubmitting || stake <= 0 || stake > balance}
-            >
-              {isSubmitting ? '⏳...' : '📈 BET'}
-            </button>
+          <button 
+            className={`bet-action-btn ${buttonState.style || 'place-bet-btn'}`}
+            onClick={handleAction}
+            disabled={buttonState.disabled || isSubmitting}
+          >
+            {isSubmitting ? '⏳...' : buttonState.text}
+          </button>
+          {buttonState.disabled && !isSubmitting && roundState.status !== 'WAITING' && roundState.status !== 'BETTING_OPEN' && !isActive && !isPending && (
+            <div className="bet-status-message">⏳ Waiting for next round</div>
           )}
-
-          {canPlaceBetWaiting && (
-            <button 
-              className="bet-action-btn place-bet-btn"
-              onClick={handlePlaceBet}
-              disabled={isSubmitting || stake <= 0 || stake > balance}
-            >
-              {isSubmitting ? '⏳...' : '📈 PLACE BET'}
-            </button>
-          )}
-
-          {canCashOut && (
-            <button 
-              className="bet-action-btn cashout-btn"
-              onClick={handleCashOut}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? '⏳...' : `💰 CASH OUT (${(roundState.multiplier || 1).toFixed(2)}x)`}
-            </button>
-          )}
-
-          {canCancel && (
-            <button 
-              className="bet-action-btn cancel-btn"
-              onClick={handleCancel}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? '⏳...' : '🔴 CANCEL'}
-            </button>
-          )}
-
-          {!canPlaceBet && !canPlaceBetWaiting && !canCashOut && !canCancel && (
-            <div className="bet-status-message">
-              {roundState.status === 'BETTING_CLOSED' && '🔒 Bets Closed'}
-              {roundState.status === 'CRASHED' && '💥 Round Crashed'}
-              {isCashed && '✅ Already Cashed Out'}
-              {(isActive || isPending) && '⏳ Waiting for round...'}
-            </div>
+          {buttonState.disabled && stake > balance && !isActive && !isPending && (
+            <div className="bet-status-message error">⚠️ Insufficient balance</div>
           )}
         </div>
 
