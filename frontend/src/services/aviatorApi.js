@@ -2,29 +2,78 @@ import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://ashara-bet.onrender.com';
 
+// ---------- Helpers for localStorage balance ----------
+function getBalanceFromLocalStorage() {
+  try {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      const user = JSON.parse(userData);
+      if (user && typeof user.balance === 'number') {
+        return { success: true, balance: user.balance };
+      }
+    }
+  } catch (e) {
+    console.error('Error reading user from localStorage:', e);
+  }
+  return { success: false, balance: 0 };
+}
+
+function updateLocalStorageBalance(balance) {
+  try {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      const user = JSON.parse(userData);
+      user.balance = balance;
+      localStorage.setItem('user', JSON.stringify(user));
+    }
+  } catch (e) {
+    console.error('Error updating localStorage user balance:', e);
+  }
+}
+
 const aviatorApi = {
   // ==================== BALANCE ====================
   getBalance: async () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        return { success: false, message: 'No token' };
+        console.warn('No token found – returning localStorage balance');
+        return getBalanceFromLocalStorage();
       }
+
       const response = await axios.get(`${API_URL}/api/user/balance`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 8000
       });
-      return response.data;
+
+      console.log('📊 Balance API response:', response.data);
+
+      // Check for balance in response
+      if (response.data && typeof response.data.balance === 'number') {
+        const balance = response.data.balance;
+        updateLocalStorageBalance(balance);
+        return { success: true, balance };
+      }
+
+      // If the response has a different structure (e.g., { data: { balance } })
+      if (response.data && response.data.data && typeof response.data.data.balance === 'number') {
+        const balance = response.data.data.balance;
+        updateLocalStorageBalance(balance);
+        return { success: true, balance };
+      }
+
+      // Fallback to localStorage if API returns unexpected format
+      console.warn('Unexpected balance response format, using localStorage');
+      return getBalanceFromLocalStorage();
     } catch (error) {
-      console.error('Error fetching balance:', error);
-      try {
-        const userData = localStorage.getItem('user');
-        if (userData) {
-          const user = JSON.parse(userData);
-          if (user && typeof user.balance === 'number') {
-            return { success: true, balance: user.balance };
-          }
-        }
-      } catch (e) {}
+      console.error('Error fetching balance from API:', error);
+      // Try to read from localStorage as fallback
+      const local = getBalanceFromLocalStorage();
+      if (local.success) {
+        console.log('Using fallback balance from localStorage:', local.balance);
+        return local;
+      }
+      // If all fails, return 0
       return { success: false, balance: 0 };
     }
   },
@@ -51,15 +100,12 @@ const aviatorApi = {
         headers: { Authorization: `Bearer ${token}` }
       });
       // The API may return a raw array directly (older version) or wrapped object.
-      // We'll handle both cases.
       if (Array.isArray(response.data)) {
         return { success: true, data: response.data };
       }
-      // If it's already wrapped with success/data, return as is.
       if (response.data && typeof response.data === 'object' && 'data' in response.data) {
         return response.data;
       }
-      // Fallback: treat as success but empty.
       return { success: true, data: [] };
     } catch (error) {
       console.error('Error getting history:', error);

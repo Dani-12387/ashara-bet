@@ -2,6 +2,31 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import aviatorApi from '../services/aviatorApi';
 import getAviatorSocket from '../services/aviatorSocket';
 
+// ---------- Helpers (same as in api, but we keep them here for consistency) ----------
+function getBalanceFromLocalStorage() {
+  try {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      const user = JSON.parse(userData);
+      if (user && typeof user.balance === 'number') {
+        return { success: true, balance: user.balance };
+      }
+    }
+  } catch (e) {}
+  return { success: false, balance: 0 };
+}
+
+function updateLocalStorageBalance(balance) {
+  try {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      const user = JSON.parse(userData);
+      user.balance = balance;
+      localStorage.setItem('user', JSON.stringify(user));
+    }
+  } catch (e) {}
+}
+
 export const useAviatorGame = () => {
   const [roundState, setRoundState] = useState({
     roundId: null,
@@ -40,39 +65,25 @@ export const useAviatorGame = () => {
   // ========== FETCH BALANCE ==========
   const fetchBalance = useCallback(async () => {
     try {
+      console.log('🔄 Fetching balance...');
       const response = await aviatorApi.getBalance();
+      console.log('📊 Balance response:', response);
       if (response.success && typeof response.balance === 'number') {
         setBalance(response.balance);
-        const userData = localStorage.getItem('user');
-        if (userData) {
-          try {
-            const user = JSON.parse(userData);
-            user.balance = response.balance;
-            localStorage.setItem('user', JSON.stringify(user));
-          } catch (e) {}
-        }
+        updateLocalStorageBalance(response.balance);
       } else {
-        const userData = localStorage.getItem('user');
-        if (userData) {
-          try {
-            const user = JSON.parse(userData);
-            if (typeof user.balance === 'number') {
-              setBalance(user.balance);
-            }
-          } catch (e) {}
+        // If API failed, try localStorage
+        const local = getBalanceFromLocalStorage();
+        if (local.success) {
+          setBalance(local.balance);
+        } else {
+          setBalance(0);
         }
       }
     } catch (error) {
-      console.error('Error fetching balance:', error);
-      try {
-        const userData = localStorage.getItem('user');
-        if (userData) {
-          const user = JSON.parse(userData);
-          if (typeof user.balance === 'number') {
-            setBalance(user.balance);
-          }
-        }
-      } catch (e) {}
+      console.error('Error in fetchBalance:', error);
+      const local = getBalanceFromLocalStorage();
+      setBalance(local.success ? local.balance : 0);
     }
   }, []);
 
@@ -80,7 +91,6 @@ export const useAviatorGame = () => {
   const fetchHistory = useCallback(async () => {
     try {
       const response = await aviatorApi.getHistory(20);
-      // Handle both raw array and wrapped response
       let historyData = [];
       if (Array.isArray(response)) {
         historyData = response;
@@ -151,11 +161,16 @@ export const useAviatorGame = () => {
           return;
         }
 
+        // Fetch balance first
         await fetchBalance();
-        await fetchHistory();
-        await fetchMyBets();
-        await fetchCurrentRound();
-        await fetchLivePlayers();
+
+        // Then fetch other data
+        await Promise.all([
+          fetchHistory(),
+          fetchMyBets(),
+          fetchCurrentRound(),
+          fetchLivePlayers()
+        ]);
 
         connectSocket(token);
         setLoading(false);
@@ -211,7 +226,6 @@ export const useAviatorGame = () => {
         serverTime: data.serverTime || Date.now()
       }));
 
-      // ✅ If crash occurs, update bet statuses and fetch history immediately
       if (data.status === 'CRASHED' || data.status === 'crashed') {
         if (bet1Ref.current.status === 'active') {
           bet1Ref.current.status = 'lost';
@@ -219,7 +233,7 @@ export const useAviatorGame = () => {
         if (bet2Ref.current.status === 'active') {
           bet2Ref.current.status = 'lost';
         }
-        fetchHistory(); // Immediately fetch updated history
+        fetchHistory();
         fetchMyBets();
         fetchBalance();
       }
@@ -435,6 +449,11 @@ export const useAviatorGame = () => {
     }
   }, []);
 
+  // ========== EXPOSE REFRESH ==========
+  const refreshBalance = useCallback(async () => {
+    await fetchBalance();
+  }, [fetchBalance]);
+
   return {
     roundState,
     balance,
@@ -455,6 +474,7 @@ export const useAviatorGame = () => {
     fetchMyBets,
     fetchCurrentRound,
     fetchLivePlayers,
+    refreshBalance, // new
     bet1Ref,
     bet2Ref
   };
