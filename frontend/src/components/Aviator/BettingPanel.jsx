@@ -15,8 +15,8 @@ const BettingPanel = ({
   const [stake, setStake] = useState(10);
   const [autoCashOutEnabled, setAutoCashOutEnabled] = useState(false);
   const [autoCashOutValue, setAutoCashOutValue] = useState(1.50);
-  const [quickAmounts] = useState([10, 25, 50, 100, 250, 500, 1000]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [quickAmounts] = useState([10, 25, 50, 100, 250, 500, 1000]);
 
   // Sync with betState
   useEffect(() => {
@@ -30,83 +30,153 @@ const BettingPanel = ({
   const status = betState?.status || 'idle';
   const isActive = status === 'active';
   const isPending = status === 'pending';
-  const isCashed = status === 'cashed';
+  const isCashed = status === 'cashed' || status === 'CASHED_OUT';
   const isCancelled = status === 'cancelled';
   const isLost = status === 'lost';
   const isIdle = status === 'idle' || status === 'cancelled';
 
-  // Determine button state
+  // Determine button state based on round and bet status
   const getButtonState = () => {
-    if (isCashed) return { text: '✅ CASHED OUT', disabled: true, action: null };
-    if (isCancelled) return { text: '❌ CANCELLED', disabled: true, action: null };
-    if (isLost) return { text: '💥 LOST', disabled: true, action: null };
-
-    if (isPending) {
+    // ----- Cashed out -----
+    if (isCashed) {
+      const multiplier = betState?.cashoutMultiplier || '?';
       return {
-        text: '🔴 CANCEL',
-        disabled: false,
-        action: onCancelBet,
-        style: 'cancel-btn'
+        text: `CASHED OUT ${multiplier}x`,
+        disabled: true,
+        action: null,
+        style: 'cashed-btn'
       };
     }
 
+    // ----- Cancelled or Lost -----
+    if (isCancelled || isLost) {
+      return {
+        text: isCancelled ? 'CANCELLED' : 'LOST',
+        disabled: true,
+        action: null,
+        style: 'cancelled-btn'
+      };
+    }
+
+    // ----- Pending (bet placed, waiting for round) -----
+    if (isPending) {
+      return {
+        text: 'WAITING FOR ROUND',
+        disabled: true,
+        action: null,
+        style: 'waiting-btn'
+      };
+    }
+
+    // ----- Active (round running, can cash out) -----
     if (isActive && roundState.status === 'RUNNING') {
       const multiplier = roundState.multiplier || 1;
       const estimatedWin = (stake * multiplier).toFixed(2);
       return {
-        text: `💰 CASH OUT (${multiplier.toFixed(2)}x)`,
+        text: `CASH OUT ${multiplier.toFixed(2)}× (${estimatedWin})`,
         disabled: false,
         action: onCashOut,
         style: 'cashout-btn'
       };
     }
 
+    // ----- Active but round not running (shouldn't happen, but fallback) -----
     if (isActive) {
-      return { text: '⏳ WAITING...', disabled: true, action: null };
+      return {
+        text: 'WAITING FOR ROUND',
+        disabled: true,
+        action: null,
+        style: 'waiting-btn'
+      };
     }
 
-    // No bet placed – allow only when WAITING or BETTING_OPEN
+    // ----- No bet placed – determine betting availability -----
     const canBet = roundState.status === 'WAITING' || roundState.status === 'BETTING_OPEN';
     const hasEnoughBalance = balance > 0 && stake <= balance;
     const noBalance = balance <= 0;
     const insufficientBalance = !hasEnoughBalance && balance > 0;
 
-    let disabled = !canBet || isSubmitting || noBalance || insufficientBalance;
-    let buttonText = '📈 PLACE BET';
-    let buttonStyle = 'place-bet-btn';
-
+    // If betting is closed or game not in betting phase
     if (!canBet) {
       if (roundState.status === 'RUNNING') {
-        buttonText = '⏳ ROUND IN PROGRESS';
+        return {
+          text: 'BETTING CLOSED',
+          disabled: true,
+          action: null,
+          style: 'closed-btn'
+        };
       } else if (roundState.status === 'CRASHED') {
-        buttonText = '💥 ROUND CRASHED';
+        return {
+          text: 'ROUND CRASHED',
+          disabled: true,
+          action: null,
+          style: 'crashed-btn'
+        };
       } else {
-        buttonText = '⏳ WAITING FOR ROUND';
+        return {
+          text: 'WAITING FOR ROUND',
+          disabled: true,
+          action: null,
+          style: 'waiting-btn'
+        };
       }
-      disabled = true;
-    } else if (noBalance) {
-      buttonText = '⚠️ NO BALANCE';
-      disabled = true;
-    } else if (insufficientBalance) {
-      buttonText = `⚠️ NEED ${(stake - balance).toFixed(2)} MORE`;
-      disabled = true;
-    } else if (roundState.status === 'WAITING') {
-      buttonText = '📈 PLACE BET (Next Round)';
-    } else if (roundState.status === 'BETTING_OPEN') {
-      buttonText = '📈 PLACE BET';
     }
 
+    // Betting is open, but check balance
+    if (noBalance) {
+      return {
+        text: 'NO BALANCE',
+        disabled: true,
+        action: null,
+        style: 'no-balance-btn'
+      };
+    }
+    if (insufficientBalance) {
+      return {
+        text: `NEED ${(stake - balance).toFixed(2)} MORE`,
+        disabled: true,
+        action: null,
+        style: 'insufficient-btn'
+      };
+    }
+
+    // If we are currently submitting, show "PLACING BET..."
+    if (isSubmitting) {
+      return {
+        text: 'PLACING BET...',
+        disabled: true,
+        action: null,
+        style: 'processing-btn'
+      };
+    }
+
+    // Ready to place bet
     return {
-      text: buttonText,
-      disabled: disabled,
-      action: () => onPlaceBet(stake),
-      style: buttonStyle,
-      noBalance,
-      insufficientBalance
+      text: 'PLACE BET',
+      disabled: false,
+      action: () => handlePlaceBet(),
+      style: 'place-bet-btn'
     };
   };
 
   const buttonState = getButtonState();
+
+  // Wrapper for place bet to manage submitting state and success
+  const handlePlaceBet = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await onPlaceBet(stake);
+      // After successful bet, the button will change to "WAITING FOR ROUND" or "CASH OUT"
+      // based on the updated betState (parent will update via socket/API)
+    } catch (error) {
+      console.error('Place bet error:', error);
+    } finally {
+      // We keep isSubmitting false after the promise settles,
+      // but the button will now reflect the new state from parent.
+      setIsSubmitting(false);
+    }
+  };
 
   const handleStakeChange = (value) => {
     const newStake = Math.max(1, Math.min(value, 10000));
@@ -118,18 +188,6 @@ const BettingPanel = ({
 
   const handleQuickAmount = (amount) => {
     handleStakeChange(amount);
-  };
-
-  const handleAction = async () => {
-    if (isSubmitting || !buttonState.action) return;
-    setIsSubmitting(true);
-    try {
-      await buttonState.action();
-    } catch (error) {
-      console.error('Action error:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   const handleAutoCashOutToggle = () => {
@@ -164,11 +222,13 @@ const BettingPanel = ({
       </div>
 
       <div className="bet-panel-body">
+        {/* Balance display */}
         <div className="bet-balance">
           <span className="label">Balance</span>
           <span className="value">{balance.toFixed(2)} ETB</span>
         </div>
 
+        {/* Stake controls – disabled when bet is not idle/cancelled */}
         <div className="bet-stake">
           <span className="label">Stake</span>
           <div className="stake-controls">
@@ -198,6 +258,7 @@ const BettingPanel = ({
           </div>
         </div>
 
+        {/* Quick amounts */}
         <div className="quick-amounts">
           {quickAmounts.map(amount => (
             <button
@@ -211,6 +272,7 @@ const BettingPanel = ({
           ))}
         </div>
 
+        {/* Auto Cash Out toggle */}
         <div className="auto-cashout-control">
           <label>Auto Cash Out</label>
           <div className="auto-cashout-toggle">
@@ -237,33 +299,36 @@ const BettingPanel = ({
           </div>
         </div>
 
+        {/* Main Action Button */}
         <div className="bet-actions">
           <button
             className={`bet-action-btn ${buttonState.style || 'place-bet-btn'}`}
-            onClick={handleAction}
+            onClick={buttonState.action}
             disabled={buttonState.disabled || isSubmitting}
           >
-            {isSubmitting ? '⏳...' : buttonState.text}
+            {buttonState.text}
           </button>
-          {buttonState.insufficientBalance && (
-            <div className="bet-status-message error">
-              ⚠️ Insufficient balance! Need {(stake - balance).toFixed(2)} more ETB
-            </div>
-          )}
-          {buttonState.noBalance && (
-            <div className="bet-status-message error">
-              ⚠️ No balance! Please deposit to play
-            </div>
-          )}
-          {!buttonState.noBalance && !buttonState.insufficientBalance && buttonState.disabled && !isSubmitting && (
+          {/* Extra messages for clarity */}
+          {buttonState.disabled && !isSubmitting && (
             <div className="bet-status-message">
-              {roundState.status === 'RUNNING' ? '⏳ Round in progress' :
-               roundState.status === 'CRASHED' ? '💥 Round crashed' :
-               '⏳ Waiting for round to start'}
+              {roundState.status === 'BETTING_OPEN' && 'Betting is open – place your bet!'}
+              {roundState.status === 'WAITING' && 'Next round will start soon'}
+              {roundState.status === 'RUNNING' && 'Round in progress – cash out available'}
+              {roundState.status === 'CRASHED' && 'Round crashed – next round coming'}
+              {isPending && 'Your bet is placed. Waiting for round to start.'}
+              {isCashed && 'You have already cashed out.'}
+              {isLost && 'Bet lost.'}
             </div>
+          )}
+          {buttonState.text === 'NO BALANCE' && (
+            <div className="bet-status-message error">⚠️ No balance – please deposit</div>
+          )}
+          {buttonState.text.startsWith('NEED') && (
+            <div className="bet-status-message error">⚠️ Insufficient balance</div>
           )}
         </div>
 
+        {/* Payout preview when active */}
         {isActive && roundState.status === 'RUNNING' && (
           <div className="bet-payout-preview">
             <span className="label">Current Payout</span>
