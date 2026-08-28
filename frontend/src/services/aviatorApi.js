@@ -98,6 +98,16 @@ const aviatorApi = {
       return response.data;
     } catch (error) {
       console.error('Error placing bet:', error);
+      // Log the full error response for debugging
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+        console.error('Response headers:', error.response.headers);
+      } else if (error.request) {
+        console.error('No response received:', error.request);
+      } else {
+        console.error('Request setup error:', error.message);
+      }
       return {
         success: false,
         error: error.response?.data?.error || { message: error.message }
@@ -117,6 +127,10 @@ const aviatorApi = {
       return response.data;
     } catch (error) {
       console.error('Error cashing out:', error);
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+      }
       return {
         success: false,
         error: error.response?.data?.error || { message: error.message }
@@ -135,7 +149,11 @@ const aviatorApi = {
       );
       return response.data;
     } catch (error) {
-      console.error('Error cancelling bet:', error);
+      console.error('Error cancelling pending bet:', error);
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+      }
       return {
         success: false,
         error: error.response?.data?.error || { message: error.message }

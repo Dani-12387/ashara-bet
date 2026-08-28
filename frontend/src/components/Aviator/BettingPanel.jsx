@@ -18,7 +18,7 @@ const BettingPanel = ({
   const [quickAmounts] = useState([10, 25, 50, 100, 250, 500, 1000]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Sync with betState when it changes
+  // Sync with betState
   useEffect(() => {
     if (betState) {
       setStake(betState.stake || 10);
@@ -65,10 +65,8 @@ const BettingPanel = ({
       return { text: '⏳ WAITING...', disabled: true, action: null };
     }
 
-    // No bet placed – check if betting is allowed
-    const canBet = roundState.status === 'WAITING' ||
-                   roundState.status === 'BETTING_OPEN' ||
-                   roundState.status === 'RUNNING';
+    // No bet placed – only allow if round is RUNNING
+    const canBet = roundState.status === 'RUNNING';
     const hasEnoughBalance = balance > 0 && stake <= balance;
     const noBalance = balance <= 0;
     const insufficientBalance = !hasEnoughBalance && balance > 0;
@@ -77,16 +75,14 @@ const BettingPanel = ({
     let buttonText = '📈 PLACE BET';
     let buttonStyle = 'place-bet-btn';
 
-    if (noBalance) {
+    if (!canBet) {
+      buttonText = '⏳ WAITING FOR ROUND';
+      disabled = true;
+    } else if (noBalance) {
       buttonText = '⚠️ NO BALANCE';
       disabled = true;
     } else if (insufficientBalance) {
       buttonText = `⚠️ NEED ${(stake - balance).toFixed(2)} MORE`;
-      disabled = true;
-    } else if (roundState.status === 'RUNNING') {
-      buttonText = '📈 PLACE BET (Next Round)';
-    } else if (roundState.status === 'CRASHED' || roundState.status === 'CLOSED') {
-      buttonText = '⏳ BETTING CLOSED';
       disabled = true;
     }
 
@@ -249,11 +245,8 @@ const BettingPanel = ({
               ⚠️ No balance! Please deposit to play
             </div>
           )}
-          {!buttonState.noBalance && !buttonState.insufficientBalance && buttonState.disabled && !isSubmitting && roundState.status === 'CRASHED' && (
-            <div className="bet-status-message">💥 Round crashed, wait for next</div>
-          )}
-          {!buttonState.noBalance && !buttonState.insufficientBalance && buttonState.disabled && !isSubmitting && roundState.status === 'CLOSED' && (
-            <div className="bet-status-message">🔒 Game closed</div>
+          {!buttonState.noBalance && !buttonState.insufficientBalance && buttonState.disabled && !isSubmitting && roundState.status !== 'RUNNING' && (
+            <div className="bet-status-message">⏳ Waiting for the next live round</div>
           )}
         </div>
 
