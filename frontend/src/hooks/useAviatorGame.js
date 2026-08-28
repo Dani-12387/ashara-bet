@@ -41,17 +41,25 @@ export const useAviatorGame = () => {
     try {
       const response = await aviatorApi.getBalance();
       console.log('📊 Balance response:', response);
-      if (response.success && response.balance !== undefined) {
+      if (response.success && typeof response.balance === 'number') {
         setBalance(response.balance);
-      } else {
-        // Fallback: try to get balance from user object in localStorage
+        // Also update localStorage user object
         const userData = localStorage.getItem('user');
         if (userData) {
           try {
             const user = JSON.parse(userData);
-            if (user.balance !== undefined) {
+            user.balance = response.balance;
+            localStorage.setItem('user', JSON.stringify(user));
+          } catch (e) {}
+        }
+      } else {
+        // Fallback to localStorage
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          try {
+            const user = JSON.parse(userData);
+            if (typeof user.balance === 'number') {
               setBalance(user.balance);
-              console.log('📊 Balance from localStorage:', user.balance);
             }
           } catch (e) {}
         }
@@ -63,7 +71,7 @@ export const useAviatorGame = () => {
       if (userData) {
         try {
           const user = JSON.parse(userData);
-          if (user.balance !== undefined) {
+          if (typeof user.balance === 'number') {
             setBalance(user.balance);
           }
         } catch (e) {}
@@ -271,9 +279,11 @@ export const useAviatorGame = () => {
         return { success: false, message: 'Please login' };
       }
 
-      if (roundState.status !== 'WAITING' && roundState.status !== 'BETTING_OPEN') {
-        setError('Betting is not open');
-        return { success: false, message: 'Betting is not open' };
+      // ✅ Allow betting when WAITING, BETTING_OPEN, or RUNNING
+      // During RUNNING, bet goes to pending for next round
+      if (roundState.status === 'CRASHED' || roundState.status === 'CLOSED') {
+        setError('Game is not available');
+        return { success: false, message: 'Game is not available' };
       }
 
       if (stake > balance) {
@@ -304,12 +314,11 @@ export const useAviatorGame = () => {
         betRef.current.isPending = betData.status === 'PENDING';
         betRef.current.status = betData.status;
         
-        // Update balance from response
         if (response.data.balance !== undefined) {
           setBalance(response.data.balance);
         }
         fetchMyBets();
-        fetchBalance(); // Refresh balance from server
+        fetchBalance();
         
         return { success: true, bet: betData };
       } else {
