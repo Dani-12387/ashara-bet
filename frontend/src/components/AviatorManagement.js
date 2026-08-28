@@ -5,7 +5,7 @@ import './AviatorManagement.css';
 
 const AviatorManagement = () => {
   const [gameState, setGameState] = useState({
-    status: 'idle',       // idle, waiting, active, crashed, closed
+    status: 'idle',
     multiplier: 1.00,
     crashPoint: 0,
     nextCrashPoint: 0,
@@ -38,19 +38,16 @@ const AviatorManagement = () => {
 
   // ===== SOCKET.IO SETUP =====
   useEffect(() => {
-    // Initial data fetch
     fetchGameState();
     fetchHistory();
     fetchActiveBets();
 
-    // Connect to Socket.IO for real-time updates
     const token = localStorage.getItem('token');
     if (!token) return;
 
     const socket = getAviatorSocket();
     socket.connect(token);
 
-    // Listen to round state changes
     socket.on('round:state', (data) => {
       console.log('📡 Admin: round:state', data);
       setGameState(prev => ({
@@ -59,12 +56,10 @@ const AviatorManagement = () => {
         roundNumber: data.roundNumber || prev.roundNumber,
         crashPoint: data.crashMultiplier || prev.crashPoint,
         multiplier: data.multiplier || prev.multiplier,
-        // update other fields if provided
       }));
     });
 
     socket.on('round:multiplier', (data) => {
-      console.log('📡 Admin: round:multiplier', data);
       setGameState(prev => ({
         ...prev,
         multiplier: data.multiplier,
@@ -73,12 +68,11 @@ const AviatorManagement = () => {
 
     socket.on('round:countdown', (data) => {
       console.log('📡 Admin: round:countdown', data);
-      // You could display a countdown in the admin panel if desired
     });
 
     socket.on('bet:placed', () => {
-      fetchActiveBets(); // refresh active bets
-      fetchGameState();  // refresh overall stats
+      fetchActiveBets();
+      fetchGameState();
     });
 
     socket.on('bet:cashed_out', () => {
@@ -87,7 +81,6 @@ const AviatorManagement = () => {
     });
 
     socket.on('connection:reconnected', () => {
-      // Refresh data after reconnection
       fetchGameState();
       fetchHistory();
       fetchActiveBets();
@@ -100,8 +93,6 @@ const AviatorManagement = () => {
       socket.off('bet:placed');
       socket.off('bet:cashed_out');
       socket.off('connection:reconnected');
-      // Do not disconnect the socket globally, as other components may use it.
-      // The socket service manages its own lifecycle.
     };
   }, []);
 
@@ -119,7 +110,6 @@ const AviatorManagement = () => {
   };
 
   // ===== API CALLS =====
-
   const fetchGameState = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -168,7 +158,6 @@ const AviatorManagement = () => {
   };
 
   // ===== ADMIN ACTIONS =====
-
   const startGame = async () => {
     try {
       setLoading(true);
@@ -298,7 +287,6 @@ const AviatorManagement = () => {
   };
 
   // ===== UI HELPERS =====
-
   const showMessage = (msg, type) => {
     setMessage(msg);
     setMessageType(type);
@@ -307,7 +295,7 @@ const AviatorManagement = () => {
 
   const getStatusBadge = (status) => {
     const statusMap = {
-      idle: { class: 'status-badge idle', text: '⏸️ Idle' },
+      idle: { class: 'status-badge idle', text: '⏸️ Idle (Waiting for Admin)' },
       waiting: { class: 'status-badge waiting', text: '⏳ Waiting' },
       active: { class: 'status-badge active', text: '▶️ Active' },
       crashed: { class: 'status-badge crashed', text: '💥 Crashed' },
@@ -321,7 +309,6 @@ const AviatorManagement = () => {
   };
 
   // ===== RENDER =====
-
   return (
     <div className="aviator-management">
       <h1>✈️ Aviator Management</h1>
@@ -464,10 +451,18 @@ const AviatorManagement = () => {
                 <input
                   type="checkbox"
                   checked={settings.autoStart}
-                  onChange={(e) => setSettings({ ...settings, autoStart: e.target.checked })}
+                  onChange={(e) => {
+                    setSettings({ ...settings, autoStart: e.target.checked });
+                    if (e.target.checked) {
+                      showMessage('⚠️ Auto-start enabled! Game will start automatically after crash.', 'warning');
+                    }
+                  }}
                 />
                 <span className="toggle-slider"></span>
               </div>
+              <small style={{ color: '#888', fontSize: '0.7rem' }}>
+                {settings.autoStart ? '⚠️ Auto-start ON' : '✅ Manual start only'}
+              </small>
             </div>
 
             <div className="setting-group">
@@ -478,6 +473,7 @@ const AviatorManagement = () => {
                 onChange={(e) => setSettings({ ...settings, autoStartDelay: parseInt(e.target.value) || 10 })}
                 min="3"
                 max="60"
+                disabled={!settings.autoStart}
               />
             </div>
 

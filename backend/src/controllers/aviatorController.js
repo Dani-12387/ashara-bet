@@ -1,5 +1,5 @@
 // ============================================
-// AVIATOR GAME CONTROLLER - COMPLETE WORKING
+// AVIATOR GAME CONTROLLER - ADMIN CONTROLLED
 // ============================================
 
 const User = require('../models/User');
@@ -7,6 +7,7 @@ const User = require('../models/User');
 console.log('🔄 Loading aviator controller...');
 
 // ========== GAME STATE ==========
+// ✅ autoStart is FALSE by default - Admin must manually start
 let gameState = {
   status: 'idle',
   multiplier: 1.00,
@@ -18,7 +19,7 @@ let gameState = {
   totalAmount: 0,
   gameInterval: null,
   startTime: null,
-  autoStart: false,
+  autoStart: false,        // ✅ MUST be false - Admin controlled only
   autoStartDelay: 10,
   minBet: 1,
   maxBet: 1000,
@@ -40,10 +41,10 @@ function broadcastGameState() {
   console.log(`📊 Active bets: ${activeBets.length}, Pending bets: ${pendingBets.length}`);
 }
 
-// ========== START GAME ==========
+// ========== START GAME (Admin Only) ==========
 exports.startGame = async (req, res) => {
   try {
-    console.log('🚀 Start game called');
+    console.log('🚀 Admin: Start game called');
     console.log(`📊 Pending bets before start: ${pendingBets.length}`);
     
     if (gameState.status === 'active') {
@@ -73,14 +74,16 @@ exports.startGame = async (req, res) => {
     gameState.totalBets = activeBets.length;
     gameState.totalAmount = activeBets.reduce((sum, b) => sum + b.amount, 0);
 
+    // Use nextCrashPoint if set by admin, otherwise generate random
     if (gameState.nextCrashPoint > 1.01) {
       gameState.crashPoint = gameState.nextCrashPoint;
       gameState.nextCrashPoint = 0;
+      console.log(`🎯 Using admin-set crash point: ${gameState.crashPoint.toFixed(2)}x`);
     } else {
       gameState.crashPoint = 2 + Math.random() * 98;
+      console.log(`🎯 Random crash point: ${gameState.crashPoint.toFixed(2)}x`);
     }
 
-    console.log(`🎯 Crash point set to: ${gameState.crashPoint.toFixed(2)}x`);
     console.log(`🔄 Round ${gameState.roundNumber} started with ${activeBets.length} active bets!`);
 
     startGameLoop();
@@ -180,7 +183,7 @@ async function crashGame() {
 
   gameState.status = 'crashed';
   
-  // Process all active bets as lost (they lose their bet)
+  // Process all active bets as lost
   for (const bet of activeBets) {
     if (bet.status === 'active') {
       bet.status = 'lost';
@@ -206,24 +209,24 @@ async function crashGame() {
   
   broadcastGameState();
 
+  // ✅ Reset to idle WITHOUT auto-start - Admin must click Start
   setTimeout(() => {
-    console.log('🔄 Resetting game state...');
+    console.log('🔄 Resetting game state to idle...');
     console.log(`📊 Pending bets for next round: ${pendingBets.length}`);
-    if (gameState.autoStart) {
-      gameState.status = 'idle';
-      exports.startGame();
-    } else {
-      gameState.status = 'idle';
-      gameState.multiplier = 1.00;
-      broadcastGameState();
-    }
+    
+    // ✅ Always go to idle, never auto-start
+    gameState.status = 'idle';
+    gameState.multiplier = 1.00;
+    broadcastGameState();
+    
+    console.log('⏸️ Game is idle. Admin must start the next round.');
   }, 3000);
 }
 
-// ========== STOP GAME ==========
+// ========== STOP GAME (Admin) ==========
 exports.stopGame = async (req, res) => {
   try {
-    console.log('🛑 Stop game called');
+    console.log('🛑 Admin: Stop game called');
     
     if (gameState.status !== 'active') {
       return res.status(400).json({ 
@@ -233,7 +236,7 @@ exports.stopGame = async (req, res) => {
     }
 
     const stopMultiplier = gameState.multiplier;
-    console.log(`🛑 Stopping game at ${stopMultiplier.toFixed(2)}x`);
+    console.log(`🛑 Admin stopping game at ${stopMultiplier.toFixed(2)}x`);
     
     await crashGame();
     
@@ -249,10 +252,10 @@ exports.stopGame = async (req, res) => {
   }
 };
 
-// ========== CLOSE GAME ==========
+// ========== CLOSE GAME (Admin) ==========
 exports.closeGame = async (req, res) => {
   try {
-    console.log('🔒 Close game called');
+    console.log('🔒 Admin: Close game called');
     
     if (gameState.gameInterval) {
       clearInterval(gameState.gameInterval);
@@ -307,10 +310,10 @@ exports.closeGame = async (req, res) => {
   }
 };
 
-// ========== SET NEXT CRASH POINT ==========
+// ========== SET NEXT CRASH POINT (Admin) ==========
 exports.setCrashPoint = async (req, res) => {
   try {
-    console.log('🎯 Set crash point called');
+    console.log('🎯 Admin: Set crash point called');
     const { crashPoint } = req.body;
     
     if (!crashPoint || crashPoint < 1.01) {
@@ -334,13 +337,16 @@ exports.setCrashPoint = async (req, res) => {
   }
 };
 
-// ========== UPDATE SETTINGS ==========
+// ========== UPDATE SETTINGS (Admin) ==========
 exports.updateSettings = async (req, res) => {
   try {
-    console.log('⚙️ Update settings called');
+    console.log('⚙️ Admin: Update settings called');
     const { autoStart, autoStartDelay, minBet, maxBet, houseEdge } = req.body;
 
-    if (autoStart !== undefined) gameState.autoStart = autoStart;
+    if (autoStart !== undefined) {
+      gameState.autoStart = autoStart;
+      console.log(`🔄 Auto-start ${autoStart ? 'ENABLED' : 'DISABLED'} (Admin controlled)`);
+    }
     if (autoStartDelay) gameState.autoStartDelay = autoStartDelay;
     if (minBet) gameState.minBet = minBet;
     if (maxBet) gameState.maxBet = maxBet;
@@ -476,11 +482,11 @@ exports.placeBet = async (req, res) => {
       });
     }
 
-    // ✅ Allow betting when game is idle or active
-    if (gameState.status !== 'idle' && gameState.status !== 'waiting' && gameState.status !== 'active') {
+    // ✅ Allow betting when game is idle (for pending bets)
+    if (gameState.status !== 'idle') {
       return res.status(400).json({ 
         success: false, 
-        message: 'Game is not available. Please wait.' 
+        message: 'Game is not available. Please wait for the next round.' 
       });
     }
 
@@ -516,20 +522,7 @@ exports.placeBet = async (req, res) => {
 
     console.log(`💰 User balance after bet: ${user.balance}`);
 
-    // ✅ If game is active, add to active bets immediately
-    // ✅ If game is idle, add to pending bets (for next round)
-    const isActive = gameState.status === 'active';
-    
-    // ✅ If game is active, user cannot bet (they bet for next round)
-    // ✅ Only allow betting in idle state for pending bets
-    if (isActive) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Game is currently active! Please wait for the next round to place a bet.' 
-      });
-    }
-    
-    // ✅ Only pending bets allowed (game is idle)
+    // ✅ Always add to pending bets (game must be idle)
     const bet = {
       userId: userId,
       amount: amount,
@@ -637,3 +630,4 @@ exports.cashOut = async (req, res) => {
 };
 
 console.log('✅ Aviator controller loaded successfully');
+console.log('⏸️ Admin-controlled mode: Game starts only when admin clicks Start Round');
