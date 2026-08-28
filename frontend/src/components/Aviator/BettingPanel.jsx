@@ -59,35 +59,46 @@ const BettingPanel = ({
     }
 
     // No bet placed - check if betting is allowed
-    // Allow betting in WAITING, BETTING_OPEN, and RUNNING (for next round)
     const canBet = roundState.status === 'WAITING' || 
                    roundState.status === 'BETTING_OPEN' || 
                    roundState.status === 'RUNNING';
-    const insufficientBalance = stake > balance;
-    const disabled = !canBet || insufficientBalance || isSubmitting;
-
-    // Show different messages based on state
+    
+    // ✅ Check if balance is sufficient
+    const hasEnoughBalance = balance > 0 && stake <= balance;
+    const insufficientBalance = !hasEnoughBalance && balance > 0;
+    const noBalance = balance <= 0;
+    
+    let disabled = !canBet || isSubmitting || noBalance || insufficientBalance;
     let buttonText = '📈 PLACE BET';
-    if (roundState.status === 'RUNNING') {
+    let buttonStyle = 'place-bet-btn';
+    
+    if (noBalance) {
+      buttonText = '⚠️ NO BALANCE';
+      disabled = true;
+    } else if (insufficientBalance) {
+      buttonText = `⚠️ NEED ${(stake - balance).toFixed(2)} MORE`;
+      disabled = true;
+    } else if (roundState.status === 'RUNNING') {
       buttonText = '📈 PLACE BET (Next Round)';
     } else if (roundState.status === 'CRASHED' || roundState.status === 'CLOSED') {
       buttonText = '⏳ BETTING CLOSED';
-    } else if (roundState.status === 'WAITING' || roundState.status === 'BETTING_OPEN') {
-      buttonText = '📈 PLACE BET';
+      disabled = true;
     }
 
     return { 
       text: buttonText, 
       disabled: disabled,
       action: () => onPlaceBet(stake),
-      style: 'place-bet-btn'
+      style: buttonStyle,
+      noBalance: noBalance,
+      insufficientBalance: insufficientBalance
     };
   };
 
   const buttonState = getButtonState();
 
   const handleStakeChange = (value) => {
-    const newStake = Math.max(1, Math.min(value, balance || 10000));
+    const newStake = Math.max(1, Math.min(value, 10000));
     setStake(newStake);
     if (onStakeChange) {
       onStakeChange(newStake);
@@ -184,14 +195,21 @@ const BettingPanel = ({
           >
             {isSubmitting ? '⏳...' : buttonState.text}
           </button>
-          {buttonState.disabled && !isSubmitting && roundState.status === 'CRASHED' && (
+          {buttonState.insufficientBalance && (
+            <div className="bet-status-message error">
+              ⚠️ Insufficient balance! Need {(stake - balance).toFixed(2)} more ETB
+            </div>
+          )}
+          {buttonState.noBalance && (
+            <div className="bet-status-message error">
+              ⚠️ No balance! Please deposit to play
+            </div>
+          )}
+          {!buttonState.noBalance && !buttonState.insufficientBalance && buttonState.disabled && !isSubmitting && roundState.status === 'CRASHED' && (
             <div className="bet-status-message">💥 Round crashed, wait for next</div>
           )}
-          {buttonState.disabled && !isSubmitting && roundState.status === 'CLOSED' && (
+          {!buttonState.noBalance && !buttonState.insufficientBalance && buttonState.disabled && !isSubmitting && roundState.status === 'CLOSED' && (
             <div className="bet-status-message">🔒 Game closed</div>
-          )}
-          {buttonState.disabled && stake > balance && !isActive && !isPending && (
-            <div className="bet-status-message error">⚠️ Insufficient balance</div>
           )}
         </div>
 

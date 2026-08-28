@@ -3,33 +3,54 @@ import axios from 'axios';
 const API_URL = process.env.REACT_APP_API_URL || 'https://ashara-bet.onrender.com';
 
 const aviatorApi = {
-  // Get user balance - with fallback to localStorage
+  // Get user balance - with multiple fallbacks
   getBalance: async () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
+        console.warn('⚠️ No token found for balance request');
         return { success: false, message: 'No token' };
       }
       const response = await axios.get(`${API_URL}/api/user/balance`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      // The API returns { success: true, balance: number }
-      return response.data;
+      console.log('📊 Balance API raw response:', response.data);
+      
+      // Check if balance exists in response
+      if (response.data && typeof response.data.balance === 'number') {
+        return { success: true, balance: response.data.balance };
+      }
+      
+      // If response has data in different format
+      if (response.data && typeof response.data.data?.balance === 'number') {
+        return { success: true, balance: response.data.data.balance };
+      }
+      
+      console.warn('⚠️ Balance not found in API response, checking localStorage');
+      // Fallback to localStorage
+      const userData = localStorage.getItem('user');
+      if (userData) {
+        try {
+          const user = JSON.parse(userData);
+          if (user && typeof user.balance === 'number') {
+            return { success: true, balance: user.balance };
+          }
+        } catch (e) {}
+      }
+      
+      return { success: false, balance: 0 };
     } catch (error) {
-      console.error('Error fetching balance from API:', error);
-      // Fallback: try to get balance from localStorage user object
+      console.error('❌ Error fetching balance:', error);
+      // Fallback to localStorage
       try {
         const userData = localStorage.getItem('user');
         if (userData) {
           const user = JSON.parse(userData);
           if (user && typeof user.balance === 'number') {
-            console.log('📊 Balance from localStorage fallback:', user.balance);
             return { success: true, balance: user.balance };
           }
         }
-      } catch (e) {
-        console.error('Failed to parse user from localStorage:', e);
-      }
+      } catch (e) {}
       return { success: false, balance: 0 };
     }
   },

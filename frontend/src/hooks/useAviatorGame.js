@@ -39,43 +39,55 @@ export const useAviatorGame = () => {
   // ========== FETCH BALANCE ==========
   const fetchBalance = useCallback(async () => {
     try {
+      console.log('🔄 Fetching balance...');
       const response = await aviatorApi.getBalance();
-      console.log('📊 Balance response:', response);
-      if (response.success && typeof response.balance === 'number') {
+      console.log('📊 Balance API response:', response);
+      
+      if (response && response.success && typeof response.balance === 'number') {
+        console.log('✅ Balance from API:', response.balance);
         setBalance(response.balance);
-        // Also update localStorage user object
-        const userData = localStorage.getItem('user');
-        if (userData) {
-          try {
+        // Update localStorage
+        try {
+          const userData = localStorage.getItem('user');
+          if (userData) {
             const user = JSON.parse(userData);
             user.balance = response.balance;
             localStorage.setItem('user', JSON.stringify(user));
-          } catch (e) {}
-        }
-      } else {
-        // Fallback to localStorage
-        const userData = localStorage.getItem('user');
-        if (userData) {
-          try {
-            const user = JSON.parse(userData);
-            if (typeof user.balance === 'number') {
-              setBalance(user.balance);
-            }
-          } catch (e) {}
-        }
+          }
+        } catch (e) {}
+        return;
       }
-    } catch (error) {
-      console.error('Error fetching balance:', error);
-      // Fallback to localStorage
+      
+      // Fallback: try localStorage
+      console.log('⚠️ API balance failed, trying localStorage...');
       const userData = localStorage.getItem('user');
       if (userData) {
         try {
           const user = JSON.parse(userData);
-          if (typeof user.balance === 'number') {
+          if (user && typeof user.balance === 'number') {
+            console.log('✅ Balance from localStorage:', user.balance);
             setBalance(user.balance);
+            return;
           }
         } catch (e) {}
       }
+      
+      console.log('❌ No balance found, setting to 0');
+      setBalance(0);
+    } catch (error) {
+      console.error('❌ Error fetching balance:', error);
+      // Last resort: try localStorage
+      try {
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          const user = JSON.parse(userData);
+          if (user && typeof user.balance === 'number') {
+            setBalance(user.balance);
+            return;
+          }
+        }
+      } catch (e) {}
+      setBalance(0);
     }
   }, []);
 
@@ -92,8 +104,14 @@ export const useAviatorGame = () => {
           return;
         }
 
-        // Fetch balance first
+        // Fetch balance multiple times to ensure we get it
         await fetchBalance();
+        // Wait a bit and try again if balance is 0
+        if (balance === 0) {
+          setTimeout(async () => {
+            await fetchBalance();
+          }, 500);
+        }
         
         await Promise.all([
           fetchHistory(),
@@ -131,7 +149,6 @@ export const useAviatorGame = () => {
 
     socket.on('connection:connected', () => {
       setConnectionStatus('connected');
-      // Refresh balance on reconnect
       fetchBalance();
     });
 
@@ -280,14 +297,14 @@ export const useAviatorGame = () => {
       }
 
       // ✅ Allow betting when WAITING, BETTING_OPEN, or RUNNING
-      // During RUNNING, bet goes to pending for next round
       if (roundState.status === 'CRASHED' || roundState.status === 'CLOSED') {
         setError('Game is not available');
         return { success: false, message: 'Game is not available' };
       }
 
+      // ✅ Check if balance is sufficient
       if (stake > balance) {
-        setError('Insufficient balance');
+        setError(`Insufficient balance! Balance: ${balance.toFixed(2)} ETB`);
         return { success: false, message: 'Insufficient balance' };
       }
 
