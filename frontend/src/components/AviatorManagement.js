@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { getAviatorSocket } from '../services/aviatorSocket';
 import './AviatorManagement.css';
 
 const AviatorManagement = () => {
   const [gameState, setGameState] = useState({
-    status: 'idle', // idle, waiting, active, crashed, closed
+    status: 'idle',       // idle, waiting, active, crashed, closed
     multiplier: 1.00,
     crashPoint: 0,
     nextCrashPoint: 0,
     roundNumber: 0,
-    oddCounter: 1.00, // ✅ ADDED: Real-time odd counter
     totalBets: 0,
     totalAmount: 0,
     playersActive: 0,
@@ -34,24 +34,92 @@ const AviatorManagement = () => {
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('success');
 
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  const API_URL = process.env.REACT_APP_API_URL || 'https://ashara-bet.onrender.com';
 
-  // Fetch initial data
+  // ===== SOCKET.IO SETUP =====
   useEffect(() => {
+    // Initial data fetch
     fetchGameState();
     fetchHistory();
     fetchActiveBets();
 
-    // Auto-refresh game state every 500ms for real-time updates
-    const interval = setInterval(() => {
-      fetchGameState();
-    }, 500);
+    // Connect to Socket.IO for real-time updates
+    const token = localStorage.getItem('token');
+    if (!token) return;
 
-    return () => clearInterval(interval);
+    const socket = getAviatorSocket();
+    socket.connect(token);
+
+    // Listen to round state changes
+    socket.on('round:state', (data) => {
+      console.log('📡 Admin: round:state', data);
+      setGameState(prev => ({
+        ...prev,
+        status: mapStatus(data.status),
+        roundNumber: data.roundNumber || prev.roundNumber,
+        crashPoint: data.crashMultiplier || prev.crashPoint,
+        multiplier: data.multiplier || prev.multiplier,
+        // update other fields if provided
+      }));
+    });
+
+    socket.on('round:multiplier', (data) => {
+      console.log('📡 Admin: round:multiplier', data);
+      setGameState(prev => ({
+        ...prev,
+        multiplier: data.multiplier,
+      }));
+    });
+
+    socket.on('round:countdown', (data) => {
+      console.log('📡 Admin: round:countdown', data);
+      // You could display a countdown in the admin panel if desired
+    });
+
+    socket.on('bet:placed', () => {
+      fetchActiveBets(); // refresh active bets
+      fetchGameState();  // refresh overall stats
+    });
+
+    socket.on('bet:cashed_out', () => {
+      fetchActiveBets();
+      fetchGameState();
+    });
+
+    socket.on('connection:reconnected', () => {
+      // Refresh data after reconnection
+      fetchGameState();
+      fetchHistory();
+      fetchActiveBets();
+    });
+
+    return () => {
+      socket.off('round:state');
+      socket.off('round:multiplier');
+      socket.off('round:countdown');
+      socket.off('bet:placed');
+      socket.off('bet:cashed_out');
+      socket.off('connection:reconnected');
+      // Do not disconnect the socket globally, as other components may use it.
+      // The socket service manages its own lifecycle.
+    };
   }, []);
 
-  // ========== API CALLS ==========
-  
+  // ===== STATUS MAPPING =====
+  const mapStatus = (engineStatus) => {
+    const mapping = {
+      'WAITING': 'idle',
+      'BETTING_OPEN': 'waiting',
+      'BETTING_CLOSED': 'waiting',
+      'RUNNING': 'active',
+      'CRASHED': 'crashed',
+      'CLOSED': 'closed',
+    };
+    return mapping[engineStatus] || engineStatus?.toLowerCase() || 'idle';
+  };
+
+  // ===== API CALLS =====
+
   const fetchGameState = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -62,7 +130,8 @@ const AviatorManagement = () => {
         setGameState(prev => ({
           ...prev,
           ...response.data,
-          oddCounter: response.data.multiplier || response.data.oddCounter || 1.00
+          multiplier: response.data.multiplier || 1.00,
+          status: response.data.status || 'idle',
         }));
       }
     } catch (error) {
@@ -76,7 +145,7 @@ const AviatorManagement = () => {
       const response = await axios.get(`${API_URL}/api/aviator/history`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (response.data) {
+      if (response.data && Array.isArray(response.data)) {
         setHistory(response.data);
       }
     } catch (error) {
@@ -90,7 +159,7 @@ const AviatorManagement = () => {
       const response = await axios.get(`${API_URL}/api/aviator/active-bets`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (response.data) {
+      if (response.data && Array.isArray(response.data)) {
         setActiveBets(response.data);
       }
     } catch (error) {
@@ -98,20 +167,17 @@ const AviatorManagement = () => {
     }
   };
 
-  // ========== GAME CONTROLS ==========
+  // ===== ADMIN ACTIONS =====
 
-  // 🚀 START GAME
   const startGame = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      
       const response = await axios.post(
         `${API_URL}/api/aviator/start`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
       if (response.data.success) {
         showMessage(`✅ Game started! Round ${gameState.roundNumber + 1}`, 'success');
         await fetchGameState();
@@ -127,20 +193,17 @@ const AviatorManagement = () => {
     }
   };
 
-  // 🛑 STOP GAME (Crash the game)
   const stopGame = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      
       const response = await axios.post(
         `${API_URL}/api/aviator/stop`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
       if (response.data.success) {
-        showMessage(`✅ Round ${gameState.roundNumber} stopped at ${gameState.oddCounter.toFixed(2)}x!`, 'success');
+        showMessage(`✅ Round ${gameState.roundNumber} stopped at ${gameState.multiplier.toFixed(2)}x!`, 'success');
         await fetchGameState();
         await fetchHistory();
         await fetchActiveBets();
@@ -155,22 +218,18 @@ const AviatorManagement = () => {
     }
   };
 
-  // 🔒 CLOSE GAME
   const closeGame = async () => {
     if (!window.confirm('⚠️ Are you sure you want to close the game? All active bets will be cancelled and refunded.')) {
       return;
     }
-    
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      
       const response = await axios.post(
         `${API_URL}/api/aviator/close`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
       if (response.data.success) {
         showMessage('✅ Game closed successfully! All bets cancelled.', 'success');
         await fetchGameState();
@@ -187,19 +246,15 @@ const AviatorManagement = () => {
     }
   };
 
-  // ========== SETTINGS ==========
-
   const updateSettings = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      
       const response = await axios.post(
         `${API_URL}/api/aviator/settings`,
         settings,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
       if (response.data.success) {
         showMessage('✅ Settings updated successfully!', 'success');
         setGameState(prev => ({ ...prev, ...settings }));
@@ -214,8 +269,6 @@ const AviatorManagement = () => {
     }
   };
 
-  // ========== SET NEXT CRASH POINT ==========
-
   const setNextCrashPoint = async () => {
     try {
       const crashPoint = parseFloat(document.getElementById('nextCrashPoint')?.value);
@@ -223,16 +276,13 @@ const AviatorManagement = () => {
         showMessage('⚠️ Please enter a valid crash point (minimum 1.01)', 'error');
         return;
       }
-
       setLoading(true);
       const token = localStorage.getItem('token');
-      
       const response = await axios.post(
         `${API_URL}/api/aviator/set-crash`,
         { crashPoint },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
       if (response.data.success) {
         showMessage(`✅ Next crash point set to ${crashPoint.toFixed(2)}x!`, 'success');
         setGameState(prev => ({ ...prev, nextCrashPoint: crashPoint }));
@@ -247,7 +297,7 @@ const AviatorManagement = () => {
     }
   };
 
-  // ========== UI HELPERS ==========
+  // ===== UI HELPERS =====
 
   const showMessage = (msg, type) => {
     setMessage(msg);
@@ -270,7 +320,7 @@ const AviatorManagement = () => {
     return `game-status ${status}`;
   };
 
-  // ========== RENDER ==========
+  // ===== RENDER =====
 
   return (
     <div className="aviator-management">
@@ -286,7 +336,7 @@ const AviatorManagement = () => {
         {/* ===== GAME CONTROLS ===== */}
         <div className="management-card game-controls">
           <h2>🎮 Game Controls</h2>
-          
+
           <div className="game-status-display">
             <div className="status-indicator">
               <span>Current Status:</span>
@@ -294,22 +344,17 @@ const AviatorManagement = () => {
                 {getStatusBadge(gameState.status).text}
               </span>
             </div>
-            
-            {/* ✅ ODD COUNTER - BIG AND VISIBLE */}
+
             <div className="odd-counter-admin">
               <span className="odd-label">📊 Current Odd</span>
               <span className={`odd-number-admin ${gameState.status === 'active' ? 'pulse-odd' : ''}`}>
-                {gameState.oddCounter.toFixed(2)}x
+                {gameState.multiplier.toFixed(2)}x
               </span>
               {gameState.status === 'active' && (
-                <span className="odd-counter-running">
-                  ⏱️ Live
-                </span>
+                <span className="odd-counter-running">⏱️ Live</span>
               )}
               {gameState.status === 'crashed' && (
-                <span className="odd-counter-crashed">
-                  💥 Crashed!
-                </span>
+                <span className="odd-counter-crashed">💥 Crashed!</span>
               )}
             </div>
 
@@ -334,23 +379,23 @@ const AviatorManagement = () => {
           </div>
 
           <div className="control-buttons">
-            <button 
+            <button
               className={`btn-start ${gameState.status === 'active' ? 'disabled' : ''}`}
               onClick={startGame}
               disabled={gameState.status === 'active' || loading}
             >
               {loading ? '⏳ Loading...' : `🚀 Start Round ${gameState.roundNumber + 1}`}
             </button>
-            
-            <button 
+
+            <button
               className={`btn-stop ${gameState.status !== 'active' ? 'disabled' : ''}`}
               onClick={stopGame}
               disabled={gameState.status !== 'active' || loading}
             >
-              {loading ? '⏳ Loading...' : `🛑 Stop at ${gameState.oddCounter.toFixed(2)}x`}
+              {loading ? '⏳ Loading...' : `🛑 Stop at ${gameState.multiplier.toFixed(2)}x`}
             </button>
-            
-            <button 
+
+            <button
               className="btn-close"
               onClick={closeGame}
               disabled={loading}
@@ -364,19 +409,19 @@ const AviatorManagement = () => {
         <div className="management-card crash-control">
           <h2>🎯 Set Next Crash Point</h2>
           <p className="hint">Set the multiplier where the game will crash in the next round</p>
-          
+
           <div className="crash-input-group">
-            <input 
-              type="number" 
+            <input
+              type="number"
               id="nextCrashPoint"
-              placeholder="e.g., 2.50" 
+              placeholder="e.g., 2.50"
               step="0.01"
               min="1.01"
               max="100"
               defaultValue={gameState.nextCrashPoint || 2}
             />
             <span className="multiplier-suffix">x</span>
-            <button 
+            <button
               className="btn-set-crash"
               onClick={setNextCrashPoint}
               disabled={loading}
@@ -411,13 +456,13 @@ const AviatorManagement = () => {
         {/* ===== GAME SETTINGS ===== */}
         <div className="management-card game-settings">
           <h2>⚙️ Game Settings</h2>
-          
+
           <div className="settings-grid">
             <div className="setting-group">
               <label>Auto Start</label>
               <div className="toggle-switch">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   checked={settings.autoStart}
                   onChange={(e) => setSettings({ ...settings, autoStart: e.target.checked })}
                 />
@@ -427,8 +472,8 @@ const AviatorManagement = () => {
 
             <div className="setting-group">
               <label>Auto Start Delay (seconds)</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 value={settings.autoStartDelay}
                 onChange={(e) => setSettings({ ...settings, autoStartDelay: parseInt(e.target.value) || 10 })}
                 min="3"
@@ -438,8 +483,8 @@ const AviatorManagement = () => {
 
             <div className="setting-group">
               <label>Minimum Bet ($)</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 value={settings.minBet}
                 onChange={(e) => setSettings({ ...settings, minBet: parseFloat(e.target.value) || 1 })}
                 min="0.01"
@@ -449,8 +494,8 @@ const AviatorManagement = () => {
 
             <div className="setting-group">
               <label>Maximum Bet ($)</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 value={settings.maxBet}
                 onChange={(e) => setSettings({ ...settings, maxBet: parseFloat(e.target.value) || 1000 })}
                 min="1"
@@ -460,8 +505,8 @@ const AviatorManagement = () => {
 
             <div className="setting-group">
               <label>House Edge (%)</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 value={settings.houseEdge}
                 onChange={(e) => setSettings({ ...settings, houseEdge: parseFloat(e.target.value) || 5 })}
                 min="0"
@@ -471,7 +516,7 @@ const AviatorManagement = () => {
             </div>
           </div>
 
-          <button 
+          <button
             className="btn-save-settings"
             onClick={updateSettings}
             disabled={loading}
@@ -498,14 +543,14 @@ const AviatorManagement = () => {
                 </thead>
                 <tbody>
                   {activeBets.map((bet) => (
-                    <tr key={bet._id}>
-                      <td>{bet.user?.username || 'Unknown'}</td>
-                      <td>${bet.amount?.toFixed(2)}</td>
+                    <tr key={bet._id || bet.betId}>
+                      <td>{bet.user?.username || bet.displayName || 'Unknown'}</td>
+                      <td>${(bet.amount || bet.stake)?.toFixed(2)}</td>
                       <td>{bet.autoCashOut ? bet.autoCashOut + 'x' : 'Manual'}</td>
                       <td>
                         <span className={`bet-status ${bet.status}`}>
-                          {bet.status === 'active' ? '🟢 Active' : 
-                           bet.status === 'cashed' ? '✅ Cashed' : 
+                          {bet.status === 'active' ? '🟢 Active' :
+                           bet.status === 'cashed' ? '✅ Cashed' :
                            bet.status === 'lost' ? '❌ Lost' : '⏳'}
                         </span>
                       </td>
@@ -528,9 +573,9 @@ const AviatorManagement = () => {
                 {history.slice(0, 20).map((game, index) => (
                   <div key={index} className={`history-item ${game.crashed ? 'crashed' : 'cashed'}`}>
                     <span className="history-round">#{game.roundNumber}</span>
-                    <span className="history-multiplier">{game.crashPoint?.toFixed(2) || 'N/A'}x</span>
+                    <span className="history-multiplier">{game.crashPoint?.toFixed(2) || game.crashMultiplier?.toFixed(2) || 'N/A'}x</span>
                     <span className="history-players">{game.playersActive || 0} players</span>
-                    <span className="history-time">{new Date(game.endTime).toLocaleTimeString()}</span>
+                    <span className="history-time">{game.endTime ? new Date(game.endTime).toLocaleTimeString() : ''}</span>
                   </div>
                 ))}
               </div>
