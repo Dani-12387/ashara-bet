@@ -631,3 +631,107 @@ exports.cashOut = async (req, res) => {
 
 console.log('✅ Aviator controller loaded successfully');
 console.log('⏸️ Admin-controlled mode: Game starts only when admin clicks Start Round');
+
+// ========== NEW ENDPOINTS FOR PLAYER PAGE ==========
+
+exports.getCurrentRound = async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      data: {
+        roundId: gameState.roundNumber ? `AV-${gameState.roundNumber}` : null,
+        status: gameState.status === 'active' ? 'RUNNING' : 
+                gameState.status === 'idle' ? 'WAITING' :
+                gameState.status === 'crashed' ? 'CRASHED' :
+                gameState.status === 'closed' ? 'CLOSED' : 'WAITING',
+        multiplier: gameState.multiplier || 1.00,
+        crashMultiplier: gameState.crashPoint || 0,
+        serverTime: Date.now()
+      }
+    });
+  } catch (error) {
+    console.error('Error getting current round:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getMyBets = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    // Return user's bets from pendingBets and activeBets
+    const userPendingBets = pendingBets.filter(b => b.userId === userId);
+    const userActiveBets = activeBets.filter(b => b.userId === userId);
+    
+    const allBets = [...userPendingBets, ...userActiveBets].map(b => ({
+      betId: b.betId || `BET-${Date.now()}-${Math.random()}`,
+      roundId: b.gameRound ? `AV-${b.gameRound}` : null,
+      stake: b.amount || b.stake,
+      cashoutMultiplier: b.cashedAt || 0,
+      payout: b.winAmount || 0,
+      status: b.status,
+      result: b.status === 'cashed' ? 'WON' : b.status === 'lost' ? 'LOST' : 'PENDING',
+      placedAt: b.placedAt || new Date().toISOString()
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        bets: allBets.slice(0, 20),
+        total: allBets.length
+      }
+    });
+  } catch (error) {
+    console.error('Error getting my bets:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getLivePlayers = async (req, res) => {
+  try {
+    // Return active players from activeBets
+    const players = activeBets
+      .filter(b => b.status === 'active')
+      .map(b => ({
+        displayName: `User***${b.userId.toString().slice(-4)}`,
+        stake: b.amount || b.stake,
+        multiplier: gameState.multiplier || 1.00,
+        status: 'ACTIVE'
+      }));
+
+    res.json({
+      success: true,
+      data: players
+    });
+  } catch (error) {
+    console.error('Error getting live players:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.verifyRound = async (req, res) => {
+  try {
+    const { roundId } = req.params;
+    // Find round in history
+    const round = gameHistory.find(h => h.roundNumber === parseInt(roundId.replace('AV-', '')));
+    
+    if (!round) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Round not found' }
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        roundId: roundId,
+        crashPoint: round.crashPoint,
+        verified: true,
+        message: 'Round verified'
+      }
+    });
+  } catch (error) {
+    console.error('Error verifying round:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

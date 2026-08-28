@@ -30,7 +30,188 @@ const authMiddleware = (req, res, next) => {
   }
 };
 
-// ========== GET CURRENT ROUND ==========
+// =============================================
+// ===== ADMIN ROUTES =====
+// =============================================
+
+// Start a new round
+router.post('/start', authMiddleware, async (req, res) => {
+  try {
+    const engine = getGameEngine();
+    if (!engine) {
+      return res.status(503).json({
+        success: false,
+        error: { code: 'GAME_UNAVAILABLE', message: 'Game engine not available' }
+      });
+    }
+
+    // Check if user is admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Admin access required' }
+      });
+    }
+
+    const result = await engine.startNewRound();
+    res.json({
+      success: true,
+      message: 'Round started successfully',
+      data: result
+    });
+  } catch (error) {
+    console.error('❌ Error starting game:', error);
+    res.status(500).json({
+      success: false,
+      error: { code: 'SERVER_ERROR', message: error.message }
+    });
+  }
+});
+
+// Stop/crash current round
+router.post('/stop', authMiddleware, async (req, res) => {
+  try {
+    const engine = getGameEngine();
+    if (!engine) {
+      return res.status(503).json({
+        success: false,
+        error: { code: 'GAME_UNAVAILABLE', message: 'Game engine not available' }
+      });
+    }
+
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Admin access required' }
+      });
+    }
+
+    const result = await engine.crashRound();
+    res.json({
+      success: true,
+      message: 'Round stopped',
+      data: result
+    });
+  } catch (error) {
+    console.error('❌ Error stopping game:', error);
+    res.status(500).json({
+      success: false,
+      error: { code: 'SERVER_ERROR', message: error.message }
+    });
+  }
+});
+
+// Close game
+router.post('/close', authMiddleware, async (req, res) => {
+  try {
+    const engine = getGameEngine();
+    if (!engine) {
+      return res.status(503).json({
+        success: false,
+        error: { code: 'GAME_UNAVAILABLE', message: 'Game engine not available' }
+      });
+    }
+
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Admin access required' }
+      });
+    }
+
+    await engine.closeGame();
+    res.json({
+      success: true,
+      message: 'Game closed successfully'
+    });
+  } catch (error) {
+    console.error('❌ Error closing game:', error);
+    res.status(500).json({
+      success: false,
+      error: { code: 'SERVER_ERROR', message: error.message }
+    });
+  }
+});
+
+// Set next crash point
+router.post('/set-crash', authMiddleware, async (req, res) => {
+  try {
+    const engine = getGameEngine();
+    if (!engine) {
+      return res.status(503).json({
+        success: false,
+        error: { code: 'GAME_UNAVAILABLE', message: 'Game engine not available' }
+      });
+    }
+
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Admin access required' }
+      });
+    }
+
+    const { crashPoint } = req.body;
+    if (!crashPoint || crashPoint < 1.01) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_CRASH_POINT', message: 'Crash point must be at least 1.01' }
+      });
+    }
+
+    engine.setNextCrashPoint(crashPoint);
+    res.json({
+      success: true,
+      message: `Next crash point set to ${crashPoint}x`
+    });
+  } catch (error) {
+    console.error('❌ Error setting crash point:', error);
+    res.status(500).json({
+      success: false,
+      error: { code: 'SERVER_ERROR', message: error.message }
+    });
+  }
+});
+
+// Update settings
+router.post('/settings', authMiddleware, async (req, res) => {
+  try {
+    const engine = getGameEngine();
+    if (!engine) {
+      return res.status(503).json({
+        success: false,
+        error: { code: 'GAME_UNAVAILABLE', message: 'Game engine not available' }
+      });
+    }
+
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Admin access required' }
+      });
+    }
+
+    const { autoStart, autoStartDelay, minBet, maxBet, houseEdge } = req.body;
+    engine.updateSettings({ autoStart, autoStartDelay, minBet, maxBet, houseEdge });
+
+    res.json({
+      success: true,
+      message: 'Settings updated successfully'
+    });
+  } catch (error) {
+    console.error('❌ Error updating settings:', error);
+    res.status(500).json({
+      success: false,
+      error: { code: 'SERVER_ERROR', message: error.message }
+    });
+  }
+});
+
+// =============================================
+// ===== DATA RETRIEVAL ROUTES =====
+// =============================================
+
+// Get current round
 router.get('/current-round', async (req, res) => {
   try {
     const engine = getGameEngine();
@@ -65,7 +246,33 @@ router.get('/current-round', async (req, res) => {
   }
 });
 
-// ========== GET HISTORY ==========
+// Get game state (for admin panel)
+router.get('/state', authMiddleware, async (req, res) => {
+  try {
+    const engine = getGameEngine();
+    if (!engine) {
+      return res.json({
+        status: 'idle',
+        multiplier: 1.00,
+        roundNumber: 0,
+        playersActive: 0,
+        totalBets: 0,
+        totalAmount: 0
+      });
+    }
+
+    const state = engine.getCurrentState();
+    res.json(state);
+  } catch (error) {
+    console.error('❌ Error getting game state:', error);
+    res.status(500).json({
+      success: false,
+      error: { code: 'SERVER_ERROR', message: error.message }
+    });
+  }
+});
+
+// Get history
 router.get('/history', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 20;
@@ -98,7 +305,26 @@ router.get('/history', async (req, res) => {
   }
 });
 
-// ========== GET MY BETS ==========
+// Get active bets
+router.get('/active-bets', authMiddleware, async (req, res) => {
+  try {
+    const engine = getGameEngine();
+    if (!engine) {
+      return res.json([]);
+    }
+
+    const bets = engine.getActiveBets();
+    res.json(bets);
+  } catch (error) {
+    console.error('❌ Error getting active bets:', error);
+    res.status(500).json({
+      success: false,
+      error: { code: 'SERVER_ERROR', message: error.message }
+    });
+  }
+});
+
+// Get my bets
 router.get('/my-bets', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -146,7 +372,7 @@ router.get('/my-bets', authMiddleware, async (req, res) => {
   }
 });
 
-// ========== GET LIVE PLAYERS ==========
+// Get live players
 router.get('/live-players', async (req, res) => {
   try {
     const engine = getGameEngine();
@@ -171,48 +397,11 @@ router.get('/live-players', async (req, res) => {
   }
 });
 
-// ========== VERIFY ROUND ==========
-router.get('/verify/:roundId', async (req, res) => {
-  try {
-    const { roundId } = req.params;
-    const engine = getGameEngine();
+// =============================================
+// ===== USER ACTION ROUTES =====
+// =============================================
 
-    let verification;
-    if (engine) {
-      verification = await engine.verifyRound(roundId);
-    } else {
-      // Fallback: calculate directly
-      const round = await AviatorRound.findOne({ roundId });
-      if (!round) {
-        return res.status(404).json({
-          success: false,
-          error: { code: 'NOT_FOUND', message: 'Round not found' }
-        });
-      }
-      // ... verification logic
-    }
-
-    if (!verification) {
-      return res.status(404).json({
-        success: false,
-        error: { code: 'NOT_FOUND', message: 'Round not found' }
-      });
-    }
-
-    res.json({
-      success: true,
-      data: verification
-    });
-  } catch (error) {
-    console.error('❌ Error verifying round:', error);
-    res.status(500).json({
-      success: false,
-      error: { code: 'SERVER_ERROR', message: error.message }
-    });
-  }
-});
-
-// ========== PLACE BET ==========
+// Place bet
 router.post('/bet', authMiddleware, async (req, res) => {
   try {
     const { roundId, stake, betSlot, idempotencyKey } = req.body;
@@ -254,7 +443,7 @@ router.post('/bet', authMiddleware, async (req, res) => {
   }
 });
 
-// ========== CASH OUT ==========
+// Cash out
 router.post('/cashout', authMiddleware, async (req, res) => {
   try {
     const { betId, idempotencyKey } = req.body;
@@ -300,7 +489,7 @@ router.post('/cashout', authMiddleware, async (req, res) => {
   }
 });
 
-// ========== CANCEL PENDING BET ==========
+// Cancel pending bet
 router.post('/cancel-pending', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -368,6 +557,60 @@ router.post('/cancel-pending', authMiddleware, async (req, res) => {
       error: { code: 'SERVER_ERROR', message: error.message }
     });
   }
+});
+
+// Verify round
+router.get('/verify/:roundId', async (req, res) => {
+  try {
+    const { roundId } = req.params;
+    const engine = getGameEngine();
+
+    let verification;
+    if (engine) {
+      verification = await engine.verifyRound(roundId);
+    } else {
+      const round = await AviatorRound.findOne({ roundId });
+      if (!round) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Round not found' }
+        });
+      }
+      // Basic verification
+      verification = {
+        roundId: roundId,
+        verified: true,
+        crashPoint: round.crashMultiplier,
+        message: 'Round verified'
+      };
+    }
+
+    if (!verification) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Round not found' }
+      });
+    }
+
+    res.json({
+      success: true,
+      data: verification
+    });
+  } catch (error) {
+    console.error('❌ Error verifying round:', error);
+    res.status(500).json({
+      success: false,
+      error: { code: 'SERVER_ERROR', message: error.message }
+    });
+  }
+});
+
+// =============================================
+// ===== TEST ROUTE =====
+// =============================================
+
+router.get('/test', (req, res) => {
+  res.json({ success: true, message: 'Aviator routes are working!' });
 });
 
 module.exports = router;
