@@ -6,6 +6,11 @@ const GameCanvas = ({ multiplier, status, crashMultiplier, roundId }) => {
   const animationRef = useRef(null);
   const [trajectoryPoints, setTrajectoryPoints] = useState([]);
 
+  // Normalise status to check conditions
+  const isRunning = status === 'RUNNING' || status === 'active';
+  const isCrashed = status === 'CRASHED' || status === 'crashed';
+  const isWaiting = status === 'WAITING' || status === 'idle' || status === 'BETTING_OPEN';
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -67,9 +72,9 @@ const GameCanvas = ({ multiplier, status, crashMultiplier, roundId }) => {
           ctx.lineTo(x, y);
         }
         
-        const isCrashed = status === 'CRASHED';
+        const isCrashedNow = isCrashed;
         const gradientLine = ctx.createLinearGradient(0, 0, width, 0);
-        if (isCrashed) {
+        if (isCrashedNow) {
           gradientLine.addColorStop(0, '#ff6b6b');
           gradientLine.addColorStop(1, '#dc3545');
         } else {
@@ -80,7 +85,7 @@ const GameCanvas = ({ multiplier, status, crashMultiplier, roundId }) => {
         ctx.lineWidth = 3;
         ctx.stroke();
 
-        ctx.shadowColor = isCrashed ? 'rgba(220,53,69,0.3)' : 'rgba(78,205,196,0.3)';
+        ctx.shadowColor = isCrashedNow ? 'rgba(220,53,69,0.3)' : 'rgba(78,205,196,0.3)';
         ctx.shadowBlur = 20;
         ctx.stroke();
         ctx.shadowBlur = 0;
@@ -95,7 +100,7 @@ const GameCanvas = ({ multiplier, status, crashMultiplier, roundId }) => {
       const clampedY = Math.min(Math.max(yPos, 30), height - 20);
 
       // Draw aircraft
-      if (status !== 'CRASHED') {
+      if (!isCrashed) {
         ctx.save();
         ctx.translate(clampedX, clampedY);
         ctx.rotate(-Math.PI / 6);
@@ -176,11 +181,11 @@ const GameCanvas = ({ multiplier, status, crashMultiplier, roundId }) => {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [multiplier, status, crashMultiplier]);
+  }, [multiplier, status, crashMultiplier, isCrashed]);
 
   // Update trajectory points
   useEffect(() => {
-    if (status === 'RUNNING') {
+    if (isRunning) {
       setTrajectoryPoints(prev => {
         const newPoints = [...prev, multiplier];
         if (newPoints.length > 100) {
@@ -188,33 +193,31 @@ const GameCanvas = ({ multiplier, status, crashMultiplier, roundId }) => {
         }
         return newPoints;
       });
-    } else if (status === 'CRASHED') {
+    } else if (isCrashed) {
       setTrajectoryPoints(prev => {
         if (prev.length > 0 && prev[prev.length - 1] !== crashMultiplier) {
           return [...prev, crashMultiplier || multiplier];
         }
         return prev;
       });
-    } else if (status === 'WAITING' || status === 'BETTING_OPEN') {
+    } else if (isWaiting) {
       setTrajectoryPoints([1.00]);
     }
-  }, [multiplier, status, crashMultiplier]);
+  }, [multiplier, isRunning, isCrashed, isWaiting, crashMultiplier]);
 
   return (
     <div className="game-canvas-container">
       <canvas ref={canvasRef} className="game-canvas" />
       <div className="multiplier-overlay">
         <span className="multiplier-display">
-          {status === 'RUNNING' ? `${(multiplier || 1).toFixed(2)}x` : ''}
-          {status === 'CRASHED' ? `${(crashMultiplier || multiplier || 1).toFixed(2)}x` : ''}
-          {status === 'WAITING' || status === 'BETTING_OPEN' ? '1.00x' : ''}
+          {isRunning ? `${(multiplier || 1).toFixed(2)}x` : ''}
+          {isCrashed ? `${(crashMultiplier || multiplier || 1).toFixed(2)}x` : ''}
+          {isWaiting ? '1.00x' : ''}
         </span>
         <span className="round-status">
-          {status === 'WAITING' && '⏸️ WAITING'}
-          {status === 'BETTING_OPEN' && '📊 PLACE YOUR BET'}
-          {status === 'BETTING_CLOSED' && '🔒 BETS CLOSED'}
-          {status === 'RUNNING' && '🟢 LIVE'}
-          {status === 'CRASHED' && '💥 CRASHED'}
+          {isRunning && '🟢 LIVE'}
+          {isCrashed && '💥 CRASHED'}
+          {isWaiting && '⏸️ WAITING'}
         </span>
       </div>
     </div>
