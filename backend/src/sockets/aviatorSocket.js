@@ -1,26 +1,26 @@
-// backend/src/sockets/aviatorSocket.js
-
 const AviatorGameEngine = require('../services/aviatorGameEngine');
 
 let gameEngine = null;
 
 function initializeAviatorSocket(io) {
   console.log('🔄 Initializing Aviator Socket...');
-
-  // Create game engine
+  // ✅ Create engine but DO NOT start it automatically
   gameEngine = new AviatorGameEngine(io);
-  gameEngine.start();
+  // ❌ REMOVE: gameEngine.start();
 
-  // Socket connection handler
   io.on('connection', (socket) => {
     console.log(`📡 Aviator client connected: ${socket.id}`);
-    // ... rest of socket code
+    if (gameEngine) {
+      socket.emit('round:state', gameEngine.getCurrentState());
+    }
+    socket.on('disconnect', () => {
+      console.log(`📡 Aviator client disconnected: ${socket.id}`);
+    });
   });
 
   return gameEngine;
 }
 
-// ✅ Make sure this is exported
 function getGameEngine() {
   return gameEngine;
 }
