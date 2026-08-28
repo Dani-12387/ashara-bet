@@ -44,6 +44,8 @@ function broadcastGameState() {
       totalAmount: activeBets.reduce((s, b) => s + b.amount, 0),
       pendingBets: pendingBets.length
     });
+  } else {
+    console.warn('⚠️ global.io not available – cannot broadcast');
   }
   console.log(`📊 Round ${gameState.roundNumber}: ${gameState.multiplier.toFixed(2)}x | Status: ${gameState.status}`);
 }

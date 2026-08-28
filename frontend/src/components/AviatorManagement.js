@@ -5,7 +5,7 @@ import './AviatorManagement.css';
 
 const AviatorManagement = () => {
   const [gameState, setGameState] = useState({
-    status: 'idle',
+    status: 'idle',       // idle, waiting, active, crashed, closed
     multiplier: 1.00,
     crashPoint: 0,
     nextCrashPoint: 0,
@@ -38,36 +38,39 @@ const AviatorManagement = () => {
 
   // ===== SOCKET.IO SETUP =====
   useEffect(() => {
+    // Initial data fetch
     fetchGameState();
     fetchHistory();
     fetchActiveBets();
 
+    // Connect to Socket.IO for real-time updates
     const token = localStorage.getItem('token');
-    if (!token) return;
+    if (!token) {
+      console.warn('No token found – admin socket will not connect');
+      return;
+    }
 
     const socket = getAviatorSocket();
     socket.connect(token);
 
+    // Listen to round state changes
     socket.on('round:state', (data) => {
       console.log('📡 Admin: round:state', data);
       setGameState(prev => ({
         ...prev,
-        status: mapStatus(data.status),
-        roundNumber: data.roundNumber || prev.roundNumber,
-        crashPoint: data.crashMultiplier || prev.crashPoint,
-        multiplier: data.multiplier || prev.multiplier,
-      }));
-    });
-
-    socket.on('round:multiplier', (data) => {
-      setGameState(prev => ({
-        ...prev,
-        multiplier: data.multiplier,
+        status: data.status || prev.status,
+        multiplier: data.multiplier !== undefined ? data.multiplier : prev.multiplier,
+        roundNumber: data.roundNumber !== undefined ? data.roundNumber : prev.roundNumber,
+        crashPoint: data.crashPoint !== undefined ? data.crashPoint : prev.crashPoint,
+        playersActive: data.playersActive !== undefined ? data.playersActive : prev.playersActive,
+        totalBets: data.totalBets !== undefined ? data.totalBets : prev.totalBets,
+        totalAmount: data.totalAmount !== undefined ? data.totalAmount : prev.totalAmount
       }));
     });
 
     socket.on('round:countdown', (data) => {
       console.log('📡 Admin: round:countdown', data);
+      // Optionally display countdown in admin panel
     });
 
     socket.on('bet:placed', () => {
@@ -81,6 +84,7 @@ const AviatorManagement = () => {
     });
 
     socket.on('connection:reconnected', () => {
+      // Refresh data after reconnection
       fetchGameState();
       fetchHistory();
       fetchActiveBets();
@@ -88,28 +92,17 @@ const AviatorManagement = () => {
 
     return () => {
       socket.off('round:state');
-      socket.off('round:multiplier');
       socket.off('round:countdown');
       socket.off('bet:placed');
       socket.off('bet:cashed_out');
       socket.off('connection:reconnected');
+      // Do not disconnect the socket globally, as other components may use it.
+      // The socket service manages its own lifecycle.
     };
   }, []);
 
-  // ===== STATUS MAPPING =====
-  const mapStatus = (engineStatus) => {
-    const mapping = {
-      'WAITING': 'idle',
-      'BETTING_OPEN': 'waiting',
-      'BETTING_CLOSED': 'waiting',
-      'RUNNING': 'active',
-      'CRASHED': 'crashed',
-      'CLOSED': 'closed',
-    };
-    return mapping[engineStatus] || engineStatus?.toLowerCase() || 'idle';
-  };
-
   // ===== API CALLS =====
+
   const fetchGameState = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -158,6 +151,7 @@ const AviatorManagement = () => {
   };
 
   // ===== ADMIN ACTIONS =====
+
   const startGame = async () => {
     try {
       setLoading(true);
@@ -287,6 +281,7 @@ const AviatorManagement = () => {
   };
 
   // ===== UI HELPERS =====
+
   const showMessage = (msg, type) => {
     setMessage(msg);
     setMessageType(type);
@@ -309,6 +304,7 @@ const AviatorManagement = () => {
   };
 
   // ===== RENDER =====
+
   return (
     <div className="aviator-management">
       <h1>✈️ Aviator Management</h1>

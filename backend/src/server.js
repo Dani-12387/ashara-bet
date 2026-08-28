@@ -90,7 +90,6 @@ app.get("/api/test", (req, res) => {
   });
 });
 
-// ===== SIMPLE TEST FOR ODDS =====
 app.get('/api/test-odds', (req, res) => {
   res.json({ 
     success: true, 
@@ -103,7 +102,6 @@ app.get('/api/test-odds', (req, res) => {
 // ===== DIRECT ODDS ROUTES =====
 // =============================================
 
-// Test route - Check if odds routes are loaded
 app.get('/api/odds/test', (req, res) => {
   res.json({ 
     success: true, 
@@ -112,7 +110,6 @@ app.get('/api/odds/test', (req, res) => {
   });
 });
 
-// Get live odds
 app.get('/api/odds/odds/:sport', async (req, res) => {
   try {
     const { sport } = req.params;
@@ -128,7 +125,6 @@ app.get('/api/odds/odds/:sport', async (req, res) => {
       });
     }
     
-    // Try to fetch from The Odds API
     const response = await axios.get(
       `https://api.the-odds-api.com/v4/sports/soccer_epl/odds/`,
       {
@@ -192,7 +188,6 @@ app.get('/api/odds/odds/:sport', async (req, res) => {
   }
 });
 
-// Get available sports
 app.get('/api/odds/sports', (req, res) => {
   res.json([
     { key: 'soccer_epl', title: 'Premier League', active: true },
@@ -288,6 +283,9 @@ const io = socketIo(server, {
     methods: ['GET', 'POST']
   }
 });
+
+// ✅ Make io globally accessible to controllers
+global.io = io;
 
 console.log('🔄 Setting up Socket.IO...');
 
