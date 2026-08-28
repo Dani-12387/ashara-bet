@@ -27,6 +27,18 @@ function updateLocalStorageBalance(balance) {
   } catch (e) {}
 }
 
+// ---------- Status Normalization ----------
+const normalizeStatus = (status) => {
+  if (!status) return 'WAITING';
+  const s = status.toLowerCase();
+  if (s === 'idle' || s === 'waiting' || s === 'betting_open') return 'WAITING';
+  if (s === 'active' || s === 'running') return 'RUNNING';
+  if (s === 'crashed') return 'CRASHED';
+  if (s === 'closed') return 'CLOSED';
+  if (s === 'betting_closed') return 'BETTING_CLOSED';
+  return status;
+};
+
 export const useAviatorGame = () => {
   const [roundState, setRoundState] = useState({
     roundId: null,
@@ -47,7 +59,6 @@ export const useAviatorGame = () => {
 
   const socketRef = useRef(null);
 
-  // Bet refs now also store the roundId they were placed for
   const bet1Ref = useRef({
     stake: 10,
     betId: null,
@@ -114,8 +125,6 @@ export const useAviatorGame = () => {
       const response = await aviatorApi.getMyBets(20, 0);
       if (response.success) {
         setMyBets(response.data?.bets || []);
-        // Also update bet refs from fetched bets if needed
-        // For simplicity, we rely on socket events, but we can sync here.
       }
     } catch (error) {
       console.error('Error fetching my bets:', error);
@@ -130,7 +139,7 @@ export const useAviatorGame = () => {
         setRoundState(prev => ({
           ...prev,
           roundId: response.data.roundId,
-          status: response.data.status || 'WAITING',
+          status: normalizeStatus(response.data.status),
           multiplier: response.data.multiplier || 1.00,
           crashMultiplier: response.data.crashMultiplier || 0,
           serverTime: response.data.serverTime || Date.now()
@@ -218,19 +227,19 @@ export const useAviatorGame = () => {
     });
 
     socket.on('round:state', (data) => {
+      const normalizedStatus = normalizeStatus(data.status);
       setRoundState(prev => ({
         ...prev,
         roundId: data.roundId || prev.roundId,
-        status: data.status || prev.status,
+        status: normalizedStatus,
         multiplier: data.multiplier !== undefined ? data.multiplier : prev.multiplier,
         crashMultiplier: data.crashMultiplier || 0,
         serverTime: data.serverTime || Date.now()
       }));
 
-      // ✅ If round starts (RUNNING), activate pending bets that match this round
-      if (data.status === 'RUNNING' || data.status === 'active') {
+      // If round starts (RUNNING), activate pending bets for this round
+      if (normalizedStatus === 'RUNNING') {
         const currentRoundId = data.roundId || roundState.roundId;
-        // Check bet1
         if (bet1Ref.current.status === 'pending' && bet1Ref.current.roundId === currentRoundId) {
           bet1Ref.current.status = 'active';
           console.log('✅ Bet 1 activated');
@@ -239,12 +248,11 @@ export const useAviatorGame = () => {
           bet2Ref.current.status = 'active';
           console.log('✅ Bet 2 activated');
         }
-        // Also fetch updated bets to be safe
         fetchMyBets();
       }
 
-      // ✅ If round crashes, mark active bets as lost
-      if (data.status === 'CRASHED' || data.status === 'crashed') {
+      // If round crashes, mark active bets as lost
+      if (normalizedStatus === 'CRASHED') {
         if (bet1Ref.current.status === 'active') {
           bet1Ref.current.status = 'lost';
         }
@@ -314,7 +322,8 @@ export const useAviatorGame = () => {
         return { success: false, message: 'Please login' };
       }
 
-      if (roundState.status !== 'WAITING' && roundState.status !== 'BETTING_OPEN') {
+      // Betting allowed only when round status is WAITING
+      if (roundState.status !== 'WAITING') {
         setError('Betting is only available before the round starts');
         return { success: false, message: 'Betting not available' };
       }
@@ -338,8 +347,6 @@ export const useAviatorGame = () => {
         const betData = response.data.bet;
         betRef.current.betId = betData.betId;
         betRef.current.stake = stake;
-        // The backend may return status 'active' if round is already running, else 'pending'
-        // We'll store the roundId from the response or from the current round state
         betRef.current.roundId = betData.gameRound 
           ? `AV-${betData.gameRound}` 
           : roundState.roundId || null;
