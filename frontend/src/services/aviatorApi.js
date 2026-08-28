@@ -3,7 +3,7 @@ import axios from 'axios';
 const API_URL = process.env.REACT_APP_API_URL || 'https://ashara-bet.onrender.com';
 
 const aviatorApi = {
-  // Get user balance
+  // Get user balance - with fallback to localStorage
   getBalance: async () => {
     try {
       const token = localStorage.getItem('token');
@@ -13,9 +13,23 @@ const aviatorApi = {
       const response = await axios.get(`${API_URL}/api/user/balance`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      // The API returns { success: true, balance: number }
       return response.data;
     } catch (error) {
-      console.error('Error fetching balance:', error);
+      console.error('Error fetching balance from API:', error);
+      // Fallback: try to get balance from localStorage user object
+      try {
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          const user = JSON.parse(userData);
+          if (user && typeof user.balance === 'number') {
+            console.log('📊 Balance from localStorage fallback:', user.balance);
+            return { success: true, balance: user.balance };
+          }
+        }
+      } catch (e) {
+        console.error('Failed to parse user from localStorage:', e);
+      }
       return { success: false, balance: 0 };
     }
   },
