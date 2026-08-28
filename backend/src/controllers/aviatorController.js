@@ -1,15 +1,15 @@
 // ============================================
-// AVIATOR GAME CONTROLLER - ADMIN CONTROLLED
+// AVIATOR CONTROLLER – ADMIN CONTROLLED ONLY
 // ============================================
 
 const User = require('../models/User');
+const crypto = require('crypto');
 
-console.log('🔄 Loading aviator controller...');
+console.log('🔄 Loading aviator controller (admin-only)...');
 
 // ========== GAME STATE ==========
-// ✅ autoStart is FALSE by default - Admin must manually start
 let gameState = {
-  status: 'idle',
+  status: 'idle',              // idle, active, crashed, closed
   multiplier: 1.00,
   crashPoint: 0,
   nextCrashPoint: 0,
@@ -19,113 +19,53 @@ let gameState = {
   totalAmount: 0,
   gameInterval: null,
   startTime: null,
-  autoStart: false,        // ✅ MUST be false - Admin controlled only
+  autoStart: false,            // ✅ MUST be false – admin only
   autoStartDelay: 10,
   minBet: 1,
   maxBet: 1000,
   houseEdge: 5
 };
 
-// ========== GAME HISTORY ==========
+// ========== IN‑MEMORY STORAGE ==========
 let gameHistory = [];
-
-// ========== ACTIVE BETS ==========
 let activeBets = [];
-
-// ========== PENDING BETS ==========
 let pendingBets = [];
 
-// ========== BROADCAST FUNCTION ==========
+// ========== BROADCAST (Socket.IO) ==========
 function broadcastGameState() {
+  if (global.io) {
+    global.io.emit('round:state', {
+      status: gameState.status,
+      multiplier: gameState.multiplier,
+      roundNumber: gameState.roundNumber,
+      crashPoint: gameState.crashPoint,
+      playersActive: activeBets.filter(b => b.status === 'active').length,
+      totalBets: activeBets.length,
+      totalAmount: activeBets.reduce((s, b) => s + b.amount, 0),
+      pendingBets: pendingBets.length
+    });
+  }
   console.log(`📊 Round ${gameState.roundNumber}: ${gameState.multiplier.toFixed(2)}x | Status: ${gameState.status}`);
-  console.log(`📊 Active bets: ${activeBets.length}, Pending bets: ${pendingBets.length}`);
 }
 
-// ========== START GAME (Admin Only) ==========
-exports.startGame = async (req, res) => {
-  try {
-    console.log('🚀 Admin: Start game called');
-    console.log(`📊 Pending bets before start: ${pendingBets.length}`);
-    
-    if (gameState.status === 'active') {
-      return res.status(400).json({ success: false, message: 'Game is already active' });
-    }
-
-    // ✅ Move all pending bets to active bets
-    for (const pendingBet of pendingBets) {
-      const user = await User.findById(pendingBet.userId);
-      if (user) {
-        activeBets.push({
-          ...pendingBet,
-          status: 'active',
-          activatedAt: new Date().toISOString()
-        });
-        console.log(`✅ Pending bet activated for user ${user.username || pendingBet.userId}`);
-      }
-    }
-    
-    // Clear pending bets
-    pendingBets = [];
-
-    gameState.status = 'active';
-    gameState.multiplier = 1.00;
-    gameState.roundNumber += 1;
-    gameState.startTime = Date.now();
-    gameState.totalBets = activeBets.length;
-    gameState.totalAmount = activeBets.reduce((sum, b) => sum + b.amount, 0);
-
-    // Use nextCrashPoint if set by admin, otherwise generate random
-    if (gameState.nextCrashPoint > 1.01) {
-      gameState.crashPoint = gameState.nextCrashPoint;
-      gameState.nextCrashPoint = 0;
-      console.log(`🎯 Using admin-set crash point: ${gameState.crashPoint.toFixed(2)}x`);
-    } else {
-      gameState.crashPoint = 2 + Math.random() * 98;
-      console.log(`🎯 Random crash point: ${gameState.crashPoint.toFixed(2)}x`);
-    }
-
-    console.log(`🔄 Round ${gameState.roundNumber} started with ${activeBets.length} active bets!`);
-
-    startGameLoop();
-    broadcastGameState();
-
-    res.json({ 
-      success: true, 
-      message: `Round ${gameState.roundNumber} started! ${activeBets.length} bets active.`,
-      gameState: {
-        status: gameState.status,
-        multiplier: gameState.multiplier,
-        crashPoint: gameState.crashPoint,
-        roundNumber: gameState.roundNumber
-      }
-    });
-  } catch (error) {
-    console.error('❌ Error starting game:', error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-// ========== GAME LOOP ==========
+// ========== GAME LOOP (internal) ==========
 function startGameLoop() {
-  if (gameState.gameInterval) {
-    clearInterval(gameState.gameInterval);
-    gameState.gameInterval = null;
-  }
-
+  if (gameState.gameInterval) clearInterval(gameState.gameInterval);
   const startTime = Date.now();
-  console.log('⏱️ Game loop started');
-  
+
   gameState.gameInterval = setInterval(() => {
     const elapsed = (Date.now() - startTime) / 1000;
-    
-    const increment = 0.01;
-    const newMultiplier = gameState.multiplier + increment;
-    const cappedMultiplier = Math.min(newMultiplier, 100);
-    gameState.multiplier = Math.round(cappedMultiplier * 100) / 100;
+    const increment = 0.01 + elapsed * 0.001;
+    gameState.multiplier = Math.round((gameState.multiplier + increment) * 100) / 100;
 
-    // Check auto cash out
-    checkAutoCashOut();
+    // Auto cash out
+    for (const bet of activeBets) {
+      if (bet.status === 'active' && bet.autoCashOut > 0 && gameState.multiplier >= bet.autoCashOut) {
+        processCashOut(bet);
+      }
+    }
 
+    // Check crash
     if (gameState.multiplier >= gameState.crashPoint) {
       crashGame();
     }
@@ -134,505 +74,366 @@ function startGameLoop() {
   }, 100);
 }
 
-// ========== CHECK AUTO CASH OUT ==========
-function checkAutoCashOut() {
-  for (const bet of activeBets) {
-    if (bet.status === 'active' && bet.autoCashOut > 0) {
-      if (gameState.multiplier >= bet.autoCashOut) {
-        processCashOut(bet);
-      }
-    }
-  }
-}
-
 // ========== PROCESS CASH OUT ==========
 async function processCashOut(bet) {
   try {
     const user = await User.findById(bet.userId);
     if (!user) return;
-
     const winAmount = bet.amount * gameState.multiplier;
     const profit = winAmount - bet.amount;
-    
     user.balance += winAmount;
     await user.save();
-    
     bet.status = 'cashed';
     bet.winAmount = winAmount;
     bet.cashedAt = gameState.multiplier;
-    
     console.log(`✅ User ${user.username} cashed out at ${gameState.multiplier.toFixed(2)}x | Profit: ${profit.toFixed(2)}`);
   } catch (error) {
-    console.error('Error processing cash out:', error);
+    console.error('Cash out error:', error);
   }
 }
 
 // ========== CRASH GAME ==========
 async function crashGame() {
   if (gameState.status === 'crashed') return;
-  
-  const crashMultiplier = gameState.multiplier;
-  const crashRound = gameState.roundNumber;
-  
-  console.log(`💥 Game crashed at ${crashMultiplier.toFixed(2)}x (Round ${crashRound})`);
-  
+  console.log(`💥 Game crashed at ${gameState.multiplier.toFixed(2)}x`);
+
   if (gameState.gameInterval) {
     clearInterval(gameState.gameInterval);
     gameState.gameInterval = null;
   }
 
   gameState.status = 'crashed';
-  
-  // Process all active bets as lost
+  const crashMultiplier = gameState.multiplier;
+
+  // Settle active bets (lost)
   for (const bet of activeBets) {
     if (bet.status === 'active') {
       bet.status = 'lost';
-      console.log(`❌ Bet lost for user ${bet.userId}`);
+      const user = await User.findById(bet.userId);
+      if (user) {
+        // Transaction already deducted, just log
+        console.log(`❌ Bet lost for user ${user.username}`);
+      }
     }
   }
-  
-  // Store crash in history
+
+  // Save history
   const crashRecord = {
-    roundNumber: crashRound,
+    roundNumber: gameState.roundNumber,
     crashPoint: crashMultiplier,
-    crashed: true,
-    playersActive: activeBets.filter(b => b.status === 'active').length,
-    totalAmount: activeBets.reduce((sum, b) => sum + (b.status === 'active' ? b.amount : 0), 0),
-    endTime: new Date().toISOString()
+    playersActive: activeBets.length,
+    totalAmount: activeBets.reduce((s, b) => s + b.amount, 0),
+    endTime: new Date()
   };
-  
-  gameHistory = [crashRecord, ...gameHistory].slice(0, 7);
-  console.log(`📜 History updated: ${gameHistory.length} records`);
-  
-  // Clear active bets
+  gameHistory = [crashRecord, ...gameHistory].slice(0, 10);
   activeBets = [];
-  
+
   broadcastGameState();
 
-  // ✅ Reset to idle WITHOUT auto-start - Admin must click Start
+  // ✅ RESET TO IDLE – NO AUTO-START
   setTimeout(() => {
-    console.log('🔄 Resetting game state to idle...');
-    console.log(`📊 Pending bets for next round: ${pendingBets.length}`);
-    
-    // ✅ Always go to idle, never auto-start
+    console.log('🔄 Resetting to idle. Admin must start next round.');
     gameState.status = 'idle';
     gameState.multiplier = 1.00;
     broadcastGameState();
-    
-    console.log('⏸️ Game is idle. Admin must start the next round.');
   }, 3000);
 }
 
-// ========== STOP GAME (Admin) ==========
-exports.stopGame = async (req, res) => {
+// ============================================
+//  ADMIN EXPORTS
+// ============================================
+
+// 🚀 START
+exports.startGame = async (req, res) => {
   try {
-    console.log('🛑 Admin: Stop game called');
-    
-    if (gameState.status !== 'active') {
-      return res.status(400).json({ 
-        success: false, 
-        message: `Game is not active. Current status: ${gameState.status}` 
-      });
+    if (gameState.status === 'active') {
+      return res.status(400).json({ success: false, message: 'Game already active' });
     }
 
-    const stopMultiplier = gameState.multiplier;
-    console.log(`🛑 Admin stopping game at ${stopMultiplier.toFixed(2)}x`);
-    
-    await crashGame();
-    
-    res.json({ 
-      success: true, 
-      message: `Game stopped at ${stopMultiplier.toFixed(2)}x`,
-      multiplier: stopMultiplier,
-      roundNumber: gameState.roundNumber
-    });
-  } catch (error) {
-    console.error('❌ Error stopping game:', error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-// ========== CLOSE GAME (Admin) ==========
-exports.closeGame = async (req, res) => {
-  try {
-    console.log('🔒 Admin: Close game called');
-    
-    if (gameState.gameInterval) {
-      clearInterval(gameState.gameInterval);
-      gameState.gameInterval = null;
+    // Activate pending bets
+    for (const p of pendingBets) {
+      activeBets.push({ ...p, status: 'active', activatedAt: new Date() });
     }
-
-    // ✅ Refund all pending bets
-    for (const bet of pendingBets) {
-      if (bet.status === 'pending') {
-        const user = await User.findById(bet.userId);
-        if (user) {
-          user.balance += bet.amount;
-          await user.save();
-          console.log(`💰 Refunded pending bet ${bet.amount} to user ${user.username}`);
-        }
-        bet.status = 'refunded';
-      }
-    }
-    
-    // Refund all active bets
-    for (const bet of activeBets) {
-      if (bet.status === 'active') {
-        const user = await User.findById(bet.userId);
-        if (user) {
-          user.balance += bet.amount;
-          await user.save();
-          console.log(`💰 Refunded active bet ${bet.amount} to user ${user.username}`);
-        }
-        bet.status = 'refunded';
-      }
-    }
-    
     pendingBets = [];
-    activeBets = [];
-    gameState.status = 'closed';
-    gameState.multiplier = 1.00;
 
+    gameState.status = 'active';
+    gameState.multiplier = 1.00;
+    gameState.roundNumber += 1;
+    gameState.startTime = Date.now();
+    gameState.totalBets = activeBets.length;
+    gameState.totalAmount = activeBets.reduce((s, b) => s + b.amount, 0);
+
+    // Use admin‑set crash point or random
+    gameState.crashPoint = gameState.nextCrashPoint > 1.01
+      ? gameState.nextCrashPoint
+      : 2 + Math.random() * 98;
+    gameState.nextCrashPoint = 0;
+
+    startGameLoop();
     broadcastGameState();
 
-    res.json({ 
-      success: true, 
-      message: 'Game closed successfully! All bets refunded.',
+    res.json({
+      success: true,
+      message: `Round ${gameState.roundNumber} started!`,
       gameState: {
         status: gameState.status,
         multiplier: gameState.multiplier,
+        crashPoint: gameState.crashPoint,
         roundNumber: gameState.roundNumber
       }
     });
   } catch (error) {
-    console.error('❌ Error closing game:', error);
+    console.error('Start error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// ========== SET NEXT CRASH POINT (Admin) ==========
-exports.setCrashPoint = async (req, res) => {
+// 🛑 STOP (Crash)
+exports.stopGame = async (req, res) => {
   try {
-    console.log('🎯 Admin: Set crash point called');
-    const { crashPoint } = req.body;
-    
-    if (!crashPoint || crashPoint < 1.01) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Crash point must be at least 1.01' 
-      });
+    if (gameState.status !== 'active') {
+      return res.status(400).json({ success: false, message: 'Game not active' });
     }
-
-    gameState.nextCrashPoint = Math.round(crashPoint * 100) / 100;
-    console.log(`✅ Next crash point set to ${gameState.nextCrashPoint.toFixed(2)}x`);
-
-    res.json({ 
-      success: true, 
-      message: `Next crash point set to ${gameState.nextCrashPoint.toFixed(2)}x`,
-      crashPoint: gameState.nextCrashPoint
+    await crashGame();
+    res.json({
+      success: true,
+      message: `Game stopped at ${gameState.multiplier.toFixed(2)}x`,
+      multiplier: gameState.multiplier,
+      roundNumber: gameState.roundNumber
     });
   } catch (error) {
-    console.error('❌ Error setting crash point:', error);
+    console.error('Stop error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// ========== UPDATE SETTINGS (Admin) ==========
+// 🔒 CLOSE
+exports.closeGame = async (req, res) => {
+  try {
+    if (gameState.gameInterval) clearInterval(gameState.gameInterval);
+    gameState.status = 'closed';
+    gameState.multiplier = 1.00;
+
+    // Refund all bets
+    const allBets = [...activeBets, ...pendingBets];
+    for (const bet of allBets) {
+      if (bet.status === 'active' || bet.status === 'pending') {
+        const user = await User.findById(bet.userId);
+        if (user) {
+          user.balance += bet.amount;
+          await user.save();
+        }
+      }
+    }
+    activeBets = [];
+    pendingBets = [];
+    broadcastGameState();
+    res.json({ success: true, message: 'Game closed, all bets refunded' });
+  } catch (error) {
+    console.error('Close error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// 🎯 SET CRASH POINT
+exports.setCrashPoint = async (req, res) => {
+  try {
+    const { crashPoint } = req.body;
+    if (!crashPoint || crashPoint < 1.01) {
+      return res.status(400).json({ success: false, message: 'Invalid crash point' });
+    }
+    gameState.nextCrashPoint = Math.round(crashPoint * 100) / 100;
+    res.json({ success: true, message: `Next crash point set to ${gameState.nextCrashPoint.toFixed(2)}x` });
+  } catch (error) {
+    console.error('Set crash error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ⚙️ UPDATE SETTINGS
 exports.updateSettings = async (req, res) => {
   try {
-    console.log('⚙️ Admin: Update settings called');
     const { autoStart, autoStartDelay, minBet, maxBet, houseEdge } = req.body;
-
-    if (autoStart !== undefined) {
-      gameState.autoStart = autoStart;
-      console.log(`🔄 Auto-start ${autoStart ? 'ENABLED' : 'DISABLED'} (Admin controlled)`);
-    }
+    if (autoStart !== undefined) gameState.autoStart = autoStart;
     if (autoStartDelay) gameState.autoStartDelay = autoStartDelay;
     if (minBet) gameState.minBet = minBet;
     if (maxBet) gameState.maxBet = maxBet;
     if (houseEdge) gameState.houseEdge = houseEdge;
-
-    res.json({ 
-      success: true, 
-      message: 'Settings updated successfully!',
-      settings: {
-        autoStart: gameState.autoStart,
-        autoStartDelay: gameState.autoStartDelay,
-        minBet: gameState.minBet,
-        maxBet: gameState.maxBet,
-        houseEdge: gameState.houseEdge
-      }
-    });
+    res.json({ success: true, message: 'Settings updated', settings: gameState });
   } catch (error) {
-    console.error('❌ Error updating settings:', error);
+    console.error('Update settings error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// ========== GET GAME STATE ==========
+// ============================================
+//  DATA RETRIEVAL (Admin & Player)
+// ============================================
+
 exports.getGameState = async (req, res) => {
   try {
     res.json({
       status: gameState.status,
-      multiplier: gameState.multiplier || 1.00,
-      crashPoint: gameState.crashPoint || 0,
-      roundNumber: gameState.roundNumber || 0,
-      playersActive: activeBets.filter(b => b.status === 'active').length || 0,
-      pendingBets: pendingBets.filter(b => b.status === 'pending').length || 0,
-      totalBets: activeBets.filter(b => b.status === 'active').length || 0,
-      totalAmount: activeBets.reduce((sum, b) => sum + (b.status === 'active' ? b.amount : 0), 0),
-      nextCrashPoint: gameState.nextCrashPoint || 0,
-      autoStart: gameState.autoStart || false,
-      autoStartDelay: gameState.autoStartDelay || 10,
-      minBet: gameState.minBet || 1,
-      maxBet: gameState.maxBet || 1000,
-      houseEdge: gameState.houseEdge || 5
+      multiplier: gameState.multiplier,
+      crashPoint: gameState.crashPoint,
+      roundNumber: gameState.roundNumber,
+      playersActive: activeBets.filter(b => b.status === 'active').length,
+      totalBets: activeBets.length,
+      totalAmount: activeBets.reduce((s, b) => s + b.amount, 0),
+      pendingBets: pendingBets.length,
+      nextCrashPoint: gameState.nextCrashPoint,
+      autoStart: gameState.autoStart,
+      autoStartDelay: gameState.autoStartDelay,
+      minBet: gameState.minBet,
+      maxBet: gameState.maxBet,
+      houseEdge: gameState.houseEdge
     });
   } catch (error) {
-    console.error('❌ Error getting game state:', error);
+    console.error('Get state error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// ========== GET HISTORY ==========
 exports.getHistory = async (req, res) => {
   try {
-    console.log(`📜 Returning ${gameHistory.length} real history records`);
     res.json(gameHistory);
   } catch (error) {
-    console.error('❌ Error getting history:', error);
-    res.json([]);
+    console.error('Get history error:', error);
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// ========== GET ACTIVE BETS ==========
 exports.getActiveBets = async (req, res) => {
   try {
     res.json(activeBets.filter(b => b.status === 'active'));
   } catch (error) {
-    console.error('❌ Error getting active bets:', error);
+    console.error('Get active bets error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// ========== CANCEL PENDING BET ==========
-exports.cancelPendingBet = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    console.log(`🔴 Cancel pending bet called - User: ${userId}`);
+// ============================================
+//  PLAYER ACTIONS
+// ============================================
 
-    // Find pending bet for this user
-    const betIndex = pendingBets.findIndex(b => b.userId === userId && b.status === 'pending');
-    
-    if (betIndex === -1) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'No pending bet found' 
-      });
-    }
-
-    const bet = pendingBets[betIndex];
-    const betAmount = bet.amount;
-    
-    // ✅ REFUND THE BET AMOUNT
-    const user = await User.findById(userId);
-    if (user) {
-      user.balance += betAmount;
-      await user.save();
-      console.log(`💰 Refunded pending bet ${betAmount} to user ${user.username}`);
-    }
-    
-    // Remove bet from pending
-    pendingBets.splice(betIndex, 1);
-    
-    const updatedUser = await User.findById(userId);
-    
-    res.json({ 
-      success: true, 
-      message: 'Bet cancelled and refunded!',
-      newBalance: updatedUser ? updatedUser.balance : 0,
-      refundAmount: betAmount
-    });
-  } catch (error) {
-    console.error('❌ Error cancelling pending bet:', error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-// ========== PLACE BET ==========
 exports.placeBet = async (req, res) => {
   try {
-    console.log('📥 Place bet request received');
-    console.log('📥 Request body:', req.body);
-    
     const { amount, autoCashOut } = req.body;
-    const userId = req.user?.id;
+    const userId = req.user.id;
 
-    if (!userId) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'User not authenticated' 
-      });
-    }
-
-    if (!amount || amount <= 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Invalid bet amount' 
-      });
-    }
-
-    // ✅ Allow betting when game is idle (for pending bets)
-    if (gameState.status !== 'idle') {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Game is not available. Please wait for the next round.' 
-      });
-    }
-
-    // Check bet limits
-    if (amount < gameState.minBet || amount > gameState.maxBet) {
-      return res.status(400).json({
-        success: false,
-        message: `Bet must be between ${gameState.minBet} and ${gameState.maxBet}`
-      });
+    if (!amount || amount <= 0) return res.status(400).json({ success: false, message: 'Invalid amount' });
+    // Only allow betting when idle (pending) or active
+    if (gameState.status !== 'idle' && gameState.status !== 'active') {
+      return res.status(400).json({ success: false, message: 'Game not available' });
     }
 
     const user = await User.findById(userId);
-    
-    if (!user) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'User not found' 
-      });
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    if (amount < gameState.minBet || amount > gameState.maxBet) {
+      return res.status(400).json({ success: false, message: `Bet must be between ${gameState.minBet} and ${gameState.maxBet}` });
     }
+    if (user.balance < amount) return res.status(400).json({ success: false, message: 'Insufficient balance' });
 
-    console.log(`💰 User balance before bet: ${user.balance}`);
-
-    if (user.balance < amount) {
-      return res.status(400).json({ 
-        success: false, 
-        message: `Insufficient balance! Balance: ${user.balance.toFixed(2)}` 
-      });
-    }
-
-    // ✅ DEDUCT BALANCE IMMEDIATELY
+    // Deduct
     user.balance -= amount;
     await user.save();
 
-    console.log(`💰 User balance after bet: ${user.balance}`);
-
-    // ✅ Always add to pending bets (game must be idle)
+    const isActive = gameState.status === 'active';
     const bet = {
-      userId: userId,
-      amount: amount,
+      userId,
+      amount,
       autoCashOut: autoCashOut || 0,
-      gameRound: gameState.roundNumber + 1, // Next round
-      status: 'pending',
-      placedAt: new Date().toISOString()
+      status: isActive ? 'active' : 'pending',
+      gameRound: isActive ? gameState.roundNumber : gameState.roundNumber + 1,
+      placedAt: new Date(),
+      betId: `BET-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`
     };
-    
-    pendingBets.push(bet);
-    console.log(`⏳ Pending bet placed: ${amount} by user ${user.username || userId}`);
-    console.log(`📊 Total pending bets: ${pendingBets.length}`);
 
-    // ✅ Get updated user balance
-    const updatedUser = await User.findById(userId);
-    
-    res.json({ 
-      success: true, 
-      message: 'Bet placed! Waiting for next round...',
-      status: 'pending',
-      newBalance: updatedUser ? updatedUser.balance : 0,
-      bet: {
-        amount: amount,
-        autoCashOut: autoCashOut || 0,
-        gameRound: gameState.roundNumber + 1,
-        status: 'pending'
-      }
+    if (isActive) {
+      activeBets.push(bet);
+      gameState.totalBets += 1;
+      gameState.totalAmount += amount;
+    } else {
+      pendingBets.push(bet);
+    }
+
+    broadcastGameState();
+    res.json({
+      success: true,
+      message: isActive ? 'Bet placed!' : 'Bet placed (pending)',
+      status: isActive ? 'active' : 'pending',
+      newBalance: user.balance,
+      bet
     });
   } catch (error) {
-    console.error('❌ Error placing bet:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: error.message || 'Internal server error' 
-    });
-  }
-};
-
-// ========== CASH OUT ==========
-exports.cashOut = async (req, res) => {
-  try {
-    const userId = req.user.id;
-
-    console.log(`💰 Cash out called - User: ${userId}`);
-
-    if (!userId) {
-      return res.status(401).json({ success: false, message: 'User not authenticated' });
-    }
-
-    if (gameState.status !== 'active') {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Game is not active!' 
-      });
-    }
-
-    // Find user's active bet
-    const betIndex = activeBets.findIndex(b => b.userId === userId && b.status === 'active');
-    
-    if (betIndex === -1) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'No active bet found' 
-      });
-    }
-
-    const bet = activeBets[betIndex];
-    const currentMultiplier = gameState.multiplier;
-    
-    const winAmount = bet.amount * currentMultiplier;
-    const profit = winAmount - bet.amount;
-
-    console.log(`💰 Cash out: ${bet.amount} * ${currentMultiplier} = ${winAmount} (Profit: ${profit})`);
-
-    const user = await User.findById(userId);
-    
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-
-    // ✅ ADD WINNINGS TO BALANCE
-    user.balance += winAmount;
-    await user.save();
-
-    console.log(`💰 User balance after cash out: ${user.balance}`);
-
-    bet.status = 'cashed';
-    bet.winAmount = winAmount;
-    bet.cashedAt = currentMultiplier;
-
-    // Remove bet from active bets (it's done)
-    activeBets.splice(betIndex, 1);
-
-    res.json({ 
-      success: true, 
-      message: `Cashed out at ${currentMultiplier.toFixed(2)}x!`,
-      winAmount: winAmount,
-      profit: profit,
-      multiplier: currentMultiplier,
-      newBalance: user.balance
-    });
-  } catch (error) {
-    console.error('❌ Error cashing out:', error);
+    console.error('Place bet error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-console.log('✅ Aviator controller loaded successfully');
-console.log('⏸️ Admin-controlled mode: Game starts only when admin clicks Start Round');
+exports.cashOut = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    if (gameState.status !== 'active') {
+      return res.status(400).json({ success: false, message: 'Game not active' });
+    }
+    const index = activeBets.findIndex(b => b.userId === userId && b.status === 'active');
+    if (index === -1) return res.status(404).json({ success: false, message: 'No active bet' });
 
-// ========== NEW ENDPOINTS FOR PLAYER PAGE ==========
+    const bet = activeBets[index];
+    const multiplier = gameState.multiplier;
+    const winAmount = bet.amount * multiplier;
+    const profit = winAmount - bet.amount;
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    user.balance += winAmount;
+    await user.save();
+
+    bet.status = 'cashed';
+    bet.winAmount = winAmount;
+    bet.cashedAt = multiplier;
+    activeBets.splice(index, 1);
+
+    broadcastGameState();
+    res.json({
+      success: true,
+      message: `Cashed out at ${multiplier.toFixed(2)}x`,
+      winAmount,
+      profit,
+      multiplier,
+      newBalance: user.balance
+    });
+  } catch (error) {
+    console.error('Cash out error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.cancelPendingBet = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const index = pendingBets.findIndex(b => b.userId === userId && b.status === 'pending');
+    if (index === -1) return res.status(404).json({ success: false, message: 'No pending bet' });
+
+    const bet = pendingBets[index];
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    user.balance += bet.amount;
+    await user.save();
+
+    pendingBets.splice(index, 1);
+    broadcastGameState();
+    res.json({ success: true, message: 'Bet cancelled', newBalance: user.balance });
+  } catch (error) {
+    console.error('Cancel bet error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ============================================
+//  PLAYER PAGE ENDPOINTS (new)
+// ============================================
 
 exports.getCurrentRound = async (req, res) => {
   try {
@@ -640,7 +441,7 @@ exports.getCurrentRound = async (req, res) => {
       success: true,
       data: {
         roundId: gameState.roundNumber ? `AV-${gameState.roundNumber}` : null,
-        status: gameState.status === 'active' ? 'RUNNING' : 
+        status: gameState.status === 'active' ? 'RUNNING' :
                 gameState.status === 'idle' ? 'WAITING' :
                 gameState.status === 'crashed' ? 'CRASHED' :
                 gameState.status === 'closed' ? 'CLOSED' : 'WAITING',
@@ -650,7 +451,7 @@ exports.getCurrentRound = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error getting current round:', error);
+    console.error('Get current round error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -658,52 +459,41 @@ exports.getCurrentRound = async (req, res) => {
 exports.getMyBets = async (req, res) => {
   try {
     const userId = req.user.id;
-    // Return user's bets from pendingBets and activeBets
-    const userPendingBets = pendingBets.filter(b => b.userId === userId);
-    const userActiveBets = activeBets.filter(b => b.userId === userId);
-    
-    const allBets = [...userPendingBets, ...userActiveBets].map(b => ({
-      betId: b.betId || `BET-${Date.now()}-${Math.random()}`,
+    const userBets = [...pendingBets, ...activeBets].filter(b => b.userId === userId);
+    const formatted = userBets.map(b => ({
+      betId: b.betId,
       roundId: b.gameRound ? `AV-${b.gameRound}` : null,
-      stake: b.amount || b.stake,
+      stake: b.amount,
       cashoutMultiplier: b.cashedAt || 0,
       payout: b.winAmount || 0,
       status: b.status,
       result: b.status === 'cashed' ? 'WON' : b.status === 'lost' ? 'LOST' : 'PENDING',
-      placedAt: b.placedAt || new Date().toISOString()
+      placedAt: b.placedAt
     }));
-
-    res.json({
-      success: true,
-      data: {
-        bets: allBets.slice(0, 20),
-        total: allBets.length
-      }
-    });
+    res.json({ success: true, data: { bets: formatted, total: formatted.length } });
   } catch (error) {
-    console.error('Error getting my bets:', error);
+    console.error('Get my bets error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
 exports.getLivePlayers = async (req, res) => {
   try {
-    // Return active players from activeBets
-    const players = activeBets
-      .filter(b => b.status === 'active')
-      .map(b => ({
-        displayName: `User***${b.userId.toString().slice(-4)}`,
-        stake: b.amount || b.stake,
-        multiplier: gameState.multiplier || 1.00,
-        status: 'ACTIVE'
-      }));
-
-    res.json({
-      success: true,
-      data: players
-    });
+    const players = [];
+    for (const bet of activeBets) {
+      if (bet.status === 'active') {
+        const user = await User.findById(bet.userId);
+        players.push({
+          displayName: user ? `${user.username.slice(0, 6)}***` : 'User***',
+          stake: bet.amount,
+          multiplier: gameState.multiplier,
+          status: 'ACTIVE'
+        });
+      }
+    }
+    res.json({ success: true, data: players });
   } catch (error) {
-    console.error('Error getting live players:', error);
+    console.error('Get live players error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -711,27 +501,14 @@ exports.getLivePlayers = async (req, res) => {
 exports.verifyRound = async (req, res) => {
   try {
     const { roundId } = req.params;
-    // Find round in history
-    const round = gameHistory.find(h => h.roundNumber === parseInt(roundId.replace('AV-', '')));
-    
-    if (!round) {
-      return res.status(404).json({
-        success: false,
-        error: { code: 'NOT_FOUND', message: 'Round not found' }
-      });
-    }
-
-    res.json({
-      success: true,
-      data: {
-        roundId: roundId,
-        crashPoint: round.crashPoint,
-        verified: true,
-        message: 'Round verified'
-      }
-    });
+    const num = parseInt(roundId.replace('AV-', ''));
+    const round = gameHistory.find(h => h.roundNumber === num);
+    if (!round) return res.status(404).json({ success: false, message: 'Round not found' });
+    res.json({ success: true, data: { roundId, crashPoint: round.crashPoint, verified: true } });
   } catch (error) {
-    console.error('Error verifying round:', error);
+    console.error('Verify round error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+console.log('✅ Aviator controller ready (admin-only). Auto-start is OFF.');
