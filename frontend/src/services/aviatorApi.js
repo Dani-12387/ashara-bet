@@ -48,32 +48,27 @@ const aviatorApi = {
 
       console.log('📊 Balance API response:', response.data);
 
-      // Check for balance in response
       if (response.data && typeof response.data.balance === 'number') {
         const balance = response.data.balance;
         updateLocalStorageBalance(balance);
         return { success: true, balance };
       }
 
-      // If the response has a different structure (e.g., { data: { balance } })
       if (response.data && response.data.data && typeof response.data.data.balance === 'number') {
         const balance = response.data.data.balance;
         updateLocalStorageBalance(balance);
         return { success: true, balance };
       }
 
-      // Fallback to localStorage if API returns unexpected format
       console.warn('Unexpected balance response format, using localStorage');
       return getBalanceFromLocalStorage();
     } catch (error) {
       console.error('Error fetching balance from API:', error);
-      // Try to read from localStorage as fallback
       const local = getBalanceFromLocalStorage();
       if (local.success) {
         console.log('Using fallback balance from localStorage:', local.balance);
         return local;
       }
-      // If all fails, return 0
       return { success: false, balance: 0 };
     }
   },
@@ -99,7 +94,6 @@ const aviatorApi = {
       const response = await axios.get(`${API_URL}/api/aviator/history?limit=${limit}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      // The API may return a raw array directly (older version) or wrapped object.
       if (Array.isArray(response.data)) {
         return { success: true, data: response.data };
       }
@@ -148,19 +142,34 @@ const aviatorApi = {
       const response = await axios.post(
         `${API_URL}/api/aviator/bet`,
         { amount, autoCashOut },
-        { headers: { Authorization: `Bearer ${token}` } }
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 10000 // 10 second timeout
+        }
       );
       return response.data;
     } catch (error) {
       console.error('Error placing bet:', error);
       if (error.response) {
-        console.error('Response status:', error.response.status);
-        console.error('Response data:', error.response.data);
+        // The request was made and the server responded with a status code
+        return {
+          success: false,
+          error: error.response.data?.error || { message: error.response.data?.message || error.message },
+          status: error.response.status
+        };
+      } else if (error.request) {
+        // The request was made but no response was received
+        return {
+          success: false,
+          error: { message: 'Server not responding – please try again later' }
+        };
+      } else {
+        // Something happened in setting up the request
+        return {
+          success: false,
+          error: { message: error.message || 'Failed to place bet' }
+        };
       }
-      return {
-        success: false,
-        error: error.response?.data?.error || { message: error.message }
-      };
     }
   },
 
@@ -177,13 +186,22 @@ const aviatorApi = {
     } catch (error) {
       console.error('Error cashing out:', error);
       if (error.response) {
-        console.error('Response status:', error.response.status);
-        console.error('Response data:', error.response.data);
+        return {
+          success: false,
+          error: error.response.data?.error || { message: error.response.data?.message || error.message },
+          status: error.response.status
+        };
+      } else if (error.request) {
+        return {
+          success: false,
+          error: { message: 'Server not responding – please try again later' }
+        };
+      } else {
+        return {
+          success: false,
+          error: { message: error.message || 'Failed to cash out' }
+        };
       }
-      return {
-        success: false,
-        error: error.response?.data?.error || { message: error.message }
-      };
     }
   },
 
@@ -200,13 +218,22 @@ const aviatorApi = {
     } catch (error) {
       console.error('Error cancelling pending bet:', error);
       if (error.response) {
-        console.error('Response status:', error.response.status);
-        console.error('Response data:', error.response.data);
+        return {
+          success: false,
+          error: error.response.data?.error || { message: error.response.data?.message || error.message },
+          status: error.response.status
+        };
+      } else if (error.request) {
+        return {
+          success: false,
+          error: { message: 'Server not responding – please try again later' }
+        };
+      } else {
+        return {
+          success: false,
+          error: { message: error.message || 'Failed to cancel bet' }
+        };
       }
-      return {
-        success: false,
-        error: error.response?.data?.error || { message: error.message }
-      };
     }
   },
 

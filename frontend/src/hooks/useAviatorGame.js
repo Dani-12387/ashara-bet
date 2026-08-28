@@ -237,7 +237,6 @@ export const useAviatorGame = () => {
         serverTime: data.serverTime || Date.now()
       }));
 
-      // If round starts (RUNNING), activate pending bets for this round
       if (normalizedStatus === 'RUNNING') {
         const currentRoundId = data.roundId || roundState.roundId;
         if (bet1Ref.current.status === 'pending' && bet1Ref.current.roundId === currentRoundId) {
@@ -251,7 +250,6 @@ export const useAviatorGame = () => {
         fetchMyBets();
       }
 
-      // If round crashes, mark active bets as lost
       if (normalizedStatus === 'CRASHED') {
         if (bet1Ref.current.status === 'active') {
           bet1Ref.current.status = 'lost';
@@ -311,7 +309,7 @@ export const useAviatorGame = () => {
     });
   };
 
-  // ========== PLACE BET ==========
+  // ========== PLACE BET – FIXED ==========
   const placeBet = useCallback(async (betSlot, stake) => {
     try {
       setError(null);
@@ -322,7 +320,6 @@ export const useAviatorGame = () => {
         return { success: false, message: 'Please login' };
       }
 
-      // Betting allowed only when round status is WAITING
       if (roundState.status !== 'WAITING') {
         setError('Betting is only available before the round starts');
         return { success: false, message: 'Betting not available' };
@@ -343,29 +340,47 @@ export const useAviatorGame = () => {
 
       const response = await aviatorApi.placeBet(stake, autoCashOut);
 
-      if (response.success) {
-        const betData = response.data.bet;
-        betRef.current.betId = betData.betId;
-        betRef.current.stake = stake;
-        betRef.current.roundId = betData.gameRound 
-          ? `AV-${betData.gameRound}` 
-          : roundState.roundId || null;
-        betRef.current.status = betData.status === 'ACTIVE' ? 'active' : 'pending';
-        if (response.data.newBalance !== undefined) {
-          setBalance(response.data.newBalance);
-        } else {
-          fetchBalance();
-        }
-        fetchMyBets();
-        return { success: true, bet: betData };
-      } else {
-        setError(response.error?.message || 'Failed to place bet');
-        return { success: false, message: response.error?.message };
+      // ✅ Validate response before accessing properties
+      if (!response || !response.success) {
+        const errorMsg = response?.error?.message || response?.message || 'Failed to place bet';
+        setError(errorMsg);
+        return { success: false, message: errorMsg };
       }
+
+      // ✅ Now safe to access response.data
+      if (!response.data || !response.data.bet) {
+        setError('Invalid response from server');
+        return { success: false, message: 'Invalid response' };
+      }
+
+      const betData = response.data.bet;
+      betRef.current.betId = betData.betId;
+      betRef.current.stake = stake;
+      betRef.current.roundId = betData.gameRound 
+        ? `AV-${betData.gameRound}` 
+        : roundState.roundId || null;
+      betRef.current.status = betData.status === 'ACTIVE' ? 'active' : 'pending';
+
+      if (response.data.newBalance !== undefined) {
+        setBalance(response.data.newBalance);
+      } else {
+        fetchBalance();
+      }
+      fetchMyBets();
+      return { success: true, bet: betData };
+
     } catch (error) {
       console.error('Error placing bet:', error);
-      setError(error.message || 'Failed to place bet');
-      return { success: false, message: error.message };
+      let errorMsg = 'Network error – please check your connection';
+      if (error.response) {
+        errorMsg = error.response.data?.message || error.message;
+      } else if (error.request) {
+        errorMsg = 'Server not responding – please try again later';
+      } else {
+        errorMsg = error.message || 'Failed to place bet';
+      }
+      setError(errorMsg);
+      return { success: false, message: errorMsg };
     }
   }, [roundState, balance, fetchBalance, fetchMyBets]);
 
@@ -393,30 +408,40 @@ export const useAviatorGame = () => {
 
       const response = await aviatorApi.cashOut();
 
-      if (response.success) {
-        const data = response.data;
-        betRef.current.status = 'cashed';
-        betRef.current.cashoutMultiplier = data.multiplier;
-        if (data.newBalance !== undefined) {
-          setBalance(data.newBalance);
-        } else {
-          fetchBalance();
-        }
-        fetchMyBets();
-        return {
-          success: true,
-          payout: data.winAmount || data.payout,
-          profit: data.profit,
-          multiplier: data.multiplier
-        };
-      } else {
-        setError(response.error?.message || 'Failed to cash out');
-        return { success: false, message: response.error?.message };
+      if (!response || !response.success) {
+        const errorMsg = response?.error?.message || response?.message || 'Failed to cash out';
+        setError(errorMsg);
+        return { success: false, message: errorMsg };
       }
+
+      const data = response.data;
+      betRef.current.status = 'cashed';
+      betRef.current.cashoutMultiplier = data.multiplier;
+      if (data.newBalance !== undefined) {
+        setBalance(data.newBalance);
+      } else {
+        fetchBalance();
+      }
+      fetchMyBets();
+      return {
+        success: true,
+        payout: data.winAmount || data.payout,
+        profit: data.profit,
+        multiplier: data.multiplier
+      };
+
     } catch (error) {
       console.error('Error cashing out:', error);
-      setError(error.message || 'Failed to cash out');
-      return { success: false, message: error.message };
+      let errorMsg = 'Network error – please check your connection';
+      if (error.response) {
+        errorMsg = error.response.data?.message || error.message;
+      } else if (error.request) {
+        errorMsg = 'Server not responding – please try again later';
+      } else {
+        errorMsg = error.message || 'Failed to cash out';
+      }
+      setError(errorMsg);
+      return { success: false, message: errorMsg };
     }
   }, [roundState, fetchBalance, fetchMyBets]);
 
@@ -433,24 +458,34 @@ export const useAviatorGame = () => {
 
       const response = await aviatorApi.cancelPendingBet();
 
-      if (response.success) {
-        betRef.current.status = 'cancelled';
-        betRef.current.roundId = null;
-        if (response.data.newBalance !== undefined) {
-          setBalance(response.data.newBalance);
-        } else {
-          fetchBalance();
-        }
-        fetchMyBets();
-        return { success: true, message: 'Bet cancelled' };
-      } else {
-        setError(response.error?.message || 'Failed to cancel bet');
-        return { success: false, message: response.error?.message };
+      if (!response || !response.success) {
+        const errorMsg = response?.error?.message || response?.message || 'Failed to cancel bet';
+        setError(errorMsg);
+        return { success: false, message: errorMsg };
       }
+
+      betRef.current.status = 'cancelled';
+      betRef.current.roundId = null;
+      if (response.data.newBalance !== undefined) {
+        setBalance(response.data.newBalance);
+      } else {
+        fetchBalance();
+      }
+      fetchMyBets();
+      return { success: true, message: 'Bet cancelled' };
+
     } catch (error) {
       console.error('Error cancelling bet:', error);
-      setError(error.message || 'Failed to cancel bet');
-      return { success: false, message: error.message };
+      let errorMsg = 'Network error – please check your connection';
+      if (error.response) {
+        errorMsg = error.response.data?.message || error.message;
+      } else if (error.request) {
+        errorMsg = 'Server not responding – please try again later';
+      } else {
+        errorMsg = error.message || 'Failed to cancel bet';
+      }
+      setError(errorMsg);
+      return { success: false, message: errorMsg };
     }
   }, [fetchBalance, fetchMyBets]);
 
