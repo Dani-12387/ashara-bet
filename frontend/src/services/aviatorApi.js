@@ -16,7 +16,6 @@ const aviatorApi = {
       return response.data;
     } catch (error) {
       console.error('Error fetching balance:', error);
-      // Fallback to localStorage
       try {
         const userData = localStorage.getItem('user');
         if (userData) {
@@ -51,7 +50,17 @@ const aviatorApi = {
       const response = await axios.get(`${API_URL}/api/aviator/history?limit=${limit}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      return response.data;
+      // The API may return a raw array directly (older version) or wrapped object.
+      // We'll handle both cases.
+      if (Array.isArray(response.data)) {
+        return { success: true, data: response.data };
+      }
+      // If it's already wrapped with success/data, return as is.
+      if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+        return response.data;
+      }
+      // Fallback: treat as success but empty.
+      return { success: true, data: [] };
     } catch (error) {
       console.error('Error getting history:', error);
       return { success: false, data: [] };
@@ -98,15 +107,9 @@ const aviatorApi = {
       return response.data;
     } catch (error) {
       console.error('Error placing bet:', error);
-      // Log the full error response for debugging
       if (error.response) {
         console.error('Response status:', error.response.status);
         console.error('Response data:', error.response.data);
-        console.error('Response headers:', error.response.headers);
-      } else if (error.request) {
-        console.error('No response received:', error.request);
-      } else {
-        console.error('Request setup error:', error.message);
       }
       return {
         success: false,

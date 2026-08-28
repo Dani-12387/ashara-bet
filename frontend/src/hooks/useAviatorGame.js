@@ -80,11 +80,19 @@ export const useAviatorGame = () => {
   const fetchHistory = useCallback(async () => {
     try {
       const response = await aviatorApi.getHistory(20);
-      if (response.success) {
-        setHistory(response.data || []);
+      // Handle both raw array and wrapped response
+      let historyData = [];
+      if (Array.isArray(response)) {
+        historyData = response;
+      } else if (response.data && Array.isArray(response.data)) {
+        historyData = response.data;
+      } else if (response.success && Array.isArray(response.data)) {
+        historyData = response.data;
       }
+      setHistory(historyData);
     } catch (error) {
       console.error('Error fetching history:', error);
+      setHistory([]);
     }
   }, []);
 
