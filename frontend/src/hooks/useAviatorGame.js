@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import aviatorApi from '../services/aviatorApi';
 import getAviatorSocket from '../services/aviatorSocket';
 
-// ---------- Helpers (same as in api, but we keep them here for consistency) ----------
+// ---------- Helpers ----------
 function getBalanceFromLocalStorage() {
   try {
     const userData = localStorage.getItem('user');
@@ -47,10 +47,12 @@ export const useAviatorGame = () => {
 
   const socketRef = useRef(null);
 
+  // Bet refs now also store the roundId they were placed for
   const bet1Ref = useRef({
     stake: 10,
     betId: null,
     status: 'idle',
+    roundId: null,
     autoCashOut: 0,
     autoCashOutEnabled: false
   });
@@ -58,6 +60,7 @@ export const useAviatorGame = () => {
     stake: 10,
     betId: null,
     status: 'idle',
+    roundId: null,
     autoCashOut: 0,
     autoCashOutEnabled: false
   });
@@ -72,7 +75,6 @@ export const useAviatorGame = () => {
         setBalance(response.balance);
         updateLocalStorageBalance(response.balance);
       } else {
-        // If API failed, try localStorage
         const local = getBalanceFromLocalStorage();
         if (local.success) {
           setBalance(local.balance);
@@ -112,6 +114,8 @@ export const useAviatorGame = () => {
       const response = await aviatorApi.getMyBets(20, 0);
       if (response.success) {
         setMyBets(response.data?.bets || []);
+        // Also update bet refs from fetched bets if needed
+        // For simplicity, we rely on socket events, but we can sync here.
       }
     } catch (error) {
       console.error('Error fetching my bets:', error);
@@ -161,10 +165,7 @@ export const useAviatorGame = () => {
           return;
         }
 
-        // Fetch balance first
         await fetchBalance();
-
-        // Then fetch other data
         await Promise.all([
           fetchHistory(),
           fetchMyBets(),
@@ -226,6 +227,23 @@ export const useAviatorGame = () => {
         serverTime: data.serverTime || Date.now()
       }));
 
+      // ✅ If round starts (RUNNING), activate pending bets that match this round
+      if (data.status === 'RUNNING' || data.status === 'active') {
+        const currentRoundId = data.roundId || roundState.roundId;
+        // Check bet1
+        if (bet1Ref.current.status === 'pending' && bet1Ref.current.roundId === currentRoundId) {
+          bet1Ref.current.status = 'active';
+          console.log('✅ Bet 1 activated');
+        }
+        if (bet2Ref.current.status === 'pending' && bet2Ref.current.roundId === currentRoundId) {
+          bet2Ref.current.status = 'active';
+          console.log('✅ Bet 2 activated');
+        }
+        // Also fetch updated bets to be safe
+        fetchMyBets();
+      }
+
+      // ✅ If round crashes, mark active bets as lost
       if (data.status === 'CRASHED' || data.status === 'crashed') {
         if (bet1Ref.current.status === 'active') {
           bet1Ref.current.status = 'lost';
@@ -266,9 +284,11 @@ export const useAviatorGame = () => {
       fetchMyBets();
       if (data.betId === bet1Ref.current.betId) {
         bet1Ref.current.status = 'cashed';
+        bet1Ref.current.cashoutMultiplier = data.multiplier;
       }
       if (data.betId === bet2Ref.current.betId) {
         bet2Ref.current.status = 'cashed';
+        bet2Ref.current.cashoutMultiplier = data.multiplier;
       }
     });
 
@@ -318,6 +338,11 @@ export const useAviatorGame = () => {
         const betData = response.data.bet;
         betRef.current.betId = betData.betId;
         betRef.current.stake = stake;
+        // The backend may return status 'active' if round is already running, else 'pending'
+        // We'll store the roundId from the response or from the current round state
+        betRef.current.roundId = betData.gameRound 
+          ? `AV-${betData.gameRound}` 
+          : roundState.roundId || null;
         betRef.current.status = betData.status === 'ACTIVE' ? 'active' : 'pending';
         if (response.data.newBalance !== undefined) {
           setBalance(response.data.newBalance);
@@ -364,6 +389,7 @@ export const useAviatorGame = () => {
       if (response.success) {
         const data = response.data;
         betRef.current.status = 'cashed';
+        betRef.current.cashoutMultiplier = data.multiplier;
         if (data.newBalance !== undefined) {
           setBalance(data.newBalance);
         } else {
@@ -402,6 +428,7 @@ export const useAviatorGame = () => {
 
       if (response.success) {
         betRef.current.status = 'cancelled';
+        betRef.current.roundId = null;
         if (response.data.newBalance !== undefined) {
           setBalance(response.data.newBalance);
         } else {
@@ -427,6 +454,8 @@ export const useAviatorGame = () => {
       betId: betRef.current.betId,
       stake: betRef.current.stake,
       status: betRef.current.status,
+      roundId: betRef.current.roundId,
+      cashoutMultiplier: betRef.current.cashoutMultiplier,
       autoCashOut: betRef.current.autoCashOut,
       autoCashOutEnabled: betRef.current.autoCashOutEnabled
     };
@@ -449,7 +478,7 @@ export const useAviatorGame = () => {
     }
   }, []);
 
-  // ========== EXPOSE REFRESH ==========
+  // ========== REFRESH BALANCE ==========
   const refreshBalance = useCallback(async () => {
     await fetchBalance();
   }, [fetchBalance]);
@@ -474,7 +503,7 @@ export const useAviatorGame = () => {
     fetchMyBets,
     fetchCurrentRound,
     fetchLivePlayers,
-    refreshBalance, // new
+    refreshBalance,
     bet1Ref,
     bet2Ref
   };
