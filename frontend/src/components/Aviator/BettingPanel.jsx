@@ -7,7 +7,6 @@ const BettingPanel = ({
   roundState,
   betState,
   onPlaceBet,
-  onCashOut,
   onCancelBet,
   onStakeChange,
   onAutoCashOutChange
@@ -35,7 +34,7 @@ const BettingPanel = ({
   const isLost = status === 'lost';
   const isIdle = status === 'idle' || status === 'cancelled';
 
-  // ---------- Determine button state ----------
+  // ---------- Determine button state (no manual cashout) ----------
   const getButtonState = () => {
     // Cashed out
     if (isCashed) {
@@ -68,15 +67,15 @@ const BettingPanel = ({
       };
     }
 
-    // Active (round running, can cash out)
+    // Active (round running) – show multiplier and estimated win, but NO cashout button
     if (isActive && roundState.status === 'RUNNING') {
       const multiplier = roundState.multiplier || 1;
       const estimatedWin = (stake * multiplier).toFixed(2);
       return {
-        text: `CASH OUT ${multiplier.toFixed(2)}× (${estimatedWin})`,
-        disabled: false,
-        action: onCashOut,
-        style: 'cashout-btn'
+        text: `ACTIVE ${multiplier.toFixed(2)}× (${estimatedWin})`,
+        disabled: true, // No action – auto cashout handles it
+        action: null,
+        style: 'active-btn'
       };
     }
 
@@ -90,7 +89,7 @@ const BettingPanel = ({
       };
     }
 
-    // No bet placed – determine betting availability
+    // No bet placed – determine if we can place a bet
     const canBet = roundState.status === 'WAITING' || roundState.status === 'BETTING_OPEN';
     const hasEnoughBalance = balance > 0 && stake <= balance;
     const noBalance = balance <= 0;
@@ -277,7 +276,7 @@ const BettingPanel = ({
             {isSubmitting ? '⏳...' : buttonState.text}
           </button>
 
-          {/* Only show essential balance-related errors */}
+          {/* Balance errors only */}
           {buttonState.text === 'NO BALANCE' && (
             <div className="bet-status-message error">⚠️ No balance – please deposit</div>
           )}
@@ -286,7 +285,7 @@ const BettingPanel = ({
           )}
         </div>
 
-        {/* Auto Cash Out */}
+        {/* Auto Cash Out – only visible when bet is not active or pending? Actually always visible */}
         <div className="auto-cashout-control">
           <label>Auto Cash Out</label>
           <div className="auto-cashout-toggle">
