@@ -30,6 +30,7 @@ let gameState = {
 let gameHistory = [];
 let activeBets = [];
 let pendingBets = [];
+let endedBets = [];      // ✅ NEW: store ended bets (cashed out or lost)
 
 // ========== BROADCAST HELPERS ==========
 function broadcastGameState() {
@@ -102,7 +103,7 @@ function startGameLoop() {
   }, 100);
 }
 
-// ========== PROCESS CASH OUT (auto) ==========
+// ========== PROCESS CASH OUT (auto or manual) ==========
 async function processCashOut(bet) {
   try {
     const user = await User.findById(bet.userId);
@@ -114,6 +115,15 @@ async function processCashOut(bet) {
     bet.status = 'cashed';
     bet.winAmount = winAmount;
     bet.cashedAt = gameState.multiplier;
+
+    // ✅ Store in ended bets
+    endedBets.push({
+      ...bet,
+      endedAt: new Date(),
+      cashoutMultiplier: gameState.multiplier,
+      winAmount: winAmount
+    });
+
     emitBetCashedOut(bet, gameState.multiplier);
     console.log(`✅ User ${user.username} cashed out at ${gameState.multiplier.toFixed(2)}x | Profit: ${profit.toFixed(2)}`);
   } catch (error) {
@@ -137,6 +147,12 @@ async function crashGame() {
   for (const bet of activeBets) {
     if (bet.status === 'active') {
       bet.status = 'lost';
+      // ✅ Store lost bet in ended bets
+      endedBets.push({
+        ...bet,
+        lostAt: new Date(),
+        crashMultiplier: crashMultiplier
+      });
       const user = await User.findById(bet.userId);
       if (user) console.log(`❌ Bet lost for user ${user.username}`);
     }
@@ -318,7 +334,7 @@ exports.getHistory = async (req, res) => {
   }
 };
 
-// ✅ Admin sees both active and pending bets, sorted descending by stake
+// ✅ Live bets (active + pending) for admin, sorted descending by stake
 exports.getActiveBets = async (req, res) => {
   try {
     const isAdmin = req.user && req.user.role === 'admin';
@@ -329,7 +345,6 @@ exports.getActiveBets = async (req, res) => {
       bets = activeBets.filter(b => b.status === 'active');
     }
 
-    // Sort by amount descending (highest stake first)
     bets.sort((a, b) => b.amount - a.amount);
 
     const formatted = bets.map(bet => ({
@@ -346,6 +361,38 @@ exports.getActiveBets = async (req, res) => {
     res.json(formatted);
   } catch (error) {
     console.error('❌ Error getting active bets:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ✅ Ended bets (cashed out or lost) for admin
+exports.getEndedBets = async (req, res) => {
+  try {
+    const isAdmin = req.user && req.user.role === 'admin';
+    if (!isAdmin) return res.status(403).json({ success: false, message: 'Admin only' });
+
+    // Sort by endedAt descending (newest first)
+    const sorted = [...endedBets].sort((a, b) => {
+      const dateA = a.endedAt || a.lostAt || a.cashedAt || new Date(0);
+      const dateB = b.endedAt || b.lostAt || b.cashedAt || new Date(0);
+      return new Date(dateB) - new Date(dateA);
+    });
+
+    const formatted = sorted.map(bet => ({
+      _id: bet.betId || bet._id,
+      user: { username: bet.username || 'Unknown' },
+      amount: bet.amount,
+      stake: bet.amount,
+      autoCashOut: bet.autoCashOut || 0,
+      status: bet.status,
+      winAmount: bet.winAmount || 0,
+      cashoutMultiplier: bet.cashedAt || 0,
+      endedAt: bet.endedAt || bet.lostAt || bet.cashedAt
+    }));
+
+    res.json(formatted);
+  } catch (error) {
+    console.error('❌ Error getting ended bets:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -396,7 +443,6 @@ exports.placeBet = async (req, res) => {
       pendingBets.push(bet);
     }
 
-    // Emit real-time event for admin
     emitBetPlaced(bet);
     broadcastGameState();
 
@@ -436,6 +482,15 @@ exports.cashOut = async (req, res) => {
     bet.status = 'cashed';
     bet.winAmount = winAmount;
     bet.cashedAt = multiplier;
+
+    // ✅ Store in ended bets
+    endedBets.push({
+      ...bet,
+      endedAt: new Date(),
+      cashoutMultiplier: multiplier,
+      winAmount: winAmount
+    });
+
     activeBets.splice(index, 1);
 
     emitBetCashedOut(bet, multiplier);
@@ -505,7 +560,7 @@ exports.getCurrentRound = async (req, res) => {
 exports.getMyBets = async (req, res) => {
   try {
     const userId = req.user.id;
-    const userBets = [...pendingBets, ...activeBets].filter(b => b.userId === userId);
+    const userBets = [...pendingBets, ...activeBets, ...endedBets].filter(b => b.userId === userId);
     const formatted = userBets.map(b => ({
       betId: b.betId,
       roundId: b.gameRound ? `AV-${b.gameRound}` : null,

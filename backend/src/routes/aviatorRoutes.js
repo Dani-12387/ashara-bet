@@ -43,7 +43,7 @@ const adminMiddleware = (req, res, next) => {
 };
 
 // ============================================
-// ADMIN ROUTES (protected with auth + admin)
+// ADMIN ROUTES
 // ============================================
 
 // 🚀 Start a new round
@@ -58,24 +58,27 @@ router.post('/close', authMiddleware, adminMiddleware, aviatorController.closeGa
 // 🎯 Set next crash point
 router.post('/set-crash', authMiddleware, adminMiddleware, aviatorController.setCrashPoint);
 
-// ⚙️ Update settings (auto‑start, limits, etc.)
+// ⚙️ Update settings
 router.post('/settings', authMiddleware, adminMiddleware, aviatorController.updateSettings);
 
 // ============================================
-// DATA RETRIEVAL (authenticated users)
+// DATA RETRIEVAL (Admin & Player)
 // ============================================
 
-// 📊 Get current game state (admin & player)
+// 📊 Get current game state
 router.get('/state', authMiddleware, aviatorController.getGameState);
 
 // 📜 Get round history
 router.get('/history', authMiddleware, aviatorController.getHistory);
 
-// 👥 Get active bets
+// 👥 Get active bets (admin sees all, user sees own active)
 router.get('/active-bets', authMiddleware, aviatorController.getActiveBets);
 
+// 🔚 Get ended bets (cashed out or lost) – admin only
+router.get('/ended-bets', authMiddleware, adminMiddleware, aviatorController.getEndedBets);
+
 // ============================================
-// PLAYER ACTIONS (authenticated users)
+// PLAYER ACTIONS
 // ============================================
 
 // 💰 Place a bet
@@ -91,7 +94,7 @@ router.post('/cancel-pending', authMiddleware, aviatorController.cancelPendingBe
 // PLAYER PAGE ENDPOINTS
 // ============================================
 
-// 🔄 Get current round (for player page)
+// 🔄 Get current round
 router.get('/current-round', authMiddleware, aviatorController.getCurrentRound);
 
 // 📋 Get user's own bet history

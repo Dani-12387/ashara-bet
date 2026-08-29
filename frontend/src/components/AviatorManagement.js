@@ -5,7 +5,7 @@ import './AviatorManagement.css';
 
 const AviatorManagement = () => {
   const [gameState, setGameState] = useState({
-    status: 'idle',       // idle, waiting, active, crashed, closed
+    status: 'idle',
     multiplier: 1.00,
     crashPoint: 0,
     nextCrashPoint: 0,
@@ -22,6 +22,7 @@ const AviatorManagement = () => {
 
   const [history, setHistory] = useState([]);
   const [activeBets, setActiveBets] = useState([]);
+  const [endedBets, setEndedBets] = useState([]);
   const [settings, setSettings] = useState({
     autoStart: false,
     autoStartDelay: 10,
@@ -29,6 +30,7 @@ const AviatorManagement = () => {
     maxBet: 1000,
     houseEdge: 5
   });
+  const [activeTab, setActiveTab] = useState('live'); // 'live' or 'ended'
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -36,72 +38,7 @@ const AviatorManagement = () => {
 
   const API_URL = process.env.REACT_APP_API_URL || 'https://ashara-bet.onrender.com';
 
-  // ===== SOCKET.IO SETUP =====
-  useEffect(() => {
-    fetchGameState();
-    fetchHistory();
-    fetchActiveBets();
-
-    const token = localStorage.getItem('token');
-    if (!token) {
-      console.warn('No token found – admin socket will not connect');
-      return;
-    }
-
-    const socket = getAviatorSocket();
-    socket.connect(token);
-
-    socket.on('round:state', (data) => {
-      console.log('📡 Admin: round:state', data);
-      setGameState(prev => ({
-        ...prev,
-        status: data.status || prev.status,
-        multiplier: data.multiplier !== undefined ? data.multiplier : prev.multiplier,
-        roundNumber: data.roundNumber !== undefined ? data.roundNumber : prev.roundNumber,
-        crashPoint: data.crashPoint !== undefined ? data.crashPoint : prev.crashPoint,
-        playersActive: data.playersActive !== undefined ? data.playersActive : prev.playersActive,
-        totalBets: data.totalBets !== undefined ? data.totalBets : prev.totalBets,
-        totalAmount: data.totalAmount !== undefined ? data.totalAmount : prev.totalAmount
-      }));
-
-      if (data.status === 'CRASHED' || data.status === 'crashed') {
-        fetchHistory();
-        fetchActiveBets();
-        fetchGameState();
-      }
-    });
-
-    socket.on('round:countdown', (data) => {
-      console.log('📡 Admin: round:countdown', data);
-    });
-
-    socket.on('bet:placed', () => {
-      fetchActiveBets();
-      fetchGameState();
-    });
-
-    socket.on('bet:cashed_out', () => {
-      fetchActiveBets();
-      fetchGameState();
-    });
-
-    socket.on('connection:reconnected', () => {
-      fetchGameState();
-      fetchHistory();
-      fetchActiveBets();
-    });
-
-    return () => {
-      socket.off('round:state');
-      socket.off('round:countdown');
-      socket.off('bet:placed');
-      socket.off('bet:cashed_out');
-      socket.off('connection:reconnected');
-    };
-  }, []);
-
-  // ===== API CALLS =====
-
+  // ===== FETCH FUNCTIONS =====
   const fetchGameState = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -149,8 +86,95 @@ const AviatorManagement = () => {
     }
   };
 
-  // ===== ADMIN ACTIONS =====
+  const fetchEndedBets = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/api/aviator/ended-bets`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data && Array.isArray(response.data)) {
+        setEndedBets(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching ended bets:', error);
+    }
+  };
 
+  // ===== SOCKET.IO SETUP =====
+  useEffect(() => {
+    fetchGameState();
+    fetchHistory();
+    fetchActiveBets();
+    fetchEndedBets();
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.warn('No token found – admin socket will not connect');
+      return;
+    }
+
+    const socket = getAviatorSocket();
+    socket.connect(token);
+
+    socket.on('round:state', (data) => {
+      console.log('📡 Admin: round:state', data);
+      setGameState(prev => ({
+        ...prev,
+        status: data.status || prev.status,
+        multiplier: data.multiplier !== undefined ? data.multiplier : prev.multiplier,
+        roundNumber: data.roundNumber !== undefined ? data.roundNumber : prev.roundNumber,
+        crashPoint: data.crashPoint !== undefined ? data.crashPoint : prev.crashPoint,
+        playersActive: data.playersActive !== undefined ? data.playersActive : prev.playersActive,
+        totalBets: data.totalBets !== undefined ? data.totalBets : prev.totalBets,
+        totalAmount: data.totalAmount !== undefined ? data.totalAmount : prev.totalAmount
+      }));
+
+      if (data.status === 'CRASHED' || data.status === 'crashed') {
+        fetchHistory();
+        fetchActiveBets();
+        fetchEndedBets(); // refresh ended bets on crash
+        fetchGameState();
+      }
+    });
+
+    socket.on('round:countdown', (data) => {
+      console.log('📡 Admin: round:countdown', data);
+    });
+
+    socket.on('bet:placed', () => {
+      fetchActiveBets();
+      fetchGameState();
+    });
+
+    socket.on('bet:cashed_out', () => {
+      fetchActiveBets();
+      fetchEndedBets(); // refresh ended bets on cashout
+      fetchGameState();
+    });
+
+    socket.on('connection:reconnected', () => {
+      fetchGameState();
+      fetchHistory();
+      fetchActiveBets();
+      fetchEndedBets();
+    });
+
+    // Periodic refresh for ended bets (every 30 seconds)
+    const interval = setInterval(() => {
+      fetchEndedBets();
+    }, 30000);
+
+    return () => {
+      socket.off('round:state');
+      socket.off('round:countdown');
+      socket.off('bet:placed');
+      socket.off('bet:cashed_out');
+      socket.off('connection:reconnected');
+      clearInterval(interval);
+    };
+  }, []);
+
+  // ===== ADMIN ACTIONS =====
   const startGame = async () => {
     try {
       setLoading(true);
@@ -189,6 +213,7 @@ const AviatorManagement = () => {
         await fetchGameState();
         await fetchHistory();
         await fetchActiveBets();
+        await fetchEndedBets();
       } else {
         showMessage('❌ Failed to stop game: ' + response.data.message, 'error');
       }
@@ -217,6 +242,7 @@ const AviatorManagement = () => {
         await fetchGameState();
         await fetchHistory();
         await fetchActiveBets();
+        await fetchEndedBets();
       } else {
         showMessage('❌ Failed to close game: ' + response.data.message, 'error');
       }
@@ -280,7 +306,6 @@ const AviatorManagement = () => {
   };
 
   // ===== UI HELPERS =====
-
   const showMessage = (msg, type) => {
     setMessage(msg);
     setMessageType(type);
@@ -303,7 +328,6 @@ const AviatorManagement = () => {
   };
 
   // ===== RENDER =====
-
   return (
     <div className="aviator-management">
       <h1>✈️ Aviator Management</h1>
@@ -318,7 +342,6 @@ const AviatorManagement = () => {
         {/* GAME CONTROLS */}
         <div className="management-card game-controls">
           <h2>🎮 Game Controls</h2>
-
           <div className="game-status-display">
             <div className="status-indicator">
               <span>Current Status:</span>
@@ -326,20 +349,14 @@ const AviatorManagement = () => {
                 {getStatusBadge(gameState.status).text}
               </span>
             </div>
-
             <div className="odd-counter-admin">
               <span className="odd-label">📊 Current Odd</span>
               <span className={`odd-number-admin ${gameState.status === 'active' ? 'pulse-odd' : ''}`}>
                 {gameState.multiplier.toFixed(2)}x
               </span>
-              {gameState.status === 'active' && (
-                <span className="odd-counter-running">⏱️ Live</span>
-              )}
-              {gameState.status === 'crashed' && (
-                <span className="odd-counter-crashed">💥 Crashed!</span>
-              )}
+              {gameState.status === 'active' && <span className="odd-counter-running">⏱️ Live</span>}
+              {gameState.status === 'crashed' && <span className="odd-counter-crashed">💥 Crashed!</span>}
             </div>
-
             <div className="game-stats">
               <div className="stat-item">
                 <label>Round</label>
@@ -359,7 +376,6 @@ const AviatorManagement = () => {
               </div>
             </div>
           </div>
-
           <div className="control-buttons">
             <button
               className={`btn-start ${gameState.status === 'active' ? 'disabled' : ''}`}
@@ -368,7 +384,6 @@ const AviatorManagement = () => {
             >
               {loading ? '⏳ Loading...' : `🚀 Start Round ${gameState.roundNumber + 1}`}
             </button>
-
             <button
               className={`btn-stop ${gameState.status !== 'active' ? 'disabled' : ''}`}
               onClick={stopGame}
@@ -376,7 +391,6 @@ const AviatorManagement = () => {
             >
               {loading ? '⏳ Loading...' : `🛑 Stop at ${gameState.multiplier.toFixed(2)}x`}
             </button>
-
             <button
               className="btn-close"
               onClick={closeGame}
@@ -391,7 +405,6 @@ const AviatorManagement = () => {
         <div className="management-card crash-control">
           <h2>🎯 Set Next Crash Point</h2>
           <p className="hint">Set the multiplier where the game will crash in the next round</p>
-
           <div className="crash-input-group">
             <input
               type="number"
@@ -411,34 +424,20 @@ const AviatorManagement = () => {
               Set Crash Point
             </button>
           </div>
-
           <div className="crash-presets">
             <span>Quick Set:</span>
-            <button onClick={() => {
-              document.getElementById('nextCrashPoint').value = '1.5';
-            }}>1.5x</button>
-            <button onClick={() => {
-              document.getElementById('nextCrashPoint').value = '2.0';
-            }}>2.0x</button>
-            <button onClick={() => {
-              document.getElementById('nextCrashPoint').value = '3.0';
-            }}>3.0x</button>
-            <button onClick={() => {
-              document.getElementById('nextCrashPoint').value = '5.0';
-            }}>5.0x</button>
-            <button onClick={() => {
-              document.getElementById('nextCrashPoint').value = '10.0';
-            }}>10.0x</button>
-            <button onClick={() => {
-              document.getElementById('nextCrashPoint').value = '50.0';
-            }}>50.0x</button>
+            <button onClick={() => { document.getElementById('nextCrashPoint').value = '1.5'; }}>1.5x</button>
+            <button onClick={() => { document.getElementById('nextCrashPoint').value = '2.0'; }}>2.0x</button>
+            <button onClick={() => { document.getElementById('nextCrashPoint').value = '3.0'; }}>3.0x</button>
+            <button onClick={() => { document.getElementById('nextCrashPoint').value = '5.0'; }}>5.0x</button>
+            <button onClick={() => { document.getElementById('nextCrashPoint').value = '10.0'; }}>10.0x</button>
+            <button onClick={() => { document.getElementById('nextCrashPoint').value = '50.0'; }}>50.0x</button>
           </div>
         </div>
 
         {/* GAME SETTINGS */}
         <div className="management-card game-settings">
           <h2>⚙️ Game Settings</h2>
-
           <div className="settings-grid">
             <div className="setting-group">
               <label>Auto Start</label>
@@ -448,9 +447,7 @@ const AviatorManagement = () => {
                   checked={settings.autoStart}
                   onChange={(e) => {
                     setSettings({ ...settings, autoStart: e.target.checked });
-                    if (e.target.checked) {
-                      showMessage('⚠️ Auto-start enabled! Game will start automatically after crash.', 'warning');
-                    }
+                    if (e.target.checked) showMessage('⚠️ Auto-start enabled! Game will start automatically after crash.', 'warning');
                   }}
                 />
                 <span className="toggle-slider"></span>
@@ -459,7 +456,6 @@ const AviatorManagement = () => {
                 {settings.autoStart ? '⚠️ Auto-start ON' : '✅ Manual start only'}
               </small>
             </div>
-
             <div className="setting-group">
               <label>Auto Start Delay (seconds)</label>
               <input
@@ -471,7 +467,6 @@ const AviatorManagement = () => {
                 disabled={!settings.autoStart}
               />
             </div>
-
             <div className="setting-group">
               <label>Minimum Bet ($)</label>
               <input
@@ -482,7 +477,6 @@ const AviatorManagement = () => {
                 step="0.01"
               />
             </div>
-
             <div className="setting-group">
               <label>Maximum Bet ($)</label>
               <input
@@ -493,7 +487,6 @@ const AviatorManagement = () => {
                 step="1"
               />
             </div>
-
             <div className="setting-group">
               <label>House Edge (%)</label>
               <input
@@ -506,7 +499,6 @@ const AviatorManagement = () => {
               />
             </div>
           </div>
-
           <button
             className="btn-save-settings"
             onClick={updateSettings}
@@ -516,40 +508,93 @@ const AviatorManagement = () => {
           </button>
         </div>
 
-        {/* LIVE BETS – now shows pending and active with username */}
+        {/* ===== LIVE / ENDED BETS TABS ===== */}
         <div className="management-card live-bets">
-          <h2>📊 Live Bets ({activeBets.length})</h2>
+          <div className="live-bets-header">
+            <button
+              className={`tab-btn ${activeTab === 'live' ? 'active' : ''}`}
+              onClick={() => setActiveTab('live')}
+            >
+              🟢 Live Bets ({activeBets.length})
+            </button>
+            <button
+              className={`tab-btn ${activeTab === 'ended' ? 'active' : ''}`}
+              onClick={() => setActiveTab('ended')}
+            >
+              🔚 Ended Bets ({endedBets.length})
+            </button>
+          </div>
+
           <div className="bets-table-wrapper">
-            {activeBets.length === 0 ? (
-              <p className="no-data">No active or pending bets</p>
-            ) : (
-              <table className="bets-table">
-                <thead>
-                  <tr>
-                    <th>Player</th>
-                    <th>Bet Amount</th>
-                    <th>Cash Out</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {activeBets.map((bet) => (
-                    <tr key={bet._id || bet.betId}>
-                      <td>{bet.user?.username || bet.username || 'Unknown'}</td>
-                      <td>${(bet.amount || bet.stake)?.toFixed(2)}</td>
-                      <td>{bet.autoCashOut ? bet.autoCashOut + 'x' : 'Manual'}</td>
-                      <td>
-                        <span className={`bet-status ${bet.status}`}>
-                          {bet.status === 'active' ? '🟢 Active' :
-                           bet.status === 'pending' ? '⏳ Pending' :
-                           bet.status === 'cashed' ? '✅ Cashed' :
-                           bet.status === 'lost' ? '❌ Lost' : '⏳'}
-                        </span>
-                      </td>
+            {activeTab === 'live' ? (
+              // ----- LIVE BETS TABLE -----
+              activeBets.length === 0 ? (
+                <p className="no-data">No active or pending bets</p>
+              ) : (
+                <table className="bets-table">
+                  <thead>
+                    <tr>
+                      <th>Player</th>
+                      <th>Bet Amount</th>
+                      <th>Cash Out</th>
+                      <th>Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {activeBets.map((bet) => (
+                      <tr key={bet._id || bet.betId}>
+                        <td>{bet.user?.username || bet.username || 'Unknown'}</td>
+                        <td>${(bet.amount || bet.stake)?.toFixed(2)}</td>
+                        <td>{bet.autoCashOut ? bet.autoCashOut + 'x' : 'Manual'}</td>
+                        <td>
+                          <span className={`bet-status ${bet.status}`}>
+                            {bet.status === 'active' ? '🟢 Active' :
+                             bet.status === 'pending' ? '⏳ Pending' :
+                             bet.status === 'cashed' ? '✅ Cashed' :
+                             bet.status === 'lost' ? '❌ Lost' : '⏳'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )
+            ) : (
+              // ----- ENDED BETS TABLE -----
+              endedBets.length === 0 ? (
+                <p className="no-data">No ended bets yet</p>
+              ) : (
+                <table className="bets-table">
+                  <thead>
+                    <tr>
+                      <th>Player</th>
+                      <th>Stake</th>
+                      <th>Cash Out</th>
+                      <th>Payout</th>
+                      <th>Status</th>
+                      <th>Ended At</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {endedBets.map((bet) => (
+                      <tr key={bet._id || bet.betId}>
+                        <td>{bet.user?.username || bet.username || 'Unknown'}</td>
+                        <td>${(bet.amount || bet.stake)?.toFixed(2)}</td>
+                        <td>{bet.cashoutMultiplier ? bet.cashoutMultiplier + 'x' : '—'}</td>
+                        <td>${(bet.winAmount || 0).toFixed(2)}</td>
+                        <td>
+                          <span className={`bet-status ${bet.status}`}>
+                            {bet.status === 'cashed' ? '✅ Cashed' : '❌ Lost'}
+                          </span>
+                        </td>
+                        <td>
+                          {bet.endedAt ? new Date(bet.endedAt).toLocaleTimeString() : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )
             )}
           </div>
         </div>
