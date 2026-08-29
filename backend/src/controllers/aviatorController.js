@@ -9,7 +9,7 @@ console.log('🔄 Loading aviator controller (admin-only)...');
 
 // ========== GAME STATE ==========
 let gameState = {
-  status: 'idle',              // idle, active, crashed, closed
+  status: 'idle',
   multiplier: 1.00,
   crashPoint: 0,
   nextCrashPoint: 0,
@@ -19,7 +19,7 @@ let gameState = {
   totalAmount: 0,
   gameInterval: null,
   startTime: null,
-  autoStart: false,            // ✅ MUST be false – admin only
+  autoStart: false,
   autoStartDelay: 10,
   minBet: 1,
   maxBet: 1000,
@@ -31,7 +31,7 @@ let gameHistory = [];
 let activeBets = [];
 let pendingBets = [];
 
-// ========== BROADCAST (Socket.IO) ==========
+// ========== BROADCAST HELPERS ==========
 function broadcastGameState() {
   if (global.io) {
     global.io.emit('round:state', {
@@ -50,6 +50,34 @@ function broadcastGameState() {
   console.log(`📊 Round ${gameState.roundNumber}: ${gameState.multiplier.toFixed(2)}x | Status: ${gameState.status}`);
 }
 
+function emitBetPlaced(bet) {
+  if (global.io) {
+    global.io.emit('bet:placed', {
+      betId: bet.betId,
+      userId: bet.userId,
+      username: bet.username,
+      amount: bet.amount,
+      status: bet.status,
+      gameRound: bet.gameRound,
+      autoCashOut: bet.autoCashOut
+    });
+  }
+}
+
+function emitBetCashedOut(bet, multiplier) {
+  if (global.io) {
+    global.io.emit('bet:cashed_out', {
+      betId: bet.betId,
+      userId: bet.userId,
+      username: bet.username,
+      amount: bet.amount,
+      multiplier: multiplier || gameState.multiplier,
+      winAmount: bet.winAmount || 0,
+      status: 'cashed'
+    });
+  }
+}
+
 // ========== GAME LOOP ==========
 function startGameLoop() {
   if (gameState.gameInterval) clearInterval(gameState.gameInterval);
@@ -60,14 +88,12 @@ function startGameLoop() {
     const increment = 0.01 + elapsed * 0.001;
     gameState.multiplier = Math.round((gameState.multiplier + increment) * 100) / 100;
 
-    // Auto cash out
     for (const bet of activeBets) {
       if (bet.status === 'active' && bet.autoCashOut > 0 && gameState.multiplier >= bet.autoCashOut) {
         processCashOut(bet);
       }
     }
 
-    // Check crash
     if (gameState.multiplier >= gameState.crashPoint) {
       crashGame();
     }
@@ -88,6 +114,7 @@ async function processCashOut(bet) {
     bet.status = 'cashed';
     bet.winAmount = winAmount;
     bet.cashedAt = gameState.multiplier;
+    emitBetCashedOut(bet, gameState.multiplier);
     console.log(`✅ User ${user.username} cashed out at ${gameState.multiplier.toFixed(2)}x | Profit: ${profit.toFixed(2)}`);
   } catch (error) {
     console.error('Cash out error:', error);
@@ -291,7 +318,7 @@ exports.getHistory = async (req, res) => {
   }
 };
 
-// ✅ UPDATED: Admin sees both active and pending bets with usernames
+// ✅ Admin sees both active and pending bets, sorted descending by stake
 exports.getActiveBets = async (req, res) => {
   try {
     const isAdmin = req.user && req.user.role === 'admin';
@@ -302,13 +329,16 @@ exports.getActiveBets = async (req, res) => {
       bets = activeBets.filter(b => b.status === 'active');
     }
 
+    // Sort by amount descending (highest stake first)
+    bets.sort((a, b) => b.amount - a.amount);
+
     const formatted = bets.map(bet => ({
       _id: bet.betId || bet._id,
       user: { username: bet.username || 'Unknown' },
       amount: bet.amount,
       stake: bet.amount,
       autoCashOut: bet.autoCashOut || 0,
-      status: bet.status,        // active, pending, cashed, lost
+      status: bet.status,
       gameRound: bet.gameRound,
       placedAt: bet.placedAt
     }));
@@ -343,14 +373,13 @@ exports.placeBet = async (req, res) => {
     }
     if (currentBalance < amount) return res.status(400).json({ success: false, message: 'Insufficient balance' });
 
-    // Deduct balance
     user.wallet.balance = currentBalance - amount;
     await user.save();
 
     const isActive = gameState.status === 'active';
     const bet = {
       userId,
-      username: user.username,        // ✅ store username for admin display
+      username: user.username,
       amount,
       autoCashOut: autoCashOut || 0,
       status: isActive ? 'active' : 'pending',
@@ -367,7 +396,10 @@ exports.placeBet = async (req, res) => {
       pendingBets.push(bet);
     }
 
+    // Emit real-time event for admin
+    emitBetPlaced(bet);
     broadcastGameState();
+
     res.json({
       success: true,
       message: isActive ? 'Bet placed!' : 'Bet placed (pending)',
@@ -406,7 +438,9 @@ exports.cashOut = async (req, res) => {
     bet.cashedAt = multiplier;
     activeBets.splice(index, 1);
 
+    emitBetCashedOut(bet, multiplier);
     broadcastGameState();
+
     res.json({
       success: true,
       message: `Cashed out at ${multiplier.toFixed(2)}x`,
