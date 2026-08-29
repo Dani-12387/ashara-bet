@@ -267,7 +267,7 @@ const BettingPanel = ({
           ))}
         </div>
 
-        {/* ✅ MAIN ACTION BUTTON – placed BEFORE auto cash */}
+        {/* MAIN ACTION BUTTON */}
         <div className="bet-actions">
           <button
             className={`bet-action-btn ${buttonState.style || 'place-bet-btn'}`}
@@ -276,18 +276,8 @@ const BettingPanel = ({
           >
             {isSubmitting ? '⏳...' : buttonState.text}
           </button>
-          {buttonState.disabled && buttonState.text !== 'PLACING BET...' && (
-            <div className="bet-status-message">
-              {roundState.status === 'BETTING_OPEN' && 'Betting is open – place your bet!'}
-              {roundState.status === 'WAITING' && 'Next round will start soon'}
-              {roundState.status === 'RUNNING' && isPending && 'Round started, your bet is active'}
-              {roundState.status === 'RUNNING' && isActive && 'Cash out available!'}
-              {roundState.status === 'CRASHED' && 'Round crashed – next round coming'}
-              {isPending && 'Your bet is placed. Waiting for round to start.'}
-              {isCashed && 'You have already cashed out.'}
-              {isLost && 'Bet lost.'}
-            </div>
-          )}
+
+          {/* Only show essential balance-related errors */}
           {buttonState.text === 'NO BALANCE' && (
             <div className="bet-status-message error">⚠️ No balance – please deposit</div>
           )}
@@ -296,7 +286,7 @@ const BettingPanel = ({
           )}
         </div>
 
-        {/* Auto Cash Out – now after the button */}
+        {/* Auto Cash Out */}
         <div className="auto-cashout-control">
           <label>Auto Cash Out</label>
           <div className="auto-cashout-toggle">
