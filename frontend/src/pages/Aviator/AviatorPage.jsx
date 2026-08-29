@@ -77,13 +77,8 @@ const AviatorPage = () => {
       {/* Header */}
       <header className="aviator-header">
         <div className="header-left">
-          <div className="header-logo">
-            <span>✈️</span> AsharaBet
-          </div>
-          <nav className="header-nav">
-            <a href="/">Sportsbook</a>
-            <a href="/aviator" className="active">Aviator</a>
-          </nav>
+          
+          
         </div>
         <div className="header-center">AVIATOR</div>
         <div className="header-right">
@@ -92,7 +87,7 @@ const AviatorPage = () => {
             Balance: <span className="amount">{balance.toFixed(2)} ETB</span>
           </div>
           <button className="header-btn deposit" onClick={() => navigate('/deposit')}>Deposit</button>
-          <button className="header-btn withdraw" onClick={() => navigate('/withdraw')}>Withdraw</button>
+  
           <button className="header-btn profile" onClick={() => navigate('/my-account')}>👤</button>
         </div>
       </header>
