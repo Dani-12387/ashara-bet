@@ -76,15 +76,19 @@ function startGameLoop() {
   }, 100);
 }
 
-// ========== PROCESS CASH OUT ==========
+// ========== PROCESS CASH OUT (for auto cash out) ==========
 async function processCashOut(bet) {
   try {
     const user = await User.findById(bet.userId);
     if (!user) return;
     const winAmount = bet.amount * gameState.multiplier;
     const profit = winAmount - bet.amount;
-    user.balance += winAmount;
+    
+    // ✅ Use wallet.balance
+    const currentBalance = user.wallet?.balance ?? 0;
+    user.wallet.balance = currentBalance + winAmount;
     await user.save();
+    
     bet.status = 'cashed';
     bet.winAmount = winAmount;
     bet.cashedAt = gameState.multiplier;
@@ -107,13 +111,12 @@ async function crashGame() {
   gameState.status = 'crashed';
   const crashMultiplier = gameState.multiplier;
 
-  // Settle active bets (lost)
+  // Settle active bets (lost) – no balance change (already deducted)
   for (const bet of activeBets) {
     if (bet.status === 'active') {
       bet.status = 'lost';
       const user = await User.findById(bet.userId);
       if (user) {
-        // Transaction already deducted, just log
         console.log(`❌ Bet lost for user ${user.username}`);
       }
     }
@@ -216,13 +219,13 @@ exports.closeGame = async (req, res) => {
     gameState.status = 'closed';
     gameState.multiplier = 1.00;
 
-    // Refund all bets
+    // Refund all bets – use wallet.balance
     const allBets = [...activeBets, ...pendingBets];
     for (const bet of allBets) {
       if (bet.status === 'active' || bet.status === 'pending') {
         const user = await User.findById(bet.userId);
         if (user) {
-          user.balance += bet.amount;
+          user.wallet.balance = (user.wallet?.balance ?? 0) + bet.amount;
           await user.save();
         }
       }
@@ -315,7 +318,7 @@ exports.getActiveBets = async (req, res) => {
 };
 
 // ============================================
-//  PLAYER ACTIONS
+//  PLAYER ACTIONS (with wallet.balance)
 // ============================================
 
 exports.placeBet = async (req, res) => {
@@ -331,13 +334,16 @@ exports.placeBet = async (req, res) => {
 
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    
+    // ✅ Use wallet.balance
+    const currentBalance = user.wallet?.balance ?? 0;
     if (amount < gameState.minBet || amount > gameState.maxBet) {
       return res.status(400).json({ success: false, message: `Bet must be between ${gameState.minBet} and ${gameState.maxBet}` });
     }
-    if (user.balance < amount) return res.status(400).json({ success: false, message: 'Insufficient balance' });
+    if (currentBalance < amount) return res.status(400).json({ success: false, message: 'Insufficient balance' });
 
-    // Deduct
-    user.balance -= amount;
+    // ✅ Deduct from wallet.balance
+    user.wallet.balance = currentBalance - amount;
     await user.save();
 
     const isActive = gameState.status === 'active';
@@ -364,7 +370,7 @@ exports.placeBet = async (req, res) => {
       success: true,
       message: isActive ? 'Bet placed!' : 'Bet placed (pending)',
       status: isActive ? 'active' : 'pending',
-      newBalance: user.balance,
+      newBalance: user.wallet.balance,
       bet
     });
   } catch (error) {
@@ -389,7 +395,10 @@ exports.cashOut = async (req, res) => {
 
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-    user.balance += winAmount;
+
+    // ✅ Add winnings to wallet.balance
+    const currentBalance = user.wallet?.balance ?? 0;
+    user.wallet.balance = currentBalance + winAmount;
     await user.save();
 
     bet.status = 'cashed';
@@ -404,7 +413,7 @@ exports.cashOut = async (req, res) => {
       winAmount,
       profit,
       multiplier,
-      newBalance: user.balance
+      newBalance: user.wallet.balance
     });
   } catch (error) {
     console.error('Cash out error:', error);
@@ -421,12 +430,15 @@ exports.cancelPendingBet = async (req, res) => {
     const bet = pendingBets[index];
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-    user.balance += bet.amount;
+
+    // ✅ Refund to wallet.balance
+    const currentBalance = user.wallet?.balance ?? 0;
+    user.wallet.balance = currentBalance + bet.amount;
     await user.save();
 
     pendingBets.splice(index, 1);
     broadcastGameState();
-    res.json({ success: true, message: 'Bet cancelled', newBalance: user.balance });
+    res.json({ success: true, message: 'Bet cancelled', newBalance: user.wallet.balance });
   } catch (error) {
     console.error('Cancel bet error:', error);
     res.status(500).json({ success: false, message: error.message });
