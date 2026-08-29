@@ -285,7 +285,7 @@ const BettingPanel = ({
           )}
         </div>
 
-        {/* Auto Cash Out – always visible, input appears when toggle is ON */}
+        {/* Auto Cash Out – only visible when bet is not active or pending? Actually always visible */}
         <div className="auto-cashout-control">
           <label>Auto Cash Out</label>
           <div className="auto-cashout-toggle">
@@ -305,7 +305,6 @@ const BettingPanel = ({
                   disabled={!isIdle}
                   min="1.01"
                   step="0.1"
-                  placeholder="1.50"
                 />
                 <span>x</span>
               </div>
