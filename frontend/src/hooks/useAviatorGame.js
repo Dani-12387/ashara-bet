@@ -291,7 +291,7 @@ export const useAviatorGame = () => {
     });
   };
 
-  // ========== PLACE BET – FIXED with Functional Updates ==========
+  // ========== PLACE BET – CORRECTED ==========
   const placeBet = useCallback(async (betSlot, stake) => {
     try {
       setError(null);
@@ -307,15 +307,9 @@ export const useAviatorGame = () => {
         return { success: false, message: 'Betting not available' };
       }
 
-      // Use functional update to get latest balance
-      let currentBalance = 0;
-      setBalance(prev => {
-        currentBalance = prev;
-        return prev;
-      });
-
-      if (stake > currentBalance) {
-        setError(`Insufficient balance! Balance: ${currentBalance.toFixed(2)} ETB`);
+      // Use the current balance from state
+      if (stake > balance) {
+        setError(`Insufficient balance! Balance: ${balance.toFixed(2)} ETB`);
         return { success: false, message: 'Insufficient balance' };
       }
 
@@ -344,32 +338,32 @@ export const useAviatorGame = () => {
         return { success: false, message: errorMsg };
       }
 
-      if (!response.data || !response.data.bet) {
+      // ✅ The bet is directly on response, not inside data
+      const betData = response.bet;
+      if (!betData) {
         setError('Server returned invalid bet data');
         return { success: false, message: 'Invalid response' };
       }
 
-      const betData = response.data.bet;
       console.log('📦 Bet data from server:', betData);
 
-      // ✅ Update bet state – force status to 'pending' if not 'active'
       const newStatus = betData.status === 'ACTIVE' ? 'active' : 'pending';
       console.log(`🎯 Setting bet ${betSlot} status to: ${newStatus}`);
 
-      // ✅ Update bet using functional update to avoid stale closure
-      setBet(prev => ({
-        ...prev,
+      // Update bet state
+      setBet({
+        ...bet,
         betId: betData.betId,
         stake: stake,
         roundId: betData.gameRound ? `AV-${betData.gameRound}` : roundState.roundId || null,
         status: newStatus,
-      }));
+      });
 
-      // ✅ Update balance – use functional update
+      // Update balance – use newBalance if provided, else deduct optimistically
       setBalance(prev => {
         let newBalance;
-        if (response.data.newBalance !== null && response.data.newBalance !== undefined) {
-          newBalance = response.data.newBalance;
+        if (response.newBalance !== null && response.newBalance !== undefined) {
+          newBalance = response.newBalance;
         } else {
           newBalance = prev - stake;
         }
@@ -394,7 +388,7 @@ export const useAviatorGame = () => {
       setError(errorMsg);
       return { success: false, message: errorMsg };
     }
-  }, [roundState, bet1, bet2]);
+  }, [roundState, balance, bet1, bet2]);
 
   // ========== CASH OUT ==========
   const cashOut = useCallback(async (betSlot) => {
