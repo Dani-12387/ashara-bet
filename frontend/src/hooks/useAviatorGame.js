@@ -43,7 +43,7 @@ const normalizeStatus = (status) => {
 const defaultBet = {
   stake: 10,
   betId: null,
-  status: 'idle',
+  status: 'idle',          // idle, pending, active, cashed, cancelled, lost
   roundId: null,
   cashoutMultiplier: 0,
   autoCashOut: 0,
@@ -337,20 +337,28 @@ export const useAviatorGame = () => {
         return { success: false, message: errorMsg };
       }
 
+      // ✅ Ensure we have bet data
       if (!response.data || !response.data.bet) {
         setError('Server returned invalid bet data');
         return { success: false, message: 'Invalid response' };
       }
 
       const betData = response.data.bet;
+      console.log('📦 Bet data from server:', betData);
+
+      // ✅ Update bet state – force status to 'pending' if not 'active'
+      const newStatus = betData.status === 'ACTIVE' ? 'active' : 'pending';
+      console.log(`🎯 Setting bet ${betSlot} status to: ${newStatus}`);
+
       setBet({
         ...bet,
         betId: betData.betId,
         stake: stake,
         roundId: betData.gameRound ? `AV-${betData.gameRound}` : roundState.roundId || null,
-        status: betData.status === 'ACTIVE' ? 'active' : 'pending',
+        status: newStatus,
       });
 
+      // ✅ Update balance – use newBalance if provided, else optimistically deduct
       if (response.data.newBalance !== null && response.data.newBalance !== undefined) {
         setBalance(response.data.newBalance);
         updateLocalStorageBalance(response.data.newBalance);
