@@ -74,6 +74,9 @@ export const useAviatorGame = () => {
 
   const socketRef = useRef(null);
 
+  // Track previous status to avoid duplicate WAITING fetches
+  const prevStatusRef = useRef('WAITING');
+
   // ========== FETCH BALANCE ==========
   const fetchBalance = useCallback(async () => {
     try {
@@ -213,6 +216,7 @@ export const useAviatorGame = () => {
 
       console.log(`📡 Round state: ${normalizedStatus} (${data.status})`);
 
+      // Update round state
       setRoundState(prev => ({
         ...prev,
         roundId: currentRoundId,
@@ -222,7 +226,10 @@ export const useAviatorGame = () => {
         serverTime: data.serverTime || Date.now()
       }));
 
-      // ✅ Activate all pending bets when round starts (RUNNING)
+      // Handle transitions based on previous status
+      const prevStatus = prevStatusRef.current;
+
+      // Activate pending bets when round starts (RUNNING)
       if (normalizedStatus === 'RUNNING') {
         console.log('🏁 Round started – activating pending bets');
         setBet1(prev => {
@@ -240,21 +247,20 @@ export const useAviatorGame = () => {
           return prev;
         });
         fetchMyBets();
-        // Do NOT fetch balance here – keep our optimistic deduction.
       }
 
-      // ✅ Mark active bets as lost when round crashes
+      // Mark active bets as lost when round crashes
       if (normalizedStatus === 'CRASHED') {
         console.log('💥 Round crashed – marking active bets as lost');
         setBet1(prev => prev.status === 'active' ? { ...prev, status: 'lost' } : prev);
         setBet2(prev => prev.status === 'active' ? { ...prev, status: 'lost' } : prev);
         fetchHistory();
         fetchMyBets();
-        fetchBalance(); // Get final balance (refunds if any)
+        // Do NOT fetch balance yet – wait for WAITING to see refunds
       }
 
-      // ✅ Reset pending/lost bets to idle when round resets to WAITING
-      if (normalizedStatus === 'WAITING') {
+      // Reset bets to idle when round resets to WAITING, but only once
+      if (normalizedStatus === 'WAITING' && prevStatus !== 'WAITING') {
         console.log('🔄 Round reset to WAITING – resetting bets to idle');
         setBet1(prev => {
           if (prev.status === 'pending' || prev.status === 'lost') {
@@ -268,9 +274,15 @@ export const useAviatorGame = () => {
           }
           return prev;
         });
-        fetchBalance(); // Refresh balance (refunds may have been processed)
+        // Only fetch balance if we came from CRASHED, not from initial WAITING
+        if (prevStatus === 'CRASHED') {
+          fetchBalance(); // Refresh balance (refunds may have been processed)
+        }
         fetchMyBets();
       }
+
+      // Update previous status for next event
+      prevStatusRef.current = normalizedStatus;
     });
 
     socket.on('round:countdown', (data) => {
@@ -310,7 +322,6 @@ export const useAviatorGame = () => {
     socket.on('bet:placed', () => fetchLivePlayers());
     socket.on('bet:cashed_out', () => fetchLivePlayers());
     socket.on('wallet:updated', (data) => {
-      // Only update if we have a numeric balance
       if (typeof data.balance === 'number') {
         console.log('💳 Wallet updated:', data.balance);
         setBalance(data.balance);
@@ -343,7 +354,6 @@ export const useAviatorGame = () => {
         return { success: false, message: 'Betting not available' };
       }
 
-      // Use current balance from state
       if (stake > balance) {
         setError(`Insufficient balance! Balance: ${balance.toFixed(2)} ETB`);
         return { success: false, message: 'Insufficient balance' };
@@ -374,7 +384,6 @@ export const useAviatorGame = () => {
         return { success: false, message: errorMsg };
       }
 
-      // The bet is directly on response (not inside data)
       const betData = response.bet;
       if (!betData) {
         setError('Server returned invalid bet data');
@@ -386,18 +395,17 @@ export const useAviatorGame = () => {
       const newStatus = betData.status === 'ACTIVE' ? 'active' : 'pending';
       console.log(`🎯 Setting bet ${betSlot} status to: ${newStatus}`);
 
-      // ✅ Deduct balance immediately (optimistic update)
+      // Deduct balance immediately (optimistic update)
       const newBalance = balance - stake;
       setBalance(newBalance);
       updateLocalStorageBalance(newBalance);
       console.log(`💰 New balance after bet: ${newBalance}`);
 
-      // Update bet state
       setBet({
         ...bet,
         betId: betData.betId,
         stake: stake,
-        roundId: null, // we won't use roundId for activation
+        roundId: null,
         status: newStatus,
       });
 
