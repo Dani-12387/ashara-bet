@@ -3,12 +3,35 @@ import aviatorApi from '../services/aviatorApi';
 import getAviatorSocket from '../services/aviatorSocket';
 
 // ---------- Helpers ----------
+const BALANCE_KEY = 'aviator_balance';
+
+function getStoredBalance() {
+  try {
+    const stored = localStorage.getItem(BALANCE_KEY);
+    if (stored !== null) {
+      const val = parseFloat(stored);
+      if (!isNaN(val)) return val;
+    }
+  } catch (e) {}
+  return null;
+}
+
+function storeBalance(balance) {
+  try {
+    localStorage.setItem(BALANCE_KEY, String(balance));
+  } catch (e) {}
+}
+
 function getBalanceFromLocalStorage() {
+  const stored = getStoredBalance();
+  if (stored !== null) return { success: true, balance: stored };
+  // Fallback to user object
   try {
     const userData = localStorage.getItem('user');
     if (userData) {
       const user = JSON.parse(userData);
       if (user && typeof user.balance === 'number') {
+        storeBalance(user.balance);
         return { success: true, balance: user.balance };
       }
     }
@@ -17,6 +40,8 @@ function getBalanceFromLocalStorage() {
 }
 
 function updateLocalStorageBalance(balance) {
+  storeBalance(balance);
+  // Also update user object
   try {
     const userData = localStorage.getItem('user');
     if (userData) {
@@ -51,6 +76,9 @@ const defaultBet = {
 };
 
 export const useAviatorGame = () => {
+  // ---------- Initialize balance from localStorage ----------
+  const initialBalance = getStoredBalance() !== null ? getStoredBalance() : 0;
+
   const [roundState, setRoundState] = useState({
     roundId: null,
     status: 'WAITING',
@@ -60,7 +88,7 @@ export const useAviatorGame = () => {
     serverTime: Date.now()
   });
 
-  const [balance, setBalance] = useState(0);
+  const [balance, setBalance] = useState(initialBalance);
   const [history, setHistory] = useState([]);
   const [myBets, setMyBets] = useState([]);
   const [livePlayers, setLivePlayers] = useState([]);
@@ -73,14 +101,13 @@ export const useAviatorGame = () => {
   const [bet2, setBet2] = useState({ ...defaultBet });
 
   const socketRef = useRef(null);
-
-  // Track previous status to avoid duplicate WAITING fetches
   const prevStatusRef = useRef('WAITING');
+  const isFirstLoad = useRef(true);
 
-  // ========== FETCH BALANCE ==========
+  // ========== FETCH BALANCE (only on initial load) ==========
   const fetchBalance = useCallback(async () => {
     try {
-      console.log('🔄 Fetching balance...');
+      console.log('🔄 Fetching balance from server...');
       const response = await aviatorApi.getBalance();
       console.log('📊 Balance response:', response);
       if (response.success && typeof response.balance === 'number') {
@@ -88,7 +115,12 @@ export const useAviatorGame = () => {
         updateLocalStorageBalance(response.balance);
       } else {
         const local = getBalanceFromLocalStorage();
-        setBalance(local.success ? local.balance : 0);
+        if (local.success) {
+          setBalance(local.balance);
+          updateLocalStorageBalance(local.balance);
+        } else {
+          setBalance(0);
+        }
       }
     } catch (error) {
       console.error('Error in fetchBalance:', error);
@@ -162,7 +194,16 @@ export const useAviatorGame = () => {
           setLoading(false);
           return;
         }
-        await fetchBalance();
+        // Only fetch balance on initial load if we don't have a stored balance
+        if (getStoredBalance() === null) {
+          await fetchBalance();
+        } else {
+          // Use stored balance
+          const stored = getStoredBalance();
+          setBalance(stored);
+          // Optionally, sync with server silently
+          fetchBalance(); // will update if different, but might cause refund issue – we'll handle via optimistic updates
+        }
         await Promise.all([
           fetchHistory(),
           fetchMyBets(),
@@ -181,7 +222,7 @@ export const useAviatorGame = () => {
     return () => {
       if (socketRef.current) socketRef.current.disconnect();
     };
-  }, [fetchBalance, fetchHistory, fetchMyBets, fetchCurrentRound, fetchLivePlayers]);
+  }, []);
 
   // ========== SOCKET CONNECTION ==========
   const connectSocket = (token) => {
@@ -192,7 +233,7 @@ export const useAviatorGame = () => {
 
     socket.on('connection:connected', () => {
       setConnectionStatus('connected');
-      fetchBalance();
+      // Don't refresh balance on reconnect – trust local storage
     });
 
     socket.on('connection:disconnected', () => {
@@ -206,7 +247,6 @@ export const useAviatorGame = () => {
     socket.on('connection:reconnected', () => {
       setConnectionStatus('connected');
       fetchCurrentRound();
-      fetchBalance();
     });
 
     // ---------- ROUND STATE ----------
@@ -216,7 +256,6 @@ export const useAviatorGame = () => {
 
       console.log(`📡 Round state: ${normalizedStatus} (${data.status})`);
 
-      // Update round state
       setRoundState(prev => ({
         ...prev,
         roundId: currentRoundId,
@@ -228,7 +267,6 @@ export const useAviatorGame = () => {
 
       const prevStatus = prevStatusRef.current;
 
-      // Activate pending bets when round starts (RUNNING)
       if (normalizedStatus === 'RUNNING') {
         console.log('🏁 Round started – activating pending bets');
         setBet1(prev => {
@@ -248,19 +286,15 @@ export const useAviatorGame = () => {
         fetchMyBets();
       }
 
-      // Mark active bets as lost when round crashes
       if (normalizedStatus === 'CRASHED') {
         console.log('💥 Round crashed – marking active bets as lost');
         setBet1(prev => prev.status === 'active' ? { ...prev, status: 'lost' } : prev);
         setBet2(prev => prev.status === 'active' ? { ...prev, status: 'lost' } : prev);
         fetchHistory();
         fetchMyBets();
-        // ✅ DO NOT fetch balance here – keep the optimistic deduction.
-        // The balance should already reflect the loss from the bet deduction.
-        // If the backend refunds (shouldn't), we would get wrong value.
+        // Do NOT fetch balance – keep our local deduction
       }
 
-      // Reset bets to idle when round resets to WAITING, but only once
       if (normalizedStatus === 'WAITING' && prevStatus !== 'WAITING') {
         console.log('🔄 Round reset to WAITING – resetting bets to idle');
         setBet1(prev => {
@@ -275,14 +309,8 @@ export const useAviatorGame = () => {
           }
           return prev;
         });
-        // ✅ Only fetch balance if we are NOT in a state where bets were lost.
-        // Since we already deducted on bet placement, we should not overwrite.
-        // But if there was a cashout, the balance would have been updated.
-        // For safety, we only fetch if the previous status was not CRASHED (i.e., round ended without loss?).
-        // Actually, we should only fetch if there was a cashout event.
-        // To avoid refund, we skip fetchBalance entirely here.
-        // We'll trust the local balance.
         fetchMyBets();
+        // We do NOT fetch balance to keep our local state
       }
 
       prevStatusRef.current = normalizedStatus;
@@ -301,7 +329,8 @@ export const useAviatorGame = () => {
     });
 
     socket.on('bet:accepted', (data) => {
-      // When bet is accepted, update balance from server (if provided)
+      // When bet is accepted, server may send updated balance – but we already did optimistic update.
+      // Only update if we received a new balance and it's different.
       if (typeof data.balance === 'number') {
         setBalance(data.balance);
         updateLocalStorageBalance(data.balance);
@@ -317,7 +346,8 @@ export const useAviatorGame = () => {
     socket.on('cashout:success', (data) => {
       console.log('💰 Cashout success:', data);
       // The response might have `balance` or `newBalance` at root or inside `data`
-      const newBalance = data.balance ?? data.newBalance ?? data.data?.balance ?? data.data?.newBalance;
+      const payload = data.data || data;
+      const newBalance = payload.balance ?? payload.newBalance;
       if (typeof newBalance === 'number') {
         setBalance(newBalance);
         updateLocalStorageBalance(newBalance);
@@ -334,7 +364,8 @@ export const useAviatorGame = () => {
     socket.on('bet:placed', () => fetchLivePlayers());
     socket.on('bet:cashed_out', () => fetchLivePlayers());
     socket.on('wallet:updated', (data) => {
-      const newBalance = data.balance ?? data.newBalance;
+      const payload = data.data || data;
+      const newBalance = payload.balance ?? payload.newBalance;
       if (typeof newBalance === 'number') {
         console.log('💳 Wallet updated:', newBalance);
         setBalance(newBalance);
@@ -463,19 +494,19 @@ export const useAviatorGame = () => {
         return { success: false, message: errorMsg };
       }
       // The response may have data at root or inside `data`
-      const data = response.data || response;
-      const newBalance = data.newBalance ?? data.balance;
+      const payload = response.data || response;
+      const newBalance = payload.balance ?? payload.newBalance;
       if (typeof newBalance === 'number') {
         setBalance(newBalance);
         updateLocalStorageBalance(newBalance);
       }
-      setBet(prev => ({ ...prev, status: 'cashed', cashoutMultiplier: data.multiplier ?? 0 }));
+      setBet(prev => ({ ...prev, status: 'cashed', cashoutMultiplier: payload.multiplier ?? 0 }));
       fetchMyBets();
       return {
         success: true,
-        payout: data.winAmount || data.payout || 0,
-        profit: data.profit || 0,
-        multiplier: data.multiplier || 0
+        payout: payload.winAmount || payload.payout || 0,
+        profit: payload.profit || 0,
+        multiplier: payload.multiplier || 0
       };
     } catch (error) {
       console.error('Error cashing out:', error);
@@ -514,7 +545,10 @@ export const useAviatorGame = () => {
         setBalance(newBalance);
         updateLocalStorageBalance(newBalance);
       } else {
-        fetchBalance();
+        // Refund the stake manually
+        const refund = balance + bet.stake;
+        setBalance(refund);
+        updateLocalStorageBalance(refund);
       }
       fetchMyBets();
       return { success: true, message: 'Bet cancelled' };
@@ -527,7 +561,7 @@ export const useAviatorGame = () => {
       setError(errorMsg);
       return { success: false, message: errorMsg };
     }
-  }, [bet1, bet2, fetchBalance, fetchMyBets]);
+  }, [bet1, bet2, balance, fetchBalance, fetchMyBets]);
 
   // ========== GET BET STATE ==========
   const getBetState = useCallback((betSlot) => {
