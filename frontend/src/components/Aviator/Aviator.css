@@ -1,9 +1,8 @@
 /* ============================================
-   AVIATOR – COMPLETE OPTIMIZED STYLES
-   One‑Viewport, Side‑by‑Side Panels
+   AVIATOR – ULTRA‑COMPACT ONE‑VIEW LAYOUT
+   Side‑by‑side panels, no scrolling
    ============================================ */
 
-/* ---------- Reset & Base ---------- */
 * {
   margin: 0;
   padding: 0;
@@ -13,16 +12,16 @@
 .aviator-container {
   max-width: 900px;
   margin: 0 auto;
-  padding: 6px 8px;
+  padding: 4px 6px;
   color: #fff;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: linear-gradient(135deg, #0a0e27, #1a1a3e);
-  border-radius: 12px;
+  border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.05);
-  height: 100vh;                     /* Full viewport height */
+  height: 100vh;
   display: flex;
   flex-direction: column;
-  overflow: hidden;                  /* No scrolling */
+  overflow: hidden;
 }
 
 /* ---------- Header ---------- */
@@ -30,30 +29,30 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 4px 12px;
+  padding: 2px 10px;
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  margin-bottom: 4px;
+  border-radius: 6px;
+  margin-bottom: 3px;
   flex-shrink: 0;
 }
 
 .aviator-header h1 {
-  font-size: 1rem;
+  font-size: 0.9rem;
   color: #ffd700;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .aviator-header h1 span {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
 }
 
 .aviator-balance {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   background: rgba(0, 0, 0, 0.3);
-  padding: 2px 10px;
-  border-radius: 16px;
+  padding: 1px 8px;
+  border-radius: 12px;
   border: 1px solid rgba(255, 215, 0, 0.2);
 }
 
@@ -65,39 +64,39 @@
 /* ---------- History ---------- */
 .aviator-history-horizontal {
   background: rgba(255, 255, 255, 0.03);
-  border-radius: 6px;
-  padding: 2px 8px;
-  margin-bottom: 4px;
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-bottom: 3px;
   overflow-x: auto;
   border: 1px solid rgba(255, 255, 255, 0.05);
   flex-shrink: 0;
-  min-height: 28px;
+  min-height: 22px;
 }
 
 .history-list-horizontal {
   display: flex;
-  gap: 4px;
-  padding: 2px 0;
+  gap: 3px;
+  padding: 1px 0;
   align-items: center;
 }
 
 .history-item-horizontal {
-  padding: 0 8px;
-  border-radius: 3px;
-  font-size: 0.6rem;
+  padding: 0 5px;
+  border-radius: 2px;
+  font-size: 0.5rem;
   background: rgba(255, 255, 255, 0.05);
+  min-width: 24px;
+  height: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 30px;
-  white-space: nowrap;
-  height: 20px;
 }
 
 .history-item-horizontal.crashed {
   border-left: 2px solid #dc3545;
   background: rgba(220, 53, 69, 0.15);
 }
+
 .history-item-horizontal.cashed {
   border-left: 2px solid #28a745;
   background: rgba(40, 167, 69, 0.15);
@@ -106,33 +105,31 @@
 .history-multiplier-horizontal {
   font-weight: bold;
   color: #ffd700;
-  font-size: 0.6rem;
+  font-size: 0.5rem;
 }
+
 .history-item-horizontal.crashed .history-multiplier-horizontal {
   color: #dc3545;
 }
 
 .no-history {
   color: #666;
-  font-size: 0.65rem;
-  padding: 2px 0;
-  width: 100%;
-  text-align: center;
+  font-size: 0.55rem;
 }
 
 /* ---------- Odd Display ---------- */
 .aviator-odd-display {
   background: linear-gradient(135deg, #0f0f1a, #1a1a3e);
-  border-radius: 8px;
-  padding: 4px 12px;
+  border-radius: 6px;
+  padding: 2px 10px;
   text-align: center;
   border: 1px solid #2a2a4a;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
   flex-shrink: 0;
 }
 
 .odd-label {
-  font-size: 0.55rem;
+  font-size: 0.5rem;
   color: #888;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -140,11 +137,11 @@
 
 .odd-number-user {
   display: block;
-  font-size: 2.2rem;
+  font-size: 1.8rem;
   font-weight: bold;
   color: #ffd700;
   font-family: 'Courier New', monospace;
-  text-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+  text-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
   line-height: 1.1;
 }
 
@@ -159,55 +156,53 @@
 
 .odd-status {
   display: inline-block;
-  margin-top: 0;
-  padding: 1px 10px;
-  border-radius: 10px;
-  font-size: 0.6rem;
+  font-size: 0.5rem;
+  padding: 0 8px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.05);
 }
+
 .odd-status.active { color: #28a745; }
 .odd-status.crashed { color: #dc3545; }
 .odd-status.idle { color: #ffc107; }
 .odd-status.waiting { color: #17a2b8; }
 
 /* ---------- Messages ---------- */
-.bet-success {
-  color: #28a745;
-  font-size: 0.65rem;
-  text-align: center;
-  padding: 2px;
-  min-height: 18px;
-  background: rgba(40, 167, 69, 0.1);
-  border-radius: 4px;
-  margin-bottom: 2px;
-  flex-shrink: 0;
-}
+.bet-success,
 .bet-error {
-  color: #dc3545;
-  font-size: 0.65rem;
-  text-align: center;
-  padding: 2px;
-  min-height: 18px;
-  background: rgba(220, 53, 69, 0.1);
-  border-radius: 4px;
+  font-size: 0.55rem;
+  padding: 1px;
+  min-height: 14px;
+  border-radius: 3px;
   margin-bottom: 2px;
+  text-align: center;
   flex-shrink: 0;
 }
 
-/* ---------- BETS: always side‑by‑side ---------- */
+.bet-success {
+  color: #28a745;
+  background: rgba(40, 167, 69, 0.1);
+}
+
+.bet-error {
+  color: #dc3545;
+  background: rgba(220, 53, 69, 0.1);
+}
+
+/* ---------- BETS: side‑by‑side ---------- */
 .bets-horizontal {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  flex: 1;                         /* takes remaining height */
+  gap: 4px;
+  flex: 1;
   min-height: 0;
 }
 
 /* ---------- Each Bet Panel ---------- */
 .bet-section {
   background: rgba(255, 255, 255, 0.03);
-  border-radius: 8px;
-  padding: 4px 6px;
+  border-radius: 6px;
+  padding: 3px 5px;
   border: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
   flex-direction: column;
@@ -218,30 +213,47 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2px;
+  margin-bottom: 1px;
 }
 
 .bet-number {
-  font-size: 0.7rem;
+  font-size: 0.6rem;
   font-weight: bold;
   color: #ffd700;
 }
 
-.bet-active {
-  font-size: 0.5rem;
-  color: #28a745;
-  background: rgba(40, 167, 69, 0.15);
-  padding: 0 6px;
-  border-radius: 8px;
+.bet-status {
+  font-size: 0.45rem;
+  padding: 0 5px;
+  border-radius: 6px;
 }
-.bet-pending {
-  font-size: 0.5rem;
+
+.bet-status.active {
+  background: rgba(40, 167, 69, 0.2);
+  color: #28a745;
+}
+
+.bet-status.pending {
+  background: rgba(255, 193, 7, 0.2);
   color: #ffc107;
-  background: rgba(255, 193, 7, 0.15);
-  padding: 0 6px;
-  border-radius: 8px;
   animation: pulsePending 1s infinite;
 }
+
+.bet-status.cashed {
+  background: rgba(40, 167, 69, 0.2);
+  color: #28a745;
+}
+
+.bet-status.cancelled {
+  background: rgba(220, 53, 69, 0.2);
+  color: #dc3545;
+}
+
+.bet-status.lost {
+  background: rgba(220, 53, 69, 0.2);
+  color: #dc3545;
+}
+
 @keyframes pulsePending {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
@@ -250,61 +262,72 @@
 .bet-controls {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   flex: 1;
 }
 
 /* ---------- Stake Controls ---------- */
 .control-group {
   background: rgba(255, 255, 255, 0.03);
-  border-radius: 4px;
-  padding: 2px 4px;
+  border-radius: 3px;
+  padding: 1px 3px;
 }
 
 .control-group label {
   display: block;
-  font-size: 0.5rem;
+  font-size: 0.45rem;
   color: #888;
   text-transform: uppercase;
   letter-spacing: 0.3px;
-  margin-bottom: 1px;
+  margin-bottom: 0;
 }
 
 .bet-input-group {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 1px;
 }
 
 .bet-input-group button {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   border: none;
-  border-radius: 3px;
+  border-radius: 2px;
   background: #2a2a4a;
   color: #fff;
-  font-size: 0.65rem;
+  font-size: 0.55rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.bet-input-group button:hover:not(:disabled) { background: #3a3a5a; }
-.bet-input-group button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.bet-input-group button:hover:not(:disabled) {
+  background: #3a3a5a;
+}
+
+.bet-input-group button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
 
 .bet-input-group input {
   flex: 1;
-  padding: 1px 3px;
-  border-radius: 3px;
+  padding: 0 2px;
+  border-radius: 2px;
   border: 1px solid #2a2a4a;
   background: #0f0f1a;
   color: #fff;
-  font-size: 0.65rem;
+  font-size: 0.55rem;
   text-align: center;
-  min-width: 20px;
-  max-width: 50px;
+  min-width: 16px;
+  max-width: 40px;
+  height: 18px;
 }
-.bet-input-group input:disabled { opacity: 0.5; }
+
+.bet-input-group input:disabled {
+  opacity: 0.5;
+}
 
 .quick-bets {
   display: flex;
@@ -312,41 +335,51 @@
   margin-top: 1px;
   flex-wrap: wrap;
 }
+
 .quick-bets button {
-  padding: 0 4px;
+  padding: 0 3px;
   border: none;
   border-radius: 2px;
   background: #2a2a4a;
   color: #888;
-  font-size: 0.5rem;
+  font-size: 0.45rem;
   cursor: pointer;
 }
-.quick-bets button:hover:not(:disabled) { background: #3a3a5a; color: #fff; }
-.quick-bets button:disabled { opacity: 0.3; cursor: not-allowed; }
 
-/* ---------- BET BUTTON (between stake and auto cash) ---------- */
+.quick-bets button:hover:not(:disabled) {
+  background: #3a3a5a;
+  color: #fff;
+}
+
+.quick-bets button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ---------- MAIN BET BUTTON ---------- */
 .bet-btn {
-  padding: 6px 8px;
+  padding: 4px 6px;
   border: none;
-  border-radius: 4px;
+  border-radius: 3px;
   font-weight: bold;
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   cursor: pointer;
-  transition: all 0.2s;
   text-transform: uppercase;
   letter-spacing: 0.3px;
   width: 100%;
-  margin: 2px 0;
+  margin: 1px 0;
   flex-shrink: 0;
+  transition: all 0.2s;
 }
 
 .place-btn {
   background: linear-gradient(135deg, #ffd700, #f39c12);
   color: #000;
 }
+
 .place-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 2px 10px rgba(255, 215, 0, 0.3);
+  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
 }
 
 .cashout-btn {
@@ -354,20 +387,15 @@
   color: #fff;
   animation: pulseGreen 1s infinite;
 }
+
 @keyframes pulseGreen {
   0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.02); box-shadow: 0 0 12px rgba(40, 167, 69, 0.3); }
-}
-.cashout-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 10px rgba(40, 167, 69, 0.4);
+  50% { transform: scale(1.02); box-shadow: 0 0 8px rgba(40, 167, 69, 0.3); }
 }
 
-.pending-btn {
-  background: linear-gradient(135deg, #ffc107, #f39c12);
-  color: #000;
-  opacity: 0.6;
-  cursor: not-allowed;
+.cashout-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.4);
 }
 
 .bet-btn:disabled {
@@ -381,75 +409,86 @@
 .auto-cashout-control {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   flex-wrap: wrap;
   background: rgba(255, 255, 255, 0.03);
-  border-radius: 4px;
-  padding: 2px 4px;
-  margin-top: 2px;
+  border-radius: 3px;
+  padding: 1px 3px;
+  margin-top: 1px;
 }
 
 .auto-cashout-control label {
-  font-size: 0.5rem;
+  font-size: 0.45rem;
   color: #888;
   text-transform: uppercase;
   letter-spacing: 0.3px;
-  margin-right: 4px;
+  margin-right: 2px;
 }
 
 .auto-cashout-toggle {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
 
 .toggle-btn {
-  padding: 0 8px;
+  padding: 0 6px;
   border: none;
-  border-radius: 8px;
-  font-size: 0.5rem;
+  border-radius: 6px;
+  font-size: 0.45rem;
   font-weight: bold;
   cursor: pointer;
-  min-width: 28px;
+  min-width: 22px;
   background: #2a2a4a;
   color: #666;
-  height: 18px;
+  height: 16px;
+  transition: all 0.2s;
 }
+
 .toggle-btn.active {
   background: linear-gradient(135deg, #28a745, #20c997);
   color: #fff;
 }
-.toggle-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.toggle-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
 
 .auto-cashout-input {
   display: flex;
   align-items: center;
   gap: 2px;
 }
+
 .auto-cashout-input input {
-  padding: 0 4px;
-  border-radius: 3px;
+  width: 28px;
+  padding: 0 2px;
+  border-radius: 2px;
   border: 1px solid #2a2a4a;
   background: #0f0f1a;
   color: #fff;
-  font-size: 0.6rem;
+  font-size: 0.5rem;
   text-align: center;
-  width: 36px;
-  height: 18px;
+  height: 16px;
 }
-.auto-cashout-input input:disabled { opacity: 0.5; }
+
+.auto-cashout-input input:disabled {
+  opacity: 0.5;
+}
+
 .auto-cashout-input span {
   color: #ffd700;
   font-weight: bold;
-  font-size: 0.6rem;
+  font-size: 0.5rem;
 }
 
 /* ---------- Bottom Stats ---------- */
 .aviator-stats-bottom {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
-  padding: 4px 0;
+  gap: 3px;
+  padding: 2px 0;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
   flex-shrink: 0;
   margin-top: 2px;
@@ -458,186 +497,142 @@
 .stat-small {
   text-align: center;
   background: rgba(255, 255, 255, 0.03);
-  padding: 2px;
-  border-radius: 4px;
+  padding: 1px;
+  border-radius: 3px;
 }
+
 .stat-small span {
   display: block;
-  font-size: 0.45rem;
+  font-size: 0.4rem;
   color: #666;
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
+
 .stat-small strong {
-  font-size: 0.7rem;
+  font-size: 0.6rem;
   color: #ffd700;
 }
 
-/* ---------- RESPONSIVE (mobile only) ---------- */
+/* ---------- RESPONSIVE (keep side‑by‑side) ---------- */
 @media (max-width: 600px) {
   .aviator-container {
-    padding: 3px 4px;
-    height: 100dvh;                /* dynamic viewport height */
+    padding: 2px 4px;
   }
 
-  .bets-horizontal {
-    gap: 4px;
-  }
-
-  .bet-section {
-    padding: 3px 4px;
-  }
-
-  .bet-number {
-    font-size: 0.6rem;
-  }
-
-  .bet-btn {
-    font-size: 0.6rem;
-    padding: 4px 4px;
-    margin: 1px 0;
-    border-radius: 3px;
-  }
-
-  .odd-number-user {
-    font-size: 1.6rem;
-  }
-
-  .control-group {
-    padding: 1px 3px;
-  }
-  .control-group label {
-    font-size: 0.45rem;
-  }
-
-  .bet-input-group button {
-    width: 16px;
-    height: 16px;
-    font-size: 0.55rem;
-  }
-  .bet-input-group input {
-    font-size: 0.55rem;
-    min-width: 18px;
-    max-width: 40px;
-    padding: 0 2px;
-  }
-
-  .quick-bets button {
-    font-size: 0.45rem;
-    padding: 0 3px;
-  }
-
-  .auto-cashout-control {
-    padding: 1px 3px;
-    gap: 2px;
-  }
-  .auto-cashout-control label {
-    font-size: 0.45rem;
-  }
-  .toggle-btn {
-    font-size: 0.45rem;
-    min-width: 24px;
-    height: 16px;
-    padding: 0 5px;
-  }
-  .auto-cashout-input input {
-    width: 30px;
-    height: 16px;
-    font-size: 0.5rem;
-  }
-  .auto-cashout-input span {
-    font-size: 0.5rem;
-  }
-
-  .aviator-stats-bottom {
-    gap: 2px;
-    padding: 2px 0;
-  }
-  .stat-small strong {
-    font-size: 0.6rem;
-  }
-
-  .history-item-horizontal {
-    font-size: 0.45rem;
-    padding: 0 4px;
-    min-width: 20px;
-    height: 14px;
-  }
-
-  .aviator-header {
-    padding: 2px 8px;
-  }
-  .aviator-header h1 {
-    font-size: 0.8rem;
-  }
-  .aviator-balance {
-    font-size: 0.65rem;
-    padding: 1px 8px;
-  }
-
-  .bet-success,
-  .bet-error {
-    font-size: 0.55rem;
-    padding: 1px;
-    min-height: 14px;
-  }
-}
-
-/* Very small phones (≤ 400px) */
-@media (max-width: 400px) {
   .bets-horizontal {
     gap: 3px;
   }
+
   .bet-section {
     padding: 2px 3px;
   }
+
   .bet-number {
     font-size: 0.5rem;
   }
-  .odd-number-user {
-    font-size: 1.3rem;
-  }
+
   .bet-btn {
-    font-size: 0.5rem;
-    padding: 3px 3px;
+    font-size: 0.55rem;
+    padding: 3px 4px;
   }
+
+  .odd-number-user {
+    font-size: 1.4rem;
+  }
+
   .bet-input-group input {
     max-width: 32px;
     font-size: 0.5rem;
   }
+
   .quick-bets button {
     font-size: 0.4rem;
+    padding: 0 2px;
   }
+
+  .toggle-btn {
+    font-size: 0.4rem;
+    min-width: 18px;
+    height: 14px;
+    padding: 0 4px;
+  }
+
   .auto-cashout-input input {
-    width: 26px;
+    width: 24px;
+    font-size: 0.4rem;
+    height: 14px;
   }
+
   .aviator-header h1 {
     font-size: 0.7rem;
   }
+
   .aviator-balance {
-    font-size: 0.55rem;
+    font-size: 0.6rem;
     padding: 0 6px;
   }
+
   .history-item-horizontal {
     font-size: 0.4rem;
-    padding: 0 3px;
-    min-width: 16px;
+    min-width: 18px;
+    height: 12px;
+  }
+
+  .bet-success,
+  .bet-error {
+    font-size: 0.5rem;
+    min-height: 12px;
   }
 }
 
-/* Additional states (for completeness) */
-.bet-status.cashed {
-  background: rgba(40, 167, 69, 0.2);
-  color: #28a745;
-}
-.bet-status.cancelled {
-  background: rgba(220, 53, 69, 0.2);
-  color: #dc3545;
-}
-.bet-status.lost {
-  background: rgba(220, 53, 69, 0.2);
-  color: #dc3545;
-}
-.bet-status-message.error {
-  color: #dc3545;
+@media (max-width: 400px) {
+  .bets-horizontal {
+    gap: 2px;
+  }
+
+  .bet-section {
+    padding: 1px 2px;
+  }
+
+  .bet-btn {
+    font-size: 0.45rem;
+    padding: 2px 3px;
+  }
+
+  .odd-number-user {
+    font-size: 1.2rem;
+  }
+
+  .bet-input-group input {
+    max-width: 26px;
+    font-size: 0.45rem;
+  }
+
+  .toggle-btn {
+    font-size: 0.35rem;
+    min-width: 16px;
+    height: 12px;
+    padding: 0 3px;
+  }
+
+  .aviator-header h1 {
+    font-size: 0.6rem;
+  }
+
+  .aviator-balance {
+    font-size: 0.5rem;
+    padding: 0 4px;
+  }
+
+  .history-item-horizontal {
+    font-size: 0.35rem;
+    min-width: 14px;
+    height: 10px;
+  }
+
+  .bet-status {
+    font-size: 0.4rem;
+    padding: 0 3px;
+  }
 }
