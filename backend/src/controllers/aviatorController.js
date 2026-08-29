@@ -77,21 +77,30 @@ function emitBetCashedOut(bet, multiplier) {
   }
 }
 
-// ========== GAME LOOP ==========
+// ========== GAME LOOP (with robust auto cashout) ==========
 function startGameLoop() {
   if (gameState.gameInterval) clearInterval(gameState.gameInterval);
   const startTime = Date.now();
 
-  gameState.gameInterval = setInterval(() => {
+  gameState.gameInterval = setInterval(async () => {
     const elapsed = (Date.now() - startTime) / 1000;
     const increment = 0.01 + elapsed * 0.001;
     gameState.multiplier = Math.round((gameState.multiplier + increment) * 100) / 100;
 
-    // Auto cashout check
-    for (const bet of activeBets) {
-      if (bet.status === 'active' && bet.autoCashOut > 0 && gameState.multiplier >= bet.autoCashOut) {
-        console.log(`🤖 Auto cashout triggered for user ${bet.username} at ${gameState.multiplier.toFixed(2)}x`);
-        processCashOut(bet);
+    // ✅ Auto cashout check – iterate backwards to safely remove bets
+    for (let i = activeBets.length - 1; i >= 0; i--) {
+      const bet = activeBets[i];
+      if (bet.status === 'active' && bet.autoCashOut > 0) {
+        const currentMult = Math.round(gameState.multiplier * 100) / 100;
+        const targetMult = Math.round(bet.autoCashOut * 100) / 100;
+        
+        console.log(`🔍 Checking auto cashout for ${bet.username}: current=${currentMult}, target=${targetMult}`);
+        
+        if (currentMult >= targetMult) {
+          console.log(`🤖 Auto cashout triggered for ${bet.username} at ${currentMult}x`);
+          await processCashOut(bet);
+          // processCashOut removes the bet from activeBets
+        }
       }
     }
 
@@ -136,6 +145,7 @@ async function processCashOut(bet) {
       winAmount: winAmount
     });
 
+    // Remove from active bets
     const index = activeBets.indexOf(bet);
     if (index > -1) activeBets.splice(index, 1);
 
