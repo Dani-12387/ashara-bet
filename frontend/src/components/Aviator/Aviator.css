@@ -1,6 +1,5 @@
 /* ============================================
-   AVIATOR – ULTRA‑COMPACT ONE‑VIEW LAYOUT
-   Side‑by‑side panels, no scrolling
+   AVIATOR – ULTRA‑COMPACT, SIDE‑BY‑SIDE ON ALL DEVICES
    ============================================ */
 
 * {
@@ -51,7 +50,6 @@
   align-items: center;
   gap: 4px;
 }
-
 .header-logo span {
   font-size: 1.4rem;
 }
@@ -262,10 +260,10 @@
   100% { transform: scale(1); opacity: 1; }
 }
 
-/* ---------- BETS LAYOUT – SIDE BY SIDE ---------- */
+/* ---------- BETS LAYOUT – ALWAYS SIDE‑BY‑SIDE ---------- */
 .bets-layout {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr !important;   /* Force side‑by‑side */
   gap: 4px;
   flex: 1;
   min-height: 0;
@@ -280,7 +278,8 @@
   border: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
   flex-direction: column;
-  min-width: 0;
+  min-width: 0;               /* prevent overflow */
+  overflow: hidden;
 }
 
 .bet-panel-header {
@@ -470,7 +469,7 @@
   color: #dc3545;
 }
 
-/* ---------- Auto Cash Out (below the button) ---------- */
+/* ---------- Auto Cash Out ---------- */
 .auto-cashout-control {
   display: flex;
   align-items: center;
@@ -707,7 +706,10 @@
   color: #fff;
 }
 
-/* ---------- Responsive (keep side‑by‑side) ---------- */
+/* ============================================
+   MOBILE – FORCE SIDE‑BY‑SIDE
+   ============================================ */
+
 @media (max-width: 768px) {
   .aviator-page {
     padding: 4px 6px;
@@ -729,7 +731,9 @@
     font-size: 0.55rem;
     padding: 2px 6px;
   }
+  /* Keep side‑by‑side */
   .bets-layout {
+    grid-template-columns: 1fr 1fr !important;
     gap: 3px;
   }
   .betting-panel {
@@ -758,6 +762,7 @@
 
 @media (max-width: 480px) {
   .bets-layout {
+    grid-template-columns: 1fr 1fr !important;
     gap: 2px;
   }
   .betting-panel {
