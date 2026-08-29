@@ -43,7 +43,7 @@ const normalizeStatus = (status) => {
 const defaultBet = {
   stake: 10,
   betId: null,
-  status: 'idle',          // idle, pending, active, cashed, cancelled, lost
+  status: 'idle',
   roundId: null,
   cashoutMultiplier: 0,
   autoCashOut: 0,
@@ -211,6 +211,8 @@ export const useAviatorGame = () => {
       const normalizedStatus = normalizeStatus(data.status);
       const currentRoundId = data.roundId || roundState.roundId;
 
+      console.log(`📡 Round state: ${normalizedStatus} (${data.status})`);
+
       setRoundState(prev => ({
         ...prev,
         roundId: currentRoundId,
@@ -222,6 +224,7 @@ export const useAviatorGame = () => {
 
       // ✅ Activate all pending bets when round starts (RUNNING)
       if (normalizedStatus === 'RUNNING') {
+        console.log('🏁 Round started – activating pending bets');
         setBet1(prev => {
           if (prev.status === 'pending') {
             console.log('✅ Bet 1 activated');
@@ -237,35 +240,35 @@ export const useAviatorGame = () => {
           return prev;
         });
         fetchMyBets();
+        // Do NOT fetch balance here – keep our optimistic deduction.
       }
 
       // ✅ Mark active bets as lost when round crashes
       if (normalizedStatus === 'CRASHED') {
+        console.log('💥 Round crashed – marking active bets as lost');
         setBet1(prev => prev.status === 'active' ? { ...prev, status: 'lost' } : prev);
         setBet2(prev => prev.status === 'active' ? { ...prev, status: 'lost' } : prev);
         fetchHistory();
         fetchMyBets();
-        fetchBalance();
+        fetchBalance(); // Get final balance (refunds if any)
       }
 
       // ✅ Reset pending/lost bets to idle when round resets to WAITING
       if (normalizedStatus === 'WAITING') {
+        console.log('🔄 Round reset to WAITING – resetting bets to idle');
         setBet1(prev => {
           if (prev.status === 'pending' || prev.status === 'lost') {
-            console.log('🔄 Bet 1 reset to idle');
             return { ...defaultBet, stake: prev.stake, autoCashOut: prev.autoCashOut, autoCashOutEnabled: prev.autoCashOutEnabled };
           }
           return prev;
         });
         setBet2(prev => {
           if (prev.status === 'pending' || prev.status === 'lost') {
-            console.log('🔄 Bet 2 reset to idle');
             return { ...defaultBet, stake: prev.stake, autoCashOut: prev.autoCashOut, autoCashOutEnabled: prev.autoCashOutEnabled };
           }
           return prev;
         });
-        // Fetch latest balance (refunds may have been processed)
-        fetchBalance();
+        fetchBalance(); // Refresh balance (refunds may have been processed)
         fetchMyBets();
       }
     });
@@ -293,6 +296,7 @@ export const useAviatorGame = () => {
     });
 
     socket.on('cashout:success', (data) => {
+      console.log('💰 Cashout success:', data);
       setBalance(data.balance);
       fetchMyBets();
       if (data.betId === bet1.betId) {
@@ -306,7 +310,16 @@ export const useAviatorGame = () => {
     socket.on('bet:placed', () => fetchLivePlayers());
     socket.on('bet:cashed_out', () => fetchLivePlayers());
     socket.on('wallet:updated', (data) => {
-      setBalance(data.balance || data.newBalance);
+      // Only update if we have a numeric balance
+      if (typeof data.balance === 'number') {
+        console.log('💳 Wallet updated:', data.balance);
+        setBalance(data.balance);
+        updateLocalStorageBalance(data.balance);
+      } else if (typeof data.newBalance === 'number') {
+        console.log('💳 Wallet updated (newBalance):', data.newBalance);
+        setBalance(data.newBalance);
+        updateLocalStorageBalance(data.newBalance);
+      }
     });
     socket.on('system:error', (data) => {
       setError(data.message || 'System error');
@@ -330,6 +343,7 @@ export const useAviatorGame = () => {
         return { success: false, message: 'Betting not available' };
       }
 
+      // Use current balance from state
       if (stake > balance) {
         setError(`Insufficient balance! Balance: ${balance.toFixed(2)} ETB`);
         return { success: false, message: 'Insufficient balance' };
@@ -372,25 +386,19 @@ export const useAviatorGame = () => {
       const newStatus = betData.status === 'ACTIVE' ? 'active' : 'pending';
       console.log(`🎯 Setting bet ${betSlot} status to: ${newStatus}`);
 
+      // ✅ Deduct balance immediately (optimistic update)
+      const newBalance = balance - stake;
+      setBalance(newBalance);
+      updateLocalStorageBalance(newBalance);
+      console.log(`💰 New balance after bet: ${newBalance}`);
+
+      // Update bet state
       setBet({
         ...bet,
         betId: betData.betId,
         stake: stake,
         roundId: null, // we won't use roundId for activation
         status: newStatus,
-      });
-
-      // Update balance
-      setBalance(prev => {
-        let newBalance;
-        if (response.newBalance !== null && response.newBalance !== undefined) {
-          newBalance = response.newBalance;
-        } else {
-          newBalance = prev - stake;
-        }
-        updateLocalStorageBalance(newBalance);
-        console.log(`💰 New balance: ${newBalance}`);
-        return newBalance;
       });
 
       fetchMyBets();
