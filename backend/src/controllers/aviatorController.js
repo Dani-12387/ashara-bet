@@ -50,7 +50,7 @@ function broadcastGameState() {
   console.log(`📊 Round ${gameState.roundNumber}: ${gameState.multiplier.toFixed(2)}x | Status: ${gameState.status}`);
 }
 
-// ========== GAME LOOP (internal) ==========
+// ========== GAME LOOP ==========
 function startGameLoop() {
   if (gameState.gameInterval) clearInterval(gameState.gameInterval);
   const startTime = Date.now();
@@ -76,19 +76,15 @@ function startGameLoop() {
   }, 100);
 }
 
-// ========== PROCESS CASH OUT (for auto cash out) ==========
+// ========== PROCESS CASH OUT (auto) ==========
 async function processCashOut(bet) {
   try {
     const user = await User.findById(bet.userId);
     if (!user) return;
     const winAmount = bet.amount * gameState.multiplier;
     const profit = winAmount - bet.amount;
-    
-    // ✅ Use wallet.balance
-    const currentBalance = user.wallet?.balance ?? 0;
-    user.wallet.balance = currentBalance + winAmount;
+    user.wallet.balance = (user.wallet?.balance ?? 0) + winAmount;
     await user.save();
-    
     bet.status = 'cashed';
     bet.winAmount = winAmount;
     bet.cashedAt = gameState.multiplier;
@@ -111,18 +107,14 @@ async function crashGame() {
   gameState.status = 'crashed';
   const crashMultiplier = gameState.multiplier;
 
-  // Settle active bets (lost) – no balance change (already deducted)
   for (const bet of activeBets) {
     if (bet.status === 'active') {
       bet.status = 'lost';
       const user = await User.findById(bet.userId);
-      if (user) {
-        console.log(`❌ Bet lost for user ${user.username}`);
-      }
+      if (user) console.log(`❌ Bet lost for user ${user.username}`);
     }
   }
 
-  // Save history
   const crashRecord = {
     roundNumber: gameState.roundNumber,
     crashPoint: crashMultiplier,
@@ -135,7 +127,6 @@ async function crashGame() {
 
   broadcastGameState();
 
-  // ✅ RESET TO IDLE – NO AUTO-START
   setTimeout(() => {
     console.log('🔄 Resetting to idle. Admin must start next round.');
     gameState.status = 'idle';
@@ -148,14 +139,12 @@ async function crashGame() {
 //  ADMIN EXPORTS
 // ============================================
 
-// 🚀 START
 exports.startGame = async (req, res) => {
   try {
     if (gameState.status === 'active') {
       return res.status(400).json({ success: false, message: 'Game already active' });
     }
 
-    // Activate pending bets
     for (const p of pendingBets) {
       activeBets.push({ ...p, status: 'active', activatedAt: new Date() });
     }
@@ -168,7 +157,6 @@ exports.startGame = async (req, res) => {
     gameState.totalBets = activeBets.length;
     gameState.totalAmount = activeBets.reduce((s, b) => s + b.amount, 0);
 
-    // Use admin‑set crash point or random
     gameState.crashPoint = gameState.nextCrashPoint > 1.01
       ? gameState.nextCrashPoint
       : 2 + Math.random() * 98;
@@ -193,7 +181,6 @@ exports.startGame = async (req, res) => {
   }
 };
 
-// 🛑 STOP (Crash)
 exports.stopGame = async (req, res) => {
   try {
     if (gameState.status !== 'active') {
@@ -212,14 +199,12 @@ exports.stopGame = async (req, res) => {
   }
 };
 
-// 🔒 CLOSE
 exports.closeGame = async (req, res) => {
   try {
     if (gameState.gameInterval) clearInterval(gameState.gameInterval);
     gameState.status = 'closed';
     gameState.multiplier = 1.00;
 
-    // Refund all bets – use wallet.balance
     const allBets = [...activeBets, ...pendingBets];
     for (const bet of allBets) {
       if (bet.status === 'active' || bet.status === 'pending') {
@@ -240,7 +225,6 @@ exports.closeGame = async (req, res) => {
   }
 };
 
-// 🎯 SET CRASH POINT
 exports.setCrashPoint = async (req, res) => {
   try {
     const { crashPoint } = req.body;
@@ -255,7 +239,6 @@ exports.setCrashPoint = async (req, res) => {
   }
 };
 
-// ⚙️ UPDATE SETTINGS
 exports.updateSettings = async (req, res) => {
   try {
     const { autoStart, autoStartDelay, minBet, maxBet, houseEdge } = req.body;
@@ -272,7 +255,7 @@ exports.updateSettings = async (req, res) => {
 };
 
 // ============================================
-//  DATA RETRIEVAL (Admin & Player)
+//  DATA RETRIEVAL
 // ============================================
 
 exports.getGameState = async (req, res) => {
@@ -308,17 +291,37 @@ exports.getHistory = async (req, res) => {
   }
 };
 
+// ✅ UPDATED: Admin sees both active and pending bets with usernames
 exports.getActiveBets = async (req, res) => {
   try {
-    res.json(activeBets.filter(b => b.status === 'active'));
+    const isAdmin = req.user && req.user.role === 'admin';
+    let bets = [];
+    if (isAdmin) {
+      bets = [...activeBets, ...pendingBets];
+    } else {
+      bets = activeBets.filter(b => b.status === 'active');
+    }
+
+    const formatted = bets.map(bet => ({
+      _id: bet.betId || bet._id,
+      user: { username: bet.username || 'Unknown' },
+      amount: bet.amount,
+      stake: bet.amount,
+      autoCashOut: bet.autoCashOut || 0,
+      status: bet.status,        // active, pending, cashed, lost
+      gameRound: bet.gameRound,
+      placedAt: bet.placedAt
+    }));
+
+    res.json(formatted);
   } catch (error) {
-    console.error('Get active bets error:', error);
+    console.error('❌ Error getting active bets:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
 // ============================================
-//  PLAYER ACTIONS (with wallet.balance)
+//  PLAYER ACTIONS
 // ============================================
 
 exports.placeBet = async (req, res) => {
@@ -327,28 +330,27 @@ exports.placeBet = async (req, res) => {
     const userId = req.user.id;
 
     if (!amount || amount <= 0) return res.status(400).json({ success: false, message: 'Invalid amount' });
-    // Only allow betting when idle (pending) or active
     if (gameState.status !== 'idle' && gameState.status !== 'active') {
       return res.status(400).json({ success: false, message: 'Game not available' });
     }
 
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-    
-    // ✅ Use wallet.balance
+
     const currentBalance = user.wallet?.balance ?? 0;
     if (amount < gameState.minBet || amount > gameState.maxBet) {
       return res.status(400).json({ success: false, message: `Bet must be between ${gameState.minBet} and ${gameState.maxBet}` });
     }
     if (currentBalance < amount) return res.status(400).json({ success: false, message: 'Insufficient balance' });
 
-    // ✅ Deduct from wallet.balance
+    // Deduct balance
     user.wallet.balance = currentBalance - amount;
     await user.save();
 
     const isActive = gameState.status === 'active';
     const bet = {
       userId,
+      username: user.username,        // ✅ store username for admin display
       amount,
       autoCashOut: autoCashOut || 0,
       status: isActive ? 'active' : 'pending',
@@ -396,9 +398,7 @@ exports.cashOut = async (req, res) => {
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-    // ✅ Add winnings to wallet.balance
-    const currentBalance = user.wallet?.balance ?? 0;
-    user.wallet.balance = currentBalance + winAmount;
+    user.wallet.balance = (user.wallet?.balance ?? 0) + winAmount;
     await user.save();
 
     bet.status = 'cashed';
@@ -431,9 +431,7 @@ exports.cancelPendingBet = async (req, res) => {
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-    // ✅ Refund to wallet.balance
-    const currentBalance = user.wallet?.balance ?? 0;
-    user.wallet.balance = currentBalance + bet.amount;
+    user.wallet.balance = (user.wallet?.balance ?? 0) + bet.amount;
     await user.save();
 
     pendingBets.splice(index, 1);
@@ -446,7 +444,7 @@ exports.cancelPendingBet = async (req, res) => {
 };
 
 // ============================================
-//  PLAYER PAGE ENDPOINTS (new)
+//  PLAYER PAGE ENDPOINTS
 // ============================================
 
 exports.getCurrentRound = async (req, res) => {

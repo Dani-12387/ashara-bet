@@ -38,12 +38,10 @@ const AviatorManagement = () => {
 
   // ===== SOCKET.IO SETUP =====
   useEffect(() => {
-    // Initial data fetch
     fetchGameState();
     fetchHistory();
     fetchActiveBets();
 
-    // Connect to Socket.IO for real-time updates
     const token = localStorage.getItem('token');
     if (!token) {
       console.warn('No token found – admin socket will not connect');
@@ -53,7 +51,6 @@ const AviatorManagement = () => {
     const socket = getAviatorSocket();
     socket.connect(token);
 
-    // Listen to round state changes
     socket.on('round:state', (data) => {
       console.log('📡 Admin: round:state', data);
       setGameState(prev => ({
@@ -67,7 +64,6 @@ const AviatorManagement = () => {
         totalAmount: data.totalAmount !== undefined ? data.totalAmount : prev.totalAmount
       }));
 
-      // ✅ If crash occurs, refresh history, active bets, and game state immediately
       if (data.status === 'CRASHED' || data.status === 'crashed') {
         fetchHistory();
         fetchActiveBets();
@@ -77,7 +73,6 @@ const AviatorManagement = () => {
 
     socket.on('round:countdown', (data) => {
       console.log('📡 Admin: round:countdown', data);
-      // Optionally display countdown in admin panel
     });
 
     socket.on('bet:placed', () => {
@@ -91,7 +86,6 @@ const AviatorManagement = () => {
     });
 
     socket.on('connection:reconnected', () => {
-      // Refresh data after reconnection
       fetchGameState();
       fetchHistory();
       fetchActiveBets();
@@ -103,8 +97,6 @@ const AviatorManagement = () => {
       socket.off('bet:placed');
       socket.off('bet:cashed_out');
       socket.off('connection:reconnected');
-      // Do not disconnect the socket globally, as other components may use it.
-      // The socket service manages its own lifecycle.
     };
   }, []);
 
@@ -323,7 +315,7 @@ const AviatorManagement = () => {
       )}
 
       <div className="management-grid">
-        {/* ===== GAME CONTROLS ===== */}
+        {/* GAME CONTROLS */}
         <div className="management-card game-controls">
           <h2>🎮 Game Controls</h2>
 
@@ -395,7 +387,7 @@ const AviatorManagement = () => {
           </div>
         </div>
 
-        {/* ===== SET NEXT CRASH POINT ===== */}
+        {/* SET NEXT CRASH POINT */}
         <div className="management-card crash-control">
           <h2>🎯 Set Next Crash Point</h2>
           <p className="hint">Set the multiplier where the game will crash in the next round</p>
@@ -443,7 +435,7 @@ const AviatorManagement = () => {
           </div>
         </div>
 
-        {/* ===== GAME SETTINGS ===== */}
+        {/* GAME SETTINGS */}
         <div className="management-card game-settings">
           <h2>⚙️ Game Settings</h2>
 
@@ -524,12 +516,12 @@ const AviatorManagement = () => {
           </button>
         </div>
 
-        {/* ===== LIVE BETS ===== */}
+        {/* LIVE BETS – now shows pending and active with username */}
         <div className="management-card live-bets">
           <h2>📊 Live Bets ({activeBets.length})</h2>
           <div className="bets-table-wrapper">
             {activeBets.length === 0 ? (
-              <p className="no-data">No active bets</p>
+              <p className="no-data">No active or pending bets</p>
             ) : (
               <table className="bets-table">
                 <thead>
@@ -543,12 +535,13 @@ const AviatorManagement = () => {
                 <tbody>
                   {activeBets.map((bet) => (
                     <tr key={bet._id || bet.betId}>
-                      <td>{bet.user?.username || bet.displayName || 'Unknown'}</td>
+                      <td>{bet.user?.username || bet.username || 'Unknown'}</td>
                       <td>${(bet.amount || bet.stake)?.toFixed(2)}</td>
                       <td>{bet.autoCashOut ? bet.autoCashOut + 'x' : 'Manual'}</td>
                       <td>
                         <span className={`bet-status ${bet.status}`}>
                           {bet.status === 'active' ? '🟢 Active' :
+                           bet.status === 'pending' ? '⏳ Pending' :
                            bet.status === 'cashed' ? '✅ Cashed' :
                            bet.status === 'lost' ? '❌ Lost' : '⏳'}
                         </span>
@@ -561,7 +554,7 @@ const AviatorManagement = () => {
           </div>
         </div>
 
-        {/* ===== GAME HISTORY ===== */}
+        {/* GAME HISTORY */}
         <div className="management-card game-history">
           <h2>📜 Game History ({history.length})</h2>
           <div className="history-wrapper">
