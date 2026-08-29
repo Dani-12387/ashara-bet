@@ -226,7 +226,6 @@ export const useAviatorGame = () => {
         serverTime: data.serverTime || Date.now()
       }));
 
-      // Handle transitions based on previous status
       const prevStatus = prevStatusRef.current;
 
       // Activate pending bets when round starts (RUNNING)
@@ -256,32 +255,36 @@ export const useAviatorGame = () => {
         setBet2(prev => prev.status === 'active' ? { ...prev, status: 'lost' } : prev);
         fetchHistory();
         fetchMyBets();
-        // Do NOT fetch balance yet – wait for WAITING to see refunds
+        // ✅ DO NOT fetch balance here – keep the optimistic deduction.
+        // The balance should already reflect the loss from the bet deduction.
+        // If the backend refunds (shouldn't), we would get wrong value.
       }
 
       // Reset bets to idle when round resets to WAITING, but only once
       if (normalizedStatus === 'WAITING' && prevStatus !== 'WAITING') {
         console.log('🔄 Round reset to WAITING – resetting bets to idle');
         setBet1(prev => {
-          if (prev.status === 'pending' || prev.status === 'lost') {
+          if (prev.status === 'pending' || prev.status === 'lost' || prev.status === 'cashed') {
             return { ...defaultBet, stake: prev.stake, autoCashOut: prev.autoCashOut, autoCashOutEnabled: prev.autoCashOutEnabled };
           }
           return prev;
         });
         setBet2(prev => {
-          if (prev.status === 'pending' || prev.status === 'lost') {
+          if (prev.status === 'pending' || prev.status === 'lost' || prev.status === 'cashed') {
             return { ...defaultBet, stake: prev.stake, autoCashOut: prev.autoCashOut, autoCashOutEnabled: prev.autoCashOutEnabled };
           }
           return prev;
         });
-        // Only fetch balance if we came from CRASHED, not from initial WAITING
-        if (prevStatus === 'CRASHED') {
-          fetchBalance(); // Refresh balance (refunds may have been processed)
-        }
+        // ✅ Only fetch balance if we are NOT in a state where bets were lost.
+        // Since we already deducted on bet placement, we should not overwrite.
+        // But if there was a cashout, the balance would have been updated.
+        // For safety, we only fetch if the previous status was not CRASHED (i.e., round ended without loss?).
+        // Actually, we should only fetch if there was a cashout event.
+        // To avoid refund, we skip fetchBalance entirely here.
+        // We'll trust the local balance.
         fetchMyBets();
       }
 
-      // Update previous status for next event
       prevStatusRef.current = normalizedStatus;
     });
 
@@ -298,7 +301,11 @@ export const useAviatorGame = () => {
     });
 
     socket.on('bet:accepted', (data) => {
-      setBalance(data.balance);
+      // When bet is accepted, update balance from server (if provided)
+      if (typeof data.balance === 'number') {
+        setBalance(data.balance);
+        updateLocalStorageBalance(data.balance);
+      }
       fetchMyBets();
     });
 
@@ -309,27 +316,29 @@ export const useAviatorGame = () => {
 
     socket.on('cashout:success', (data) => {
       console.log('💰 Cashout success:', data);
-      setBalance(data.balance);
+      // The response might have `balance` or `newBalance` at root or inside `data`
+      const newBalance = data.balance ?? data.newBalance ?? data.data?.balance ?? data.data?.newBalance;
+      if (typeof newBalance === 'number') {
+        setBalance(newBalance);
+        updateLocalStorageBalance(newBalance);
+      }
       fetchMyBets();
       if (data.betId === bet1.betId) {
-        setBet1(prev => ({ ...prev, status: 'cashed', cashoutMultiplier: data.multiplier }));
+        setBet1(prev => ({ ...prev, status: 'cashed', cashoutMultiplier: data.multiplier ?? 0 }));
       }
       if (data.betId === bet2.betId) {
-        setBet2(prev => ({ ...prev, status: 'cashed', cashoutMultiplier: data.multiplier }));
+        setBet2(prev => ({ ...prev, status: 'cashed', cashoutMultiplier: data.multiplier ?? 0 }));
       }
     });
 
     socket.on('bet:placed', () => fetchLivePlayers());
     socket.on('bet:cashed_out', () => fetchLivePlayers());
     socket.on('wallet:updated', (data) => {
-      if (typeof data.balance === 'number') {
-        console.log('💳 Wallet updated:', data.balance);
-        setBalance(data.balance);
-        updateLocalStorageBalance(data.balance);
-      } else if (typeof data.newBalance === 'number') {
-        console.log('💳 Wallet updated (newBalance):', data.newBalance);
-        setBalance(data.newBalance);
-        updateLocalStorageBalance(data.newBalance);
+      const newBalance = data.balance ?? data.newBalance;
+      if (typeof newBalance === 'number') {
+        console.log('💳 Wallet updated:', newBalance);
+        setBalance(newBalance);
+        updateLocalStorageBalance(newBalance);
       }
     });
     socket.on('system:error', (data) => {
@@ -447,23 +456,37 @@ export const useAviatorGame = () => {
         return { success: false, message: 'No active bet found' };
       }
       const response = await aviatorApi.cashOut();
+      console.log('💰 Cashout response:', response);
       if (!response || !response.success) {
         const errorMsg = response?.error?.message || response?.message || 'Failed to cash out';
         setError(errorMsg);
         return { success: false, message: errorMsg };
       }
-      const data = response.data;
-      setBet(prev => ({ ...prev, status: 'cashed', cashoutMultiplier: data.multiplier }));
-      if (data.newBalance !== undefined) setBalance(data.newBalance);
-      else fetchBalance();
+      // The response may have data at root or inside `data`
+      const data = response.data || response;
+      const newBalance = data.newBalance ?? data.balance;
+      if (typeof newBalance === 'number') {
+        setBalance(newBalance);
+        updateLocalStorageBalance(newBalance);
+      }
+      setBet(prev => ({ ...prev, status: 'cashed', cashoutMultiplier: data.multiplier ?? 0 }));
       fetchMyBets();
-      return { success: true, payout: data.winAmount || data.payout, profit: data.profit, multiplier: data.multiplier };
+      return {
+        success: true,
+        payout: data.winAmount || data.payout || 0,
+        profit: data.profit || 0,
+        multiplier: data.multiplier || 0
+      };
     } catch (error) {
       console.error('Error cashing out:', error);
       let errorMsg = 'Network error – please check your connection';
-      if (error.response) errorMsg = error.response.data?.message || error.message;
-      else if (error.request) errorMsg = 'Server not responding – please try again later';
-      else errorMsg = error.message || 'Failed to cash out';
+      if (error.response) {
+        errorMsg = error.response.data?.message || error.message;
+      } else if (error.request) {
+        errorMsg = 'Server not responding – please try again later';
+      } else {
+        errorMsg = error.message || 'Failed to cash out';
+      }
       setError(errorMsg);
       return { success: false, message: errorMsg };
     }
@@ -486,8 +509,13 @@ export const useAviatorGame = () => {
         return { success: false, message: errorMsg };
       }
       setBet(prev => ({ ...prev, status: 'cancelled', roundId: null }));
-      if (response.data.newBalance !== undefined) setBalance(response.data.newBalance);
-      else fetchBalance();
+      const newBalance = response.data?.newBalance ?? response.newBalance;
+      if (typeof newBalance === 'number') {
+        setBalance(newBalance);
+        updateLocalStorageBalance(newBalance);
+      } else {
+        fetchBalance();
+      }
       fetchMyBets();
       return { success: true, message: 'Bet cancelled' };
     } catch (error) {
