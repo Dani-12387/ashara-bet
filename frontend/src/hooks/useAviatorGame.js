@@ -43,7 +43,7 @@ const normalizeStatus = (status) => {
 const defaultBet = {
   stake: 10,
   betId: null,
-  status: 'idle',          // idle, pending, active, cashed, cancelled, lost
+  status: 'idle',
   roundId: null,
   cashoutMultiplier: 0,
   autoCashOut: 0,
@@ -218,7 +218,7 @@ export const useAviatorGame = () => {
         serverTime: data.serverTime || Date.now()
       }));
 
-      // Activate pending bets when round starts – using functional updates
+      // Activate pending bets when round starts
       if (normalizedStatus === 'RUNNING') {
         const currentRoundId = data.roundId || roundState.roundId;
         setBet1(prev => {
@@ -291,7 +291,7 @@ export const useAviatorGame = () => {
     });
   };
 
-  // ========== PLACE BET ==========
+  // ========== PLACE BET – FIXED with Functional Updates ==========
   const placeBet = useCallback(async (betSlot, stake) => {
     try {
       setError(null);
@@ -307,8 +307,15 @@ export const useAviatorGame = () => {
         return { success: false, message: 'Betting not available' };
       }
 
-      if (stake > balance) {
-        setError(`Insufficient balance! Balance: ${balance.toFixed(2)} ETB`);
+      // Use functional update to get latest balance
+      let currentBalance = 0;
+      setBalance(prev => {
+        currentBalance = prev;
+        return prev;
+      });
+
+      if (stake > currentBalance) {
+        setError(`Insufficient balance! Balance: ${currentBalance.toFixed(2)} ETB`);
         return { success: false, message: 'Insufficient balance' };
       }
 
@@ -337,7 +344,6 @@ export const useAviatorGame = () => {
         return { success: false, message: errorMsg };
       }
 
-      // ✅ Ensure we have bet data
       if (!response.data || !response.data.bet) {
         setError('Server returned invalid bet data');
         return { success: false, message: 'Invalid response' };
@@ -350,23 +356,27 @@ export const useAviatorGame = () => {
       const newStatus = betData.status === 'ACTIVE' ? 'active' : 'pending';
       console.log(`🎯 Setting bet ${betSlot} status to: ${newStatus}`);
 
-      setBet({
-        ...bet,
+      // ✅ Update bet using functional update to avoid stale closure
+      setBet(prev => ({
+        ...prev,
         betId: betData.betId,
         stake: stake,
         roundId: betData.gameRound ? `AV-${betData.gameRound}` : roundState.roundId || null,
         status: newStatus,
-      });
+      }));
 
-      // ✅ Update balance – use newBalance if provided, else optimistically deduct
-      if (response.data.newBalance !== null && response.data.newBalance !== undefined) {
-        setBalance(response.data.newBalance);
-        updateLocalStorageBalance(response.data.newBalance);
-      } else {
-        const newBalance = balance - stake;
-        setBalance(newBalance);
+      // ✅ Update balance – use functional update
+      setBalance(prev => {
+        let newBalance;
+        if (response.data.newBalance !== null && response.data.newBalance !== undefined) {
+          newBalance = response.data.newBalance;
+        } else {
+          newBalance = prev - stake;
+        }
         updateLocalStorageBalance(newBalance);
-      }
+        console.log(`💰 New balance: ${newBalance}`);
+        return newBalance;
+      });
 
       fetchMyBets();
       return { success: true, bet: betData };
@@ -384,7 +394,7 @@ export const useAviatorGame = () => {
       setError(errorMsg);
       return { success: false, message: errorMsg };
     }
-  }, [roundState, balance, bet1, bet2]);
+  }, [roundState, bet1, bet2]);
 
   // ========== CASH OUT ==========
   const cashOut = useCallback(async (betSlot) => {
