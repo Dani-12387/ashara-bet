@@ -379,6 +379,7 @@ export const useAviatorGame = () => {
   };
 
   // ========== PLACE BET ==========
+  // ✅ Updated: now passes betSlot to the API
   const placeBet = useCallback(async (betSlot, stake) => {
     try {
       setError(null);
@@ -409,8 +410,9 @@ export const useAviatorGame = () => {
 
       const autoCashOut = bet.autoCashOutEnabled ? bet.autoCashOut : 0;
 
-      console.log('📤 Sending placeBet request:', { stake, autoCashOut });
-      const response = await aviatorApi.placeBet(stake, autoCashOut);
+      console.log('📤 Sending placeBet request:', { stake, autoCashOut, betSlot });
+      // ✅ Pass betSlot to the API
+      const response = await aviatorApi.placeBet(stake, autoCashOut, betSlot);
       console.log('📥 placeBet response:', response);
 
       if (!response) {

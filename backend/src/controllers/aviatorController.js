@@ -58,7 +58,8 @@ function emitBetPlaced(bet) {
       amount: bet.amount,
       status: bet.status,
       gameRound: bet.gameRound,
-      autoCashOut: bet.autoCashOut
+      autoCashOut: bet.autoCashOut,
+      betSlot: bet.betSlot
     });
   }
 }
@@ -72,7 +73,8 @@ function emitBetCashedOut(bet, multiplier) {
       amount: bet.amount,
       multiplier: multiplier || gameState.multiplier,
       winAmount: bet.winAmount || 0,
-      status: 'cashed'
+      status: 'cashed',
+      betSlot: bet.betSlot
     });
   }
 }
@@ -94,7 +96,7 @@ function startGameLoop() {
         const currentMult = Math.round(gameState.multiplier * 100) / 100;
         const targetMult = Math.round(Number(bet.autoCashOut) * 100) / 100;
         if (currentMult >= targetMult) {
-          console.log(`🤖 Auto cashout triggered for ${bet.username} at ${currentMult}x`);
+          console.log(`🤖 Auto cashout triggered for ${bet.username} (slot ${bet.betSlot}) at ${currentMult}x`);
           await processCashOut(bet);
         }
       }
@@ -130,7 +132,7 @@ async function processCashOut(bet) {
     user.wallet.balance = currentBalance + winAmount;
     await user.save();
 
-    console.log(`💰 User ${user.username} cashed out at ${multiplier.toFixed(2)}x`);
+    console.log(`💰 User ${user.username} cashed out at ${multiplier.toFixed(2)}x (slot ${bet.betSlot})`);
     console.log(`   Stake: ${bet.amount}, Win: ${winAmount}, Profit: ${profit}`);
     console.log(`   Balance before: ${currentBalance}, after: ${user.wallet.balance}`);
 
@@ -173,7 +175,7 @@ async function crashGame() {
       bet.status = 'lost';
       endedBets.push({ ...bet, lostAt: new Date(), crashMultiplier });
       const user = await User.findById(bet.userId);
-      if (user) console.log(`❌ Bet lost for user ${user.username}`);
+      if (user) console.log(`❌ Bet lost for user ${user.username} (slot ${bet.betSlot})`);
     }
   }
 
@@ -371,7 +373,8 @@ exports.getActiveBets = async (req, res) => {
       autoCashOut: bet.autoCashOut || 0,
       status: bet.status,
       gameRound: bet.gameRound,
-      placedAt: bet.placedAt
+      placedAt: bet.placedAt,
+      betSlot: bet.betSlot || 1
     }));
     res.json(formatted);
   } catch (error) {
@@ -398,7 +401,8 @@ exports.getEndedBets = async (req, res) => {
       status: bet.status,
       winAmount: bet.winAmount || 0,
       cashoutMultiplier: bet.cashedAt || 0,
-      endedAt: bet.endedAt || bet.lostAt || bet.cashedAt
+      endedAt: bet.endedAt || bet.lostAt || bet.cashedAt,
+      betSlot: bet.betSlot || 1
     }));
     res.json(formatted);
   } catch (error) {
@@ -413,7 +417,7 @@ exports.getEndedBets = async (req, res) => {
 
 exports.placeBet = async (req, res) => {
   try {
-    const { amount, autoCashOut } = req.body;
+    const { amount, autoCashOut, betSlot } = req.body;
     const userId = req.user.id;
 
     if (!amount || amount <= 0) return res.status(400).json({ success: false, message: 'Invalid amount' });
@@ -430,13 +434,13 @@ exports.placeBet = async (req, res) => {
     }
     if (currentBalance < amount) return res.status(400).json({ success: false, message: 'Insufficient balance' });
 
-    // ✅ Duplicate check in BOTH activeBets and pendingBets
+    // ✅ Duplicate check per slot (betSlot) per round
     const targetRound = gameState.status === 'active' ? gameState.roundNumber : gameState.roundNumber + 1;
     const existingBet = [...activeBets, ...pendingBets].find(
-      b => b.userId === userId && b.gameRound === targetRound
+      b => b.userId === userId && b.gameRound === targetRound && b.betSlot === betSlot
     );
     if (existingBet) {
-      return res.status(400).json({ success: false, message: 'You already have a bet for this round' });
+      return res.status(400).json({ success: false, message: `You already have a bet in slot ${betSlot} for this round` });
     }
 
     user.wallet.balance = currentBalance - amount;
@@ -453,7 +457,8 @@ exports.placeBet = async (req, res) => {
       status: isActive ? 'active' : 'pending',
       gameRound: targetRound,
       placedAt: new Date(),
-      betId: `BET-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`
+      betId: `BET-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      betSlot: betSlot || 1
     };
 
     if (isActive) {
@@ -584,7 +589,8 @@ exports.getMyBets = async (req, res) => {
       payout: b.winAmount || 0,
       status: b.status,
       result: b.status === 'cashed' ? 'WON' : b.status === 'lost' ? 'LOST' : 'PENDING',
-      placedAt: b.placedAt
+      placedAt: b.placedAt,
+      betSlot: b.betSlot || 1
     }));
     res.json({ success: true, data: { bets: formatted, total: formatted.length } });
   } catch (error) {

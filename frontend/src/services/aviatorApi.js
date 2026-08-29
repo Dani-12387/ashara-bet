@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://ashara-bet.onrender.com';
 
-// ---------- Helpers ----------
+// ---------- Helpers for localStorage balance ----------
 function getBalanceFromLocalStorage() {
   try {
     const userData = localStorage.getItem('user');
@@ -12,7 +12,9 @@ function getBalanceFromLocalStorage() {
         return { success: true, balance: user.balance };
       }
     }
-  } catch (e) {}
+  } catch (e) {
+    console.error('Error reading user from localStorage:', e);
+  }
   return { success: false, balance: 0 };
 }
 
@@ -24,10 +26,13 @@ function updateLocalStorageBalance(balance) {
       user.balance = balance;
       localStorage.setItem('user', JSON.stringify(user));
     }
-  } catch (e) {}
+  } catch (e) {
+    console.error('Error updating localStorage user balance:', e);
+  }
 }
 
 const aviatorApi = {
+  // ==================== BALANCE ====================
   getBalance: async () => {
     try {
       const token = localStorage.getItem('token');
@@ -48,6 +53,7 @@ const aviatorApi = {
     }
   },
 
+  // ==================== ROUND ====================
   getCurrentRound: async () => {
     try {
       const token = localStorage.getItem('token');
@@ -61,6 +67,7 @@ const aviatorApi = {
     }
   },
 
+  // ==================== HISTORY ====================
   getHistory: async (limit = 20) => {
     try {
       const token = localStorage.getItem('token');
@@ -76,6 +83,7 @@ const aviatorApi = {
     }
   },
 
+  // ==================== MY BETS ====================
   getMyBets: async (limit = 20, offset = 0) => {
     try {
       const token = localStorage.getItem('token');
@@ -89,6 +97,7 @@ const aviatorApi = {
     }
   },
 
+  // ==================== LIVE PLAYERS ====================
   getLivePlayers: async () => {
     try {
       const token = localStorage.getItem('token');
@@ -102,22 +111,21 @@ const aviatorApi = {
     }
   },
 
-  // ==================== PLACE BET – FINAL ====================
-  placeBet: async (amount, autoCashOut = 0) => {
+  // ==================== PLACE BET (with betSlot) ====================
+  placeBet: async (amount, autoCashOut = 0, betSlot = 1) => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
         `${API_URL}/api/aviator/bet`,
-        { amount, autoCashOut },
+        { amount, autoCashOut, betSlot },
         {
           headers: { Authorization: `Bearer ${token}` },
           timeout: 10000
         }
       );
-      return response.data; // expected: { success: true, data: { bet, newBalance } }
+      return response.data;
     } catch (error) {
       console.error('Error placing bet:', error);
-      // Return a structured error object so the caller can check response.success
       if (error.response) {
         return {
           success: false,
@@ -125,15 +133,9 @@ const aviatorApi = {
           status: error.response.status
         };
       } else if (error.request) {
-        return {
-          success: false,
-          error: { message: 'Server not responding – please try again later' }
-        };
+        return { success: false, error: { message: 'Server not responding – please try again later' } };
       } else {
-        return {
-          success: false,
-          error: { message: error.message || 'Failed to place bet' }
-        };
+        return { success: false, error: { message: error.message || 'Failed to place bet' } };
       }
     }
   },
@@ -160,6 +162,7 @@ const aviatorApi = {
     }
   },
 
+  // ==================== CANCEL PENDING BET ====================
   cancelPendingBet: async () => {
     try {
       const token = localStorage.getItem('token');
@@ -181,6 +184,7 @@ const aviatorApi = {
     }
   },
 
+  // ==================== VERIFY ROUND ====================
   verifyRound: async (roundId) => {
     try {
       const token = localStorage.getItem('token');
