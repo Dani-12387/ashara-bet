@@ -96,7 +96,6 @@ function startGameLoop() {
         if (currentMult >= targetMult) {
           console.log(`🤖 Auto cashout triggered for ${bet.username} at ${currentMult}x`);
           await processCashOut(bet);
-          // bet is removed from activeBets inside processCashOut
         }
       }
     }
@@ -109,12 +108,11 @@ function startGameLoop() {
   }, 100);
 }
 
-// ========== PROCESS CASH OUT (auto or manual) ==========
+// ========== PROCESS CASH OUT ==========
 async function processCashOut(bet) {
   try {
-    // Prevent double cashout
     if (bet.status !== 'active') {
-      console.warn(`⚠️ Bet ${bet.betId} is already processed (status: ${bet.status})`);
+      console.warn(`⚠️ Bet ${bet.betId} already processed (status: ${bet.status})`);
       return;
     }
 
@@ -147,7 +145,6 @@ async function processCashOut(bet) {
       winAmount: winAmount
     });
 
-    // Remove from active bets
     const index = activeBets.indexOf(bet);
     if (index > -1) activeBets.splice(index, 1);
 
@@ -433,10 +430,13 @@ exports.placeBet = async (req, res) => {
     }
     if (currentBalance < amount) return res.status(400).json({ success: false, message: 'Insufficient balance' });
 
-    // ✅ Check for duplicate bet for this user in the same round (to prevent double submission)
-    const existingBet = activeBets.find(b => b.userId === userId && b.gameRound === (gameState.status === 'active' ? gameState.roundNumber : gameState.roundNumber + 1));
+    // ✅ Duplicate check in BOTH activeBets and pendingBets
+    const targetRound = gameState.status === 'active' ? gameState.roundNumber : gameState.roundNumber + 1;
+    const existingBet = [...activeBets, ...pendingBets].find(
+      b => b.userId === userId && b.gameRound === targetRound
+    );
     if (existingBet) {
-      return res.status(400).json({ success: false, message: 'You already have an active bet for this round' });
+      return res.status(400).json({ success: false, message: 'You already have a bet for this round' });
     }
 
     user.wallet.balance = currentBalance - amount;
@@ -451,7 +451,7 @@ exports.placeBet = async (req, res) => {
       amount,
       autoCashOut: autoCashOutNum,
       status: isActive ? 'active' : 'pending',
-      gameRound: isActive ? gameState.roundNumber : gameState.roundNumber + 1,
+      gameRound: targetRound,
       placedAt: new Date(),
       betId: `BET-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`
     };
