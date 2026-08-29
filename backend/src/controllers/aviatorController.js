@@ -30,7 +30,7 @@ let gameState = {
 let gameHistory = [];
 let activeBets = [];
 let pendingBets = [];
-let endedBets = [];      // ✅ NEW: store ended bets (cashed out or lost)
+let endedBets = [];
 
 // ========== BROADCAST HELPERS ==========
 function broadcastGameState() {
@@ -45,8 +45,6 @@ function broadcastGameState() {
       totalAmount: activeBets.reduce((s, b) => s + b.amount, 0),
       pendingBets: pendingBets.length
     });
-  } else {
-    console.warn('⚠️ global.io not available – cannot broadcast');
   }
   console.log(`📊 Round ${gameState.roundNumber}: ${gameState.multiplier.toFixed(2)}x | Status: ${gameState.status}`);
 }
@@ -89,8 +87,10 @@ function startGameLoop() {
     const increment = 0.01 + elapsed * 0.001;
     gameState.multiplier = Math.round((gameState.multiplier + increment) * 100) / 100;
 
+    // Auto cashout check
     for (const bet of activeBets) {
       if (bet.status === 'active' && bet.autoCashOut > 0 && gameState.multiplier >= bet.autoCashOut) {
+        console.log(`🤖 Auto cashout triggered for user ${bet.username} at ${gameState.multiplier.toFixed(2)}x`);
         processCashOut(bet);
       }
     }
@@ -107,27 +107,42 @@ function startGameLoop() {
 async function processCashOut(bet) {
   try {
     const user = await User.findById(bet.userId);
-    if (!user) return;
-    const winAmount = bet.amount * gameState.multiplier;
+    if (!user) {
+      console.error(`❌ User ${bet.userId} not found`);
+      return;
+    }
+
+    const multiplier = gameState.multiplier;
+    const winAmount = bet.amount * multiplier;
     const profit = winAmount - bet.amount;
-    user.wallet.balance = (user.wallet?.balance ?? 0) + winAmount;
+
+    // Add winnings
+    const currentBalance = user.wallet?.balance ?? 0;
+    user.wallet.balance = currentBalance + winAmount;
     await user.save();
+
+    console.log(`💰 User ${user.username} cashed out at ${multiplier.toFixed(2)}x`);
+    console.log(`   Stake: ${bet.amount}, Win: ${winAmount}, Profit: ${profit}`);
+    console.log(`   Balance before: ${currentBalance}, after: ${user.wallet.balance}`);
+
     bet.status = 'cashed';
     bet.winAmount = winAmount;
-    bet.cashedAt = gameState.multiplier;
+    bet.cashedAt = multiplier;
 
-    // ✅ Store in ended bets
     endedBets.push({
       ...bet,
       endedAt: new Date(),
-      cashoutMultiplier: gameState.multiplier,
+      cashoutMultiplier: multiplier,
       winAmount: winAmount
     });
 
-    emitBetCashedOut(bet, gameState.multiplier);
-    console.log(`✅ User ${user.username} cashed out at ${gameState.multiplier.toFixed(2)}x | Profit: ${profit.toFixed(2)}`);
+    const index = activeBets.indexOf(bet);
+    if (index > -1) activeBets.splice(index, 1);
+
+    emitBetCashedOut(bet, multiplier);
+    broadcastGameState();
   } catch (error) {
-    console.error('Cash out error:', error);
+    console.error('❌ Cash out error:', error);
   }
 }
 
@@ -147,12 +162,7 @@ async function crashGame() {
   for (const bet of activeBets) {
     if (bet.status === 'active') {
       bet.status = 'lost';
-      // ✅ Store lost bet in ended bets
-      endedBets.push({
-        ...bet,
-        lostAt: new Date(),
-        crashMultiplier: crashMultiplier
-      });
+      endedBets.push({ ...bet, lostAt: new Date(), crashMultiplier });
       const user = await User.findById(bet.userId);
       if (user) console.log(`❌ Bet lost for user ${user.username}`);
     }
@@ -334,7 +344,6 @@ exports.getHistory = async (req, res) => {
   }
 };
 
-// ✅ Live bets (active + pending) for admin, sorted descending by stake
 exports.getActiveBets = async (req, res) => {
   try {
     const isAdmin = req.user && req.user.role === 'admin';
@@ -344,9 +353,7 @@ exports.getActiveBets = async (req, res) => {
     } else {
       bets = activeBets.filter(b => b.status === 'active');
     }
-
     bets.sort((a, b) => b.amount - a.amount);
-
     const formatted = bets.map(bet => ({
       _id: bet.betId || bet._id,
       user: { username: bet.username || 'Unknown' },
@@ -357,7 +364,6 @@ exports.getActiveBets = async (req, res) => {
       gameRound: bet.gameRound,
       placedAt: bet.placedAt
     }));
-
     res.json(formatted);
   } catch (error) {
     console.error('❌ Error getting active bets:', error);
@@ -365,19 +371,15 @@ exports.getActiveBets = async (req, res) => {
   }
 };
 
-// ✅ Ended bets (cashed out or lost) for admin
 exports.getEndedBets = async (req, res) => {
   try {
     const isAdmin = req.user && req.user.role === 'admin';
     if (!isAdmin) return res.status(403).json({ success: false, message: 'Admin only' });
-
-    // Sort by endedAt descending (newest first)
     const sorted = [...endedBets].sort((a, b) => {
       const dateA = a.endedAt || a.lostAt || a.cashedAt || new Date(0);
       const dateB = b.endedAt || b.lostAt || b.cashedAt || new Date(0);
       return new Date(dateB) - new Date(dateA);
     });
-
     const formatted = sorted.map(bet => ({
       _id: bet.betId || bet._id,
       user: { username: bet.username || 'Unknown' },
@@ -389,7 +391,6 @@ exports.getEndedBets = async (req, res) => {
       cashoutMultiplier: bet.cashedAt || 0,
       endedAt: bet.endedAt || bet.lostAt || bet.cashedAt
     }));
-
     res.json(formatted);
   } catch (error) {
     console.error('❌ Error getting ended bets:', error);
@@ -476,21 +477,15 @@ exports.cashOut = async (req, res) => {
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-    user.wallet.balance = (user.wallet?.balance ?? 0) + winAmount;
+    const currentBalance = user.wallet?.balance ?? 0;
+    user.wallet.balance = currentBalance + winAmount;
     await user.save();
 
     bet.status = 'cashed';
     bet.winAmount = winAmount;
     bet.cashedAt = multiplier;
 
-    // ✅ Store in ended bets
-    endedBets.push({
-      ...bet,
-      endedAt: new Date(),
-      cashoutMultiplier: multiplier,
-      winAmount: winAmount
-    });
-
+    endedBets.push({ ...bet, endedAt: new Date() });
     activeBets.splice(index, 1);
 
     emitBetCashedOut(bet, multiplier);
@@ -612,4 +607,4 @@ exports.verifyRound = async (req, res) => {
   }
 };
 
-console.log('✅ Aviator controller ready (admin-only). Auto-start is OFF.');
+console.log('✅ Aviator controller ready. Auto‑start is OFF.');

@@ -7,7 +7,7 @@ const BettingPanel = ({
   roundState,
   betState,
   onPlaceBet,
-  onCashOut,            // ✅ Manual cashout handler
+  onCashOut,          // ✅ Manual cashout handler
   onCancelBet,
   onStakeChange,
   onAutoCashOutChange
@@ -75,7 +75,7 @@ const BettingPanel = ({
       return {
         text: `CASH OUT ${multiplier.toFixed(2)}× (${estimatedWin})`,
         disabled: false,
-        action: onCashOut,          // ✅ Manual cashout action
+        action: onCashOut,
         style: 'cashout-btn'
       };
     }
@@ -286,7 +286,7 @@ const BettingPanel = ({
           )}
         </div>
 
-        {/* Auto Cash Out toggle – always visible */}
+        {/* Auto Cash Out toggle */}
         <div className="auto-cashout-control">
           <label>Auto Cash Out</label>
           <div className="auto-cashout-toggle">
