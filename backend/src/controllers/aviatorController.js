@@ -77,7 +77,7 @@ function emitBetCashedOut(bet, multiplier) {
   }
 }
 
-// ========== GAME LOOP (with robust auto cashout) ==========
+// ========== GAME LOOP (with detailed logging and number conversion) ==========
 function startGameLoop() {
   if (gameState.gameInterval) clearInterval(gameState.gameInterval);
   const startTime = Date.now();
@@ -87,14 +87,17 @@ function startGameLoop() {
     const increment = 0.01 + elapsed * 0.001;
     gameState.multiplier = Math.round((gameState.multiplier + increment) * 100) / 100;
 
-    // ✅ Auto cashout check – iterate backwards to safely remove bets
+    console.log(`📈 Multiplier: ${gameState.multiplier.toFixed(2)}x, Active bets: ${activeBets.length}`);
+
     for (let i = activeBets.length - 1; i >= 0; i--) {
       const bet = activeBets[i];
+      console.log(`🔍 Checking bet for ${bet.username}: autoCashOut=${bet.autoCashOut} (type: ${typeof bet.autoCashOut})`);
+      
       if (bet.status === 'active' && bet.autoCashOut > 0) {
         const currentMult = Math.round(gameState.multiplier * 100) / 100;
-        const targetMult = Math.round(bet.autoCashOut * 100) / 100;
+        const targetMult = Math.round(Number(bet.autoCashOut) * 100) / 100; // ✅ force number
         
-        console.log(`🔍 Checking auto cashout for ${bet.username}: current=${currentMult}, target=${targetMult}`);
+        console.log(`🔍 Comparing: current=${currentMult}, target=${targetMult}, >= ${currentMult >= targetMult}`);
         
         if (currentMult >= targetMult) {
           console.log(`🤖 Auto cashout triggered for ${bet.username} at ${currentMult}x`);
@@ -435,11 +438,15 @@ exports.placeBet = async (req, res) => {
     await user.save();
 
     const isActive = gameState.status === 'active';
+    
+    // ✅ Force autoCashOut to be a number
+    const autoCashOutNum = parseFloat(autoCashOut) || 0;
+
     const bet = {
       userId,
       username: user.username,
       amount,
-      autoCashOut: autoCashOut || 0,
+      autoCashOut: autoCashOutNum,
       status: isActive ? 'active' : 'pending',
       gameRound: isActive ? gameState.roundNumber : gameState.roundNumber + 1,
       placedAt: new Date(),
