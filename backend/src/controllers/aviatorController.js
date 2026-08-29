@@ -77,7 +77,7 @@ function emitBetCashedOut(bet, multiplier) {
   }
 }
 
-// ========== GAME LOOP (with detailed logging and number conversion) ==========
+// ========== GAME LOOP ==========
 function startGameLoop() {
   if (gameState.gameInterval) clearInterval(gameState.gameInterval);
   const startTime = Date.now();
@@ -87,22 +87,16 @@ function startGameLoop() {
     const increment = 0.01 + elapsed * 0.001;
     gameState.multiplier = Math.round((gameState.multiplier + increment) * 100) / 100;
 
-    console.log(`📈 Multiplier: ${gameState.multiplier.toFixed(2)}x, Active bets: ${activeBets.length}`);
-
+    // Auto cashout check
     for (let i = activeBets.length - 1; i >= 0; i--) {
       const bet = activeBets[i];
-      console.log(`🔍 Checking bet for ${bet.username}: autoCashOut=${bet.autoCashOut} (type: ${typeof bet.autoCashOut})`);
-      
       if (bet.status === 'active' && bet.autoCashOut > 0) {
         const currentMult = Math.round(gameState.multiplier * 100) / 100;
-        const targetMult = Math.round(Number(bet.autoCashOut) * 100) / 100; // ✅ force number
-        
-        console.log(`🔍 Comparing: current=${currentMult}, target=${targetMult}, >= ${currentMult >= targetMult}`);
-        
+        const targetMult = Math.round(Number(bet.autoCashOut) * 100) / 100;
         if (currentMult >= targetMult) {
           console.log(`🤖 Auto cashout triggered for ${bet.username} at ${currentMult}x`);
           await processCashOut(bet);
-          // processCashOut removes the bet from activeBets
+          // bet is removed from activeBets inside processCashOut
         }
       }
     }
@@ -118,6 +112,12 @@ function startGameLoop() {
 // ========== PROCESS CASH OUT (auto or manual) ==========
 async function processCashOut(bet) {
   try {
+    // Prevent double cashout
+    if (bet.status !== 'active') {
+      console.warn(`⚠️ Bet ${bet.betId} is already processed (status: ${bet.status})`);
+      return;
+    }
+
     const user = await User.findById(bet.userId);
     if (!user) {
       console.error(`❌ User ${bet.userId} not found`);
@@ -128,7 +128,6 @@ async function processCashOut(bet) {
     const winAmount = bet.amount * multiplier;
     const profit = winAmount - bet.amount;
 
-    // Add winnings
     const currentBalance = user.wallet?.balance ?? 0;
     user.wallet.balance = currentBalance + winAmount;
     await user.save();
@@ -434,12 +433,16 @@ exports.placeBet = async (req, res) => {
     }
     if (currentBalance < amount) return res.status(400).json({ success: false, message: 'Insufficient balance' });
 
+    // ✅ Check for duplicate bet for this user in the same round (to prevent double submission)
+    const existingBet = activeBets.find(b => b.userId === userId && b.gameRound === (gameState.status === 'active' ? gameState.roundNumber : gameState.roundNumber + 1));
+    if (existingBet) {
+      return res.status(400).json({ success: false, message: 'You already have an active bet for this round' });
+    }
+
     user.wallet.balance = currentBalance - amount;
     await user.save();
 
     const isActive = gameState.status === 'active';
-    
-    // ✅ Force autoCashOut to be a number
     const autoCashOutNum = parseFloat(autoCashOut) || 0;
 
     const bet = {
