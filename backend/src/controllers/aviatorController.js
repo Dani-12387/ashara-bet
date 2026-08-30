@@ -92,15 +92,13 @@ function startGameLoop() {
     const increment = 0.01 + elapsed * 0.001;
     gameState.multiplier = Math.round((gameState.multiplier + increment) * 100) / 100;
 
-    // 🔥 FIXED: Auto cashout check with processing flag
+    // Auto cashout check with processing flag
     for (let i = activeBets.length - 1; i >= 0; i--) {
       const bet = activeBets[i];
-      // Only process if active, has autoCashOut, and is NOT already being processed
       if (bet.status === 'active' && bet.autoCashOut > 0 && !bet._processing) {
         const currentMult = Math.round(gameState.multiplier * 100) / 100;
         const targetMult = Math.round(Number(bet.autoCashOut) * 100) / 100;
         if (currentMult >= targetMult) {
-          // Mark as processing immediately to prevent duplicate triggers
           bet._processing = true;
           console.log(`🤖 Auto cashout triggered for ${bet.username} (slot ${bet.betSlot}) at ${currentMult}x`);
           await processCashOut(bet);
@@ -116,10 +114,9 @@ function startGameLoop() {
   }, 100);
 }
 
-// ========== PROCESS CASH OUT ==========
+// ========== PROCESS CASH OUT (with micro-delay) ==========
 async function processCashOut(bet) {
   try {
-    // Double-check status to prevent race conditions
     if (bet.status !== 'active') {
       console.warn(`⚠️ Bet ${bet.betId} already processed (status: ${bet.status})`);
       bet._processing = false;
@@ -145,7 +142,6 @@ async function processCashOut(bet) {
     console.log(`   Stake: ${bet.amount}, Win: ${winAmount}, Profit: ${profit}`);
     console.log(`   Balance before: ${currentBalance}, after: ${user.wallet.balance}`);
 
-    // Update status BEFORE removing from array
     bet.status = 'cashed';
     bet.winAmount = winAmount;
     bet.cashedAt = multiplier;
@@ -158,7 +154,6 @@ async function processCashOut(bet) {
       winAmount: winAmount
     });
 
-    // Remove from activeBets immediately
     const index = activeBets.indexOf(bet);
     if (index > -1) {
       activeBets.splice(index, 1);
@@ -167,6 +162,10 @@ async function processCashOut(bet) {
 
     emitBetCashedOut(bet, multiplier);
     broadcastGameState();
+
+    // 🛡️ 10ms delay to prevent race conditions when multiple bets cash out in same tick
+    await new Promise(resolve => setTimeout(resolve, 10));
+
   } catch (error) {
     console.error('❌ Cash out error:', error);
     bet._processing = false;
@@ -486,7 +485,7 @@ exports.placeBet = async (req, res) => {
       placedAt: new Date(),
       betId: `BET-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
       betSlot: slot,
-      _processing: false // initialize processing flag
+      _processing: false
     };
 
     if (isActive) {
