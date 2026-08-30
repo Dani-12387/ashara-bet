@@ -114,7 +114,7 @@ function startGameLoop() {
   }, 100);
 }
 
-// ========== PROCESS CASH OUT (with micro-delay) ==========
+// ========== PROCESS CASH OUT ==========
 async function processCashOut(bet) {
   try {
     if (bet.status !== 'active') {
@@ -142,6 +142,14 @@ async function processCashOut(bet) {
     console.log(`   Stake: ${bet.amount}, Win: ${winAmount}, Profit: ${profit}`);
     console.log(`   Balance before: ${currentBalance}, after: ${user.wallet.balance}`);
 
+    // ✅ Emit wallet update so frontend refreshes balance
+    if (global.io) {
+      global.io.emit('wallet:updated', {
+        userId: bet.userId,
+        balance: user.wallet.balance
+      });
+    }
+
     bet.status = 'cashed';
     bet.winAmount = winAmount;
     bet.cashedAt = multiplier;
@@ -163,7 +171,7 @@ async function processCashOut(bet) {
     emitBetCashedOut(bet, multiplier);
     broadcastGameState();
 
-    // 🛡️ 10ms delay to prevent race conditions when multiple bets cash out in same tick
+    // Micro‑delay to prevent race conditions when multiple bets cash out together
     await new Promise(resolve => setTimeout(resolve, 10));
 
   } catch (error) {
@@ -534,6 +542,14 @@ exports.cashOut = async (req, res) => {
     const currentBalance = user.wallet?.balance ?? 0;
     user.wallet.balance = currentBalance + winAmount;
     await user.save();
+
+    // Emit wallet update
+    if (global.io) {
+      global.io.emit('wallet:updated', {
+        userId: bet.userId,
+        balance: user.wallet.balance
+      });
+    }
 
     bet.status = 'cashed';
     bet.winAmount = winAmount;
