@@ -33,8 +33,7 @@ let pendingBets = [];
 let endedBets = [];
 
 // ========== CONCURRENCY LOCK ==========
-// Prevents duplicate bets from concurrent requests for same user + slot + round
-const processingLocks = new Set();   // keys: "userId-slot-round"
+const processingLocks = new Set();
 
 // ========== BROADCAST HELPERS ==========
 function broadcastGameState() {
@@ -93,13 +92,16 @@ function startGameLoop() {
     const increment = 0.01 + elapsed * 0.001;
     gameState.multiplier = Math.round((gameState.multiplier + increment) * 100) / 100;
 
-    // Auto cashout check
+    // 🔥 FIXED: Auto cashout check with processing flag
     for (let i = activeBets.length - 1; i >= 0; i--) {
       const bet = activeBets[i];
-      if (bet.status === 'active' && bet.autoCashOut > 0) {
+      // Only process if active, has autoCashOut, and is NOT already being processed
+      if (bet.status === 'active' && bet.autoCashOut > 0 && !bet._processing) {
         const currentMult = Math.round(gameState.multiplier * 100) / 100;
         const targetMult = Math.round(Number(bet.autoCashOut) * 100) / 100;
         if (currentMult >= targetMult) {
+          // Mark as processing immediately to prevent duplicate triggers
+          bet._processing = true;
           console.log(`🤖 Auto cashout triggered for ${bet.username} (slot ${bet.betSlot}) at ${currentMult}x`);
           await processCashOut(bet);
         }
@@ -117,14 +119,17 @@ function startGameLoop() {
 // ========== PROCESS CASH OUT ==========
 async function processCashOut(bet) {
   try {
+    // Double-check status to prevent race conditions
     if (bet.status !== 'active') {
       console.warn(`⚠️ Bet ${bet.betId} already processed (status: ${bet.status})`);
+      bet._processing = false;
       return;
     }
 
     const user = await User.findById(bet.userId);
     if (!user) {
       console.error(`❌ User ${bet.userId} not found`);
+      bet._processing = false;
       return;
     }
 
@@ -140,9 +145,11 @@ async function processCashOut(bet) {
     console.log(`   Stake: ${bet.amount}, Win: ${winAmount}, Profit: ${profit}`);
     console.log(`   Balance before: ${currentBalance}, after: ${user.wallet.balance}`);
 
+    // Update status BEFORE removing from array
     bet.status = 'cashed';
     bet.winAmount = winAmount;
     bet.cashedAt = multiplier;
+    bet._processing = false;
 
     endedBets.push({
       ...bet,
@@ -151,13 +158,18 @@ async function processCashOut(bet) {
       winAmount: winAmount
     });
 
+    // Remove from activeBets immediately
     const index = activeBets.indexOf(bet);
-    if (index > -1) activeBets.splice(index, 1);
+    if (index > -1) {
+      activeBets.splice(index, 1);
+      console.log(`🗑️ Removed bet ${bet.betId} from activeBets`);
+    }
 
     emitBetCashedOut(bet, multiplier);
     broadcastGameState();
   } catch (error) {
     console.error('❌ Cash out error:', error);
+    bet._processing = false;
   }
 }
 
@@ -177,6 +189,7 @@ async function crashGame() {
   for (const bet of activeBets) {
     if (bet.status === 'active') {
       bet.status = 'lost';
+      bet._processing = false;
       endedBets.push({ ...bet, lostAt: new Date(), crashMultiplier });
       const user = await User.findById(bet.userId);
       if (user) console.log(`❌ Bet lost for user ${user.username} (slot ${bet.betSlot})`);
@@ -423,17 +436,14 @@ exports.placeBet = async (req, res) => {
   const { amount, autoCashOut, betSlot } = req.body;
   const userId = req.user.id;
 
-  // Determine the target round (current if active, else next)
   const targetRound = gameState.status === 'active' ? gameState.roundNumber : gameState.roundNumber + 1;
   const slot = betSlot || 1;
   const lockKey = `${userId}-${slot}-${targetRound}`;
 
-  // If a bet for this exact user+slot+round is already being processed, reject
   if (processingLocks.has(lockKey)) {
     return res.status(409).json({ success: false, message: 'Bet already being placed, please wait' });
   }
 
-  // Acquire the lock
   processingLocks.add(lockKey);
 
   try {
@@ -453,7 +463,6 @@ exports.placeBet = async (req, res) => {
     }
     if (currentBalance < amount) return res.status(400).json({ success: false, message: 'Insufficient balance' });
 
-    // Duplicate check – now protected by the lock
     const existingBet = [...activeBets, ...pendingBets].find(
       b => b.userId === userId && b.gameRound === targetRound && b.betSlot === slot
     );
@@ -461,7 +470,6 @@ exports.placeBet = async (req, res) => {
       return res.status(400).json({ success: false, message: `You already have a bet in slot ${slot} for this round` });
     }
 
-    // Deduct balance
     user.wallet.balance = currentBalance - amount;
     await user.save();
 
@@ -477,7 +485,8 @@ exports.placeBet = async (req, res) => {
       gameRound: targetRound,
       placedAt: new Date(),
       betId: `BET-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-      betSlot: slot
+      betSlot: slot,
+      _processing: false // initialize processing flag
     };
 
     if (isActive) {
@@ -502,7 +511,6 @@ exports.placeBet = async (req, res) => {
     console.error('Place bet error:', error);
     res.status(500).json({ success: false, message: error.message });
   } finally {
-    // Always release the lock
     processingLocks.delete(lockKey);
   }
 };
