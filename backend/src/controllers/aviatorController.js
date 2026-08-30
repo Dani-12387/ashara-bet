@@ -32,8 +32,9 @@ let activeBets = [];
 let pendingBets = [];
 let endedBets = [];
 
-// ========== CONCURRENCY LOCK ==========
-const processingLocks = new Set();
+// ========== CONCURRENCY LOCKS ==========
+const processingLocks = new Set();   // for placeBet
+const cashoutLocks = new Set();      // for cash-out (prevents double processing for same user)
 
 // ========== BROADCAST HELPERS ==========
 function broadcastGameState() {
@@ -114,18 +115,25 @@ function startGameLoop() {
   }, 100);
 }
 
-// ========== PROCESS CASH OUT ==========
+// ========== PROCESS CASH OUT (with atomic update & per-user lock) ==========
 async function processCashOut(bet) {
+  const userId = bet.userId;
+  const lockKey = `cashout-${userId}`;
+
+  // If this user is already being processed, skip (should not happen with _processing)
+  if (cashoutLocks.has(lockKey)) {
+    console.warn(`⚠️ Cash-out lock held for user ${userId}, skipping duplicate`);
+    bet._processing = false;
+    return;
+  }
+
+  // Acquire lock
+  cashoutLocks.add(lockKey);
+
   try {
+    // Double-check status
     if (bet.status !== 'active') {
       console.warn(`⚠️ Bet ${bet.betId} already processed (status: ${bet.status})`);
-      bet._processing = false;
-      return;
-    }
-
-    const user = await User.findById(bet.userId);
-    if (!user) {
-      console.error(`❌ User ${bet.userId} not found`);
       bet._processing = false;
       return;
     }
@@ -134,22 +142,32 @@ async function processCashOut(bet) {
     const winAmount = bet.amount * multiplier;
     const profit = winAmount - bet.amount;
 
-    const currentBalance = user.wallet?.balance ?? 0;
-    user.wallet.balance = currentBalance + winAmount;
-    await user.save();
+    // ✅ ATOMIC UPDATE: use $inc to add winAmount directly, no read-before-write race
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $inc: { 'wallet.balance': winAmount } },
+      { new: true }  // return the updated document
+    );
 
-    console.log(`💰 User ${user.username} cashed out at ${multiplier.toFixed(2)}x (slot ${bet.betSlot})`);
+    if (!updatedUser) {
+      console.error(`❌ User ${userId} not found during cash-out`);
+      bet._processing = false;
+      return;
+    }
+
+    console.log(`💰 User ${updatedUser.username} cashed out at ${multiplier.toFixed(2)}x (slot ${bet.betSlot})`);
     console.log(`   Stake: ${bet.amount}, Win: ${winAmount}, Profit: ${profit}`);
-    console.log(`   Balance before: ${currentBalance}, after: ${user.wallet.balance}`);
+    console.log(`   New balance: ${updatedUser.wallet.balance}`);
 
-    // ✅ Emit wallet update so frontend refreshes balance
+    // Emit wallet update so frontend refreshes balance
     if (global.io) {
       global.io.emit('wallet:updated', {
-        userId: bet.userId,
-        balance: user.wallet.balance
+        userId: userId,
+        balance: updatedUser.wallet.balance
       });
     }
 
+    // Update bet status and move to endedBets
     bet.status = 'cashed';
     bet.winAmount = winAmount;
     bet.cashedAt = multiplier;
@@ -162,6 +180,7 @@ async function processCashOut(bet) {
       winAmount: winAmount
     });
 
+    // Remove from activeBets
     const index = activeBets.indexOf(bet);
     if (index > -1) {
       activeBets.splice(index, 1);
@@ -171,12 +190,12 @@ async function processCashOut(bet) {
     emitBetCashedOut(bet, multiplier);
     broadcastGameState();
 
-    // Micro‑delay to prevent race conditions when multiple bets cash out together
-    await new Promise(resolve => setTimeout(resolve, 10));
-
   } catch (error) {
     console.error('❌ Cash out error:', error);
     bet._processing = false;
+  } finally {
+    // Always release the lock
+    cashoutLocks.delete(lockKey);
   }
 }
 
@@ -536,18 +555,20 @@ exports.cashOut = async (req, res) => {
     const winAmount = bet.amount * multiplier;
     const profit = winAmount - bet.amount;
 
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    // Use atomic update for manual cash-out too
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $inc: { 'wallet.balance': winAmount } },
+      { new: true }
+    );
 
-    const currentBalance = user.wallet?.balance ?? 0;
-    user.wallet.balance = currentBalance + winAmount;
-    await user.save();
+    if (!updatedUser) return res.status(404).json({ success: false, message: 'User not found' });
 
     // Emit wallet update
     if (global.io) {
       global.io.emit('wallet:updated', {
-        userId: bet.userId,
-        balance: user.wallet.balance
+        userId: userId,
+        balance: updatedUser.wallet.balance
       });
     }
 
@@ -567,7 +588,7 @@ exports.cashOut = async (req, res) => {
       winAmount,
       profit,
       multiplier,
-      newBalance: user.wallet.balance
+      newBalance: updatedUser.wallet.balance
     });
   } catch (error) {
     console.error('Cash out error:', error);
