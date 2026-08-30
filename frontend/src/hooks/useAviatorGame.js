@@ -1,3 +1,7 @@
+// frontend/src/hooks/useAviatorGame.js
+// Full updated version – supports two independent bets (Bet 1 & Bet 2)
+// with auto cash-out and proper UI updates for both slots.
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import aviatorApi from '../services/aviatorApi';
 import getAviatorSocket from '../services/aviatorSocket';
@@ -362,7 +366,34 @@ export const useAviatorGame = () => {
     });
 
     socket.on('bet:placed', () => fetchLivePlayers());
-    socket.on('bet:cashed_out', () => fetchLivePlayers());
+
+    // ✅ FIXED: Update the specific bet when a cash-out occurs (auto or manual)
+    socket.on('bet:cashed_out', (data) => {
+      console.log('💸 Bet cashed out (auto or manual):', data);
+      const { betId, multiplier, winAmount } = data;
+
+      // Update the UI for the specific bet by matching betId
+      if (betId === bet1.betId) {
+        setBet1(prev => ({
+          ...prev,
+          status: 'cashed',
+          cashoutMultiplier: multiplier || 0
+        }));
+        console.log('✅ Bet 1 marked as cashed');
+      } else if (betId === bet2.betId) {
+        setBet2(prev => ({
+          ...prev,
+          status: 'cashed',
+          cashoutMultiplier: multiplier || 0
+        }));
+        console.log('✅ Bet 2 marked as cashed');
+      }
+
+      // Refresh live players and my bets
+      fetchLivePlayers();
+      fetchMyBets();
+    });
+
     socket.on('wallet:updated', (data) => {
       const payload = data.data || data;
       const newBalance = payload.balance ?? payload.newBalance;
@@ -372,14 +403,14 @@ export const useAviatorGame = () => {
         updateLocalStorageBalance(newBalance);
       }
     });
+
     socket.on('system:error', (data) => {
       setError(data.message || 'System error');
       setTimeout(() => setError(null), 3000);
     });
   };
 
-  // ========== PLACE BET ==========
-  // ✅ Updated: now passes betSlot to the API
+  // ========== PLACE BET (UPDATED WITH betSlot) ==========
   const placeBet = useCallback(async (betSlot, stake) => {
     try {
       setError(null);
@@ -523,7 +554,7 @@ export const useAviatorGame = () => {
       setError(errorMsg);
       return { success: false, message: errorMsg };
     }
-  }, [roundState, bet1, bet2, fetchBalance, fetchMyBets]);
+  }, [roundState, bet1, bet2]);
 
   // ========== CANCEL PENDING BET ==========
   const cancelBet = useCallback(async (betSlot) => {
@@ -563,7 +594,7 @@ export const useAviatorGame = () => {
       setError(errorMsg);
       return { success: false, message: errorMsg };
     }
-  }, [bet1, bet2, balance, fetchBalance, fetchMyBets]);
+  }, [bet1, bet2, balance]);
 
   // ========== GET BET STATE ==========
   const getBetState = useCallback((betSlot) => {
