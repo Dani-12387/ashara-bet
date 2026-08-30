@@ -28,19 +28,16 @@ const HomePage = () => {
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-  // ✅ Sports with Aviator navigation
+  // ✅ Sports with Aviator navigation – removed Tennis, Cricket, Casino
   const sports = [
     { id: 'FOOTBALL', name: 'Football', icon: '⚽' },
     { id: 'BASKETBALL', name: 'Basketball', icon: '🏀' },
-    { id: 'TENNIS', name: 'Tennis', icon: '🎾' },
-    { id: 'CRICKET', name: 'Cricket', icon: '🏏' },
-    { id: 'CASINO', name: 'Casino', icon: '🎰', comingSoon: true },
     { id: 'AVIATOR', name: 'Aviator', icon: '✈️', path: '/Aviator' },
     { id: 'FAST_KENO', name: 'Fast Keno', icon: '🎲', comingSoon: true }
   ];
 
-  // ✅ Coming Soon sports (AVIATOR removed)
-  const comingSoonSports = ['CASINO', 'FAST_KENO'];
+  // ✅ Only Fast Keno is coming soon
+  const comingSoonSports = ['FAST_KENO'];
 
   const allMarkets = {
     result: { label: 'Result', icon: '🏆' },
@@ -731,15 +728,14 @@ const HomePage = () => {
             </div>
             <nav className="nav-pro">
               <button className={`nav-link-pro ${activeTab === 'all' ? 'active' : ''}`} onClick={() => setActiveTab('all')}>Home</button>
-              <button className={`nav-link-pro ${activeTab === 'live' ? 'active' : ''}`} onClick={() => setActiveTab('live')}>Live</button>
+            
               <button className="nav-link-pro" onClick={() => navigate('/matches')}>Matches</button>
             </nav>
           </div>
 
           <div className="header-right-pro">
             <div className="live-indicator-pro">
-              <span className="live-dot-pro"></span>
-              <span>{liveMatches.length} LIVE</span>
+              
             </div>
             {user ? (
               <>
@@ -808,7 +804,7 @@ const HomePage = () => {
 
       <div className="main-pro">
         <div className="main-content-pro">
-          {/* ✅ Sports Tabs with Aviator navigation */}
+          {/* ✅ Sports Tabs with Aviator navigation - updated order */}
           <div className="sports-tabs-pro">
             {sports.map(sport => (
               <button
@@ -835,15 +831,14 @@ const HomePage = () => {
                 <p>Loading matches...</p>
               </div>
             ) : comingSoonSports.includes(selectedSport) ? (
-              // Coming Soon Message for Casino and Fast Keno
+              // Coming Soon Message for Fast Keno
               <div className="coming-soon-container">
                 <div className="coming-soon-content">
                   <div className="coming-soon-icon">
-                    {selectedSport === 'CASINO' && '🎰'}
                     {selectedSport === 'FAST_KENO' && '🎲'}
                   </div>
                   <h2>Coming Soon!</h2>
-                  <p>We're working hard to bring you the best {selectedSport === 'CASINO' ? 'Casino' : 'Fast Keno'} experience.</p>
+                  <p>We're working hard to bring you the best Fast Keno experience.</p>
                   <p className="coming-soon-sub">Stay tuned for exciting updates!</p>
                   <div className="coming-soon-progress">
                     <div className="progress-bar">
