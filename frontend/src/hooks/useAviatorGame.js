@@ -1,6 +1,5 @@
 // frontend/src/hooks/useAviatorGame.js
-// Full updated version – prevents duplicate bets (even with autoCashOut)
-// by updating bet status immediately before the API call.
+// Fixed: use refs for bet IDs to avoid stale closures in socket listener
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import aviatorApi from '../services/aviatorApi';
@@ -100,10 +99,22 @@ export const useAviatorGame = () => {
   const [bet1, setBet1] = useState({ ...defaultBet });
   const [bet2, setBet2] = useState({ ...defaultBet });
 
+  // Refs to hold current bet IDs (to avoid stale closures)
+  const bet1IdRef = useRef(null);
+  const bet2IdRef = useRef(null);
+
+  // Update refs whenever bet IDs change
+  useEffect(() => {
+    bet1IdRef.current = bet1.betId;
+  }, [bet1.betId]);
+
+  useEffect(() => {
+    bet2IdRef.current = bet2.betId;
+  }, [bet2.betId]);
+
   const socketRef = useRef(null);
   const prevStatusRef = useRef('WAITING');
-  const isFirstLoad = useRef(true);
-  const isPlacing = useRef(false); // Extra safety lock
+  const isPlacing = useRef(false);
 
   // ========== FETCH BALANCE ==========
   const fetchBalance = useCallback(async () => {
@@ -299,23 +310,39 @@ export const useAviatorGame = () => {
         updateLocalStorageBalance(newBalance);
       }
       fetchMyBets();
-      if (data.betId === bet1.betId) {
-        setBet1(prev => ({ ...prev, status: 'cashed', cashoutMultiplier: data.multiplier ?? 0 }));
+      if (data.betId === bet1IdRef.current) {
+        setBet1(prev => ({ ...prev, status: 'cashed', cashoutMultiplier: data.multiplier ?? 0, autoCashOutEnabled: false }));
       }
-      if (data.betId === bet2.betId) {
-        setBet2(prev => ({ ...prev, status: 'cashed', cashoutMultiplier: data.multiplier ?? 0 }));
+      if (data.betId === bet2IdRef.current) {
+        setBet2(prev => ({ ...prev, status: 'cashed', cashoutMultiplier: data.multiplier ?? 0, autoCashOutEnabled: false }));
       }
     });
 
     socket.on('bet:placed', () => fetchLivePlayers());
 
+    // ✅ FIXED: use refs to get latest bet IDs
     socket.on('bet:cashed_out', (data) => {
       const { betId, multiplier } = data;
-      if (betId === bet1.betId) {
-        setBet1(prev => ({ ...prev, status: 'cashed', cashoutMultiplier: multiplier || 0 }));
-      } else if (betId === bet2.betId) {
-        setBet2(prev => ({ ...prev, status: 'cashed', cashoutMultiplier: multiplier || 0 }));
+      console.log('💸 Bet cashed out (auto or manual):', data);
+
+      if (betId === bet1IdRef.current) {
+        setBet1(prev => ({
+          ...prev,
+          status: 'cashed',
+          cashoutMultiplier: multiplier || 0,
+          autoCashOutEnabled: false   // turn off auto cashout toggle
+        }));
+        console.log('✅ Bet 1 marked as cashed');
+      } else if (betId === bet2IdRef.current) {
+        setBet2(prev => ({
+          ...prev,
+          status: 'cashed',
+          cashoutMultiplier: multiplier || 0,
+          autoCashOutEnabled: false
+        }));
+        console.log('✅ Bet 2 marked as cashed');
       }
+
       fetchLivePlayers();
       fetchMyBets();
     });
@@ -324,6 +351,7 @@ export const useAviatorGame = () => {
       const payload = data.data || data;
       const newBalance = payload.balance ?? payload.newBalance;
       if (typeof newBalance === 'number') {
+        console.log('💳 Wallet updated:', newBalance);
         setBalance(newBalance);
         updateLocalStorageBalance(newBalance);
       }
@@ -335,9 +363,8 @@ export const useAviatorGame = () => {
     });
   };
 
-  // ========== PLACE BET (OPTIMISTIC – status updated immediately) ==========
+  // ========== PLACE BET (with optimistic lock) ==========
   const placeBet = useCallback(async (betSlot, stake) => {
-    // Extra safety: prevent concurrent submissions
     if (isPlacing.current) {
       console.warn('⚠️ Bet placement already in progress');
       return { success: false, message: 'Already placing bet' };
@@ -365,34 +392,32 @@ export const useAviatorGame = () => {
       const bet = betSlot === 1 ? bet1 : bet2;
       const setBet = betSlot === 1 ? setBet1 : setBet2;
 
-      // If status is already pending or active, block immediately
       if (bet.status === 'pending' || bet.status === 'active') {
         setError('Bet already placed');
         return { success: false, message: 'Bet already placed' };
       }
 
-      // ---- OPTIMISTIC UPDATE: set status to 'pending' and deduct balance NOW ----
       const autoCashOut = bet.autoCashOutEnabled ? Number(bet.autoCashOut) : 0;
       const newBalance = balance - stake;
 
+      // Optimistic update
       setBet({
         ...bet,
-        status: 'pending',          // immediately mark as pending
-        betId: null,                // will be filled later
+        status: 'pending',
+        betId: null,
         stake: stake,
         roundId: null,
+        autoCashOutEnabled: bet.autoCashOutEnabled // keep the setting
       });
       setBalance(newBalance);
       updateLocalStorageBalance(newBalance);
 
-      // Now send the API request
       isPlacing.current = true;
       console.log('📤 Sending placeBet request:', { stake, autoCashOut, betSlot });
       const response = await aviatorApi.placeBet(stake, autoCashOut, betSlot);
       console.log('📥 placeBet response:', response);
 
       if (!response) {
-        // Rollback on no response
         setBet(prev => ({ ...prev, status: 'idle' }));
         setBalance(balance);
         updateLocalStorageBalance(balance);
@@ -401,7 +426,6 @@ export const useAviatorGame = () => {
       }
 
       if (!response.success) {
-        // Rollback on error
         setBet(prev => ({ ...prev, status: 'idle' }));
         setBalance(balance);
         updateLocalStorageBalance(balance);
@@ -412,7 +436,6 @@ export const useAviatorGame = () => {
 
       const betData = response.bet;
       if (!betData) {
-        // Rollback
         setBet(prev => ({ ...prev, status: 'idle' }));
         setBalance(balance);
         updateLocalStorageBalance(balance);
@@ -420,7 +443,6 @@ export const useAviatorGame = () => {
         return { success: false, message: 'Invalid response' };
       }
 
-      // Success: update with real betId and final status from server
       const finalStatus = betData.status === 'ACTIVE' ? 'active' : 'pending';
       setBet(prev => ({
         ...prev,
@@ -433,7 +455,6 @@ export const useAviatorGame = () => {
 
     } catch (error) {
       console.error('Error placing bet:', error);
-      // Rollback on any exception
       const bet = betSlot === 1 ? bet1 : bet2;
       const setBet = betSlot === 1 ? setBet1 : setBet2;
       setBet(prev => ({ ...prev, status: 'idle' }));
@@ -486,7 +507,7 @@ export const useAviatorGame = () => {
         setBalance(newBalance);
         updateLocalStorageBalance(newBalance);
       }
-      setBet(prev => ({ ...prev, status: 'cashed', cashoutMultiplier: payload.multiplier ?? 0 }));
+      setBet(prev => ({ ...prev, status: 'cashed', cashoutMultiplier: payload.multiplier ?? 0, autoCashOutEnabled: false }));
       fetchMyBets();
       return {
         success: true,
