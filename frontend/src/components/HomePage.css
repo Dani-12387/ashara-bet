@@ -646,7 +646,7 @@
   margin-top: 2px;
 }
 
-/* ===== ALL MARKETS - IMPROVED GRID ===== */
+/* ===== ALL MARKETS - IMPROVED ===== */
 .all-markets-pro {
   padding: 0 14px 16px;
   border-top: 1px solid rgba(0, 0, 0, 0.03);
@@ -654,89 +654,116 @@
 
 .markets-grid-pro {
   display: grid;
-  grid-template-columns: 1fr 1fr;      /* FIXED 2 columns – no auto‑fill gaps */
-  gap: 8px;
-  padding-top: 8px;
+  grid-template-columns: 1fr 1fr;      /* 2 markets per row */
+  gap: 10px;
+  padding-top: 10px;
 }
 
 .market-section-pro {
   background: #ffffff;
   border: 1px solid #e9ecef;
   border-radius: 8px;
-  padding: 6px 8px;
+  padding: 10px 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
   transition: box-shadow 0.2s;
 }
 
 .market-section-pro:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
 .market-header-pro {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 4px;
-  padding-bottom: 4px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.04);
 }
 
 .market-icon {
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .market-header-pro h4 {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: #2d3748;
   margin: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex: 1;
 }
 
+/* ===== MARKET OPTIONS - VERTICAL STACK ===== */
 .market-options-pro {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+  flex-direction: column;   /* ← VERTICAL stacking */
+  gap: 6px;
+  width: 100%;
 }
 
+/* ===== INDIVIDUAL OPTION BUTTON - BIG & FULL WIDTH ===== */
 .market-option-pro {
   display: flex;
-  gap: 4px;
+  justify-content: space-between;  /* pushes label left, odds right */
   align-items: center;
-  padding: 3px 8px;
+  width: 100%;
+  padding: 8px 14px;
   background: linear-gradient(135deg, #e8f5e0, #d4edc4);
   border: 1px solid rgba(139, 195, 74, 0.12);
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
-  font-size: 11px;
-  flex: 0 0 auto;
+  font-size: 13px;
+  min-height: 38px;
 }
 
 .market-option-pro:hover {
   transform: translateY(-1px);
   background: linear-gradient(135deg, #d4edc4, #c5e1a5);
-  box-shadow: 0 2px 6px rgba(139, 195, 74, 0.08);
+  box-shadow: 0 3px 10px rgba(139, 195, 74, 0.15);
 }
 
 .market-option-pro.selected {
   background: linear-gradient(135deg, #c5e1a5, #aed581);
   border-color: #8bc34a;
-  box-shadow: 0 2px 6px rgba(139, 195, 74, 0.12);
+  box-shadow: 0 3px 10px rgba(139, 195, 74, 0.2);
 }
 
 .option-label {
   color: rgba(45, 55, 72, 0.7);
   font-weight: 500;
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .option-odds {
   color: #2d3748;
   font-weight: 700;
-  font-size: 11px;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.4);
+  padding: 2px 10px;
+  border-radius: 4px;
+}
+
+/* ===== 2-3 OPTION MARKETS STAY HORIZONTAL ===== */
+.market-section-pro:has(.market-option-pro:nth-child(2):last-child) 
+.market-options-pro,
+.market-section-pro:has(.market-option-pro:nth-child(3):last-child) 
+.market-options-pro {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.market-section-pro:has(.market-option-pro:nth-child(2):last-child) 
+.market-option-pro,
+.market-section-pro:has(.market-option-pro:nth-child(3):last-child) 
+.market-option-pro {
+  flex: 1;
+  min-width: 50px;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 10px;
+  min-height: 34px;
 }
 
 /* ===== NO MARKETS ===== */
@@ -1361,7 +1388,7 @@
   }
 
   .market-section-pro {
-    padding: 8px;
+    padding: 8px 10px;
   }
 
   .market-options-pro {
@@ -1369,16 +1396,17 @@
   }
 
   .market-option-pro {
-    font-size: 11px;
-    padding: 3px 8px;
+    font-size: 12px;
+    padding: 6px 10px;
+    min-height: 34px;
   }
 
   .option-label {
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .option-odds {
-    font-size: 11px;
+    font-size: 13px;
   }
 
   .result-odd-btn {
@@ -1551,15 +1579,16 @@
 
   .market-option-pro {
     font-size: 10px;
-    padding: 3px 8px;
+    padding: 5px 8px;
+    min-height: 30px;
   }
 
   .option-label {
-    font-size: 9px;
+    font-size: 10px;
   }
 
   .option-odds {
-    font-size: 10px;
+    font-size: 11px;
   }
 
   .sidebar-pro {
@@ -1762,16 +1791,17 @@
 
   .market-option-pro {
     font-size: 9px;
-    padding: 2px 6px;
-    gap: 4px;
+    padding: 4px 6px;
+    min-height: 26px;
   }
 
   .option-label {
-    font-size: 8px;
+    font-size: 9px;
   }
 
   .option-odds {
     font-size: 9px;
+    padding: 1px 6px;
   }
 
   .no-markets-pro {
@@ -1868,7 +1898,8 @@
 
   .market-option-pro {
     font-size: 8px;
-    padding: 2px 5px;
+    padding: 3px 5px;
+    min-height: 24px;
   }
 
   .option-odds {

@@ -39,6 +39,7 @@ const HomePage = () => {
   // ✅ Only Fast Keno is coming soon
   const comingSoonSports = ['FAST_KENO'];
 
+  // ✅ All markets mapping – ADDED firstHalfResult
   const allMarkets = {
     result: { label: 'Result', icon: '🏆' },
     doubleChance: { label: 'Double Chance', icon: '🔄' },
@@ -48,7 +49,14 @@ const HomePage = () => {
     exactGoals: { label: 'Exact Goals', icon: '🎯' },
     correctScore: { label: 'Correct Score', icon: '📝' },
     halfTimeResult: { label: 'Half-Time Result', icon: '⏰' },
+    firstHalfResult: { label: '1st Half – 3 Way', icon: '⏰' }, // ← FIXED
     halfTimeFullTime: { label: 'HT/FT', icon: '🔄' },
+    firstHalfCorrectScore: { label: '1st Half – Correct Score', icon: '📝' },
+    oddEven: { label: 'Odd/Even', icon: '🔢' },
+    firstHalfOddEven: { label: '1st Half – Odd/Even', icon: '🔢' },
+    secondHalfOddEven: { label: '2nd Half – Odd/Even', icon: '🔢' },
+    homeOddEven: { label: 'Home Odd/Even', icon: '🔢' },
+    awayOddEven: { label: 'Away Odd/Even', icon: '🔢' },
     firstTeamScore: { label: 'First Team to Score', icon: '🥇' },
     lastTeamScore: { label: 'Last Team to Score', icon: '🥈' },
     firstGoalTime: { label: 'First Goal Time', icon: '⏱️' },
@@ -60,7 +68,71 @@ const HomePage = () => {
     cards: { label: 'Cards', icon: '🟨' },
     penalty: { label: 'Penalty', icon: '⚪' },
     playerMarkets: { label: 'Player Markets', icon: '👤' },
-    specials: { label: 'Specials', icon: '⭐' }
+    specials: { label: 'Specials', icon: '⭐' },
+    firstHalfTotalGoals: { label: '1st Half – Total Goals', icon: '📊' },
+    firstHalfBtts: { label: '1st Half – BTTS', icon: '⚽' },
+    secondHalfResult: { label: '2nd Half – 3 Way', icon: '⏰' },
+    secondHalfBtts: { label: '2nd Half – BTTS', icon: '⚽' },
+    secondHalfTotalGoals: { label: '2nd Half – Total Goals', icon: '📊' },
+    homeCleanSheet: { label: 'Home Clean Sheet', icon: '🧤' },
+    awayCleanSheet: { label: 'Away Clean Sheet', icon: '🧤' },
+    firstHalfHomeCleanSheet: { label: '1st Half – Home Clean Sheet', icon: '🧤' },
+    firstHalfAwayCleanSheet: { label: '1st Half – Away Clean Sheet', icon: '🧤' },
+    secondHalfHomeCleanSheet: { label: '2nd Half – Home Clean Sheet', icon: '🧤' },
+    secondHalfAwayCleanSheet: { label: '2nd Half – Away Clean Sheet', icon: '🧤' },
+    homeOverUnder: { label: 'Home Team – Over/Under', icon: '📊' },
+    awayTotal: { label: 'Away Team – Over/Under', icon: '📊' },
+    firstHalfHomeOverUnder: { label: '1st Half – Home Over/Under', icon: '📊' },
+    firstHalfAwayOverUnder: { label: '1st Half – Away Over/Under', icon: '📊' },
+    secondHalfHomeOverUnder: { label: '2nd Half – Home Over/Under', icon: '📊' },
+    secondHalfAwayOverUnder: { label: '2nd Half – Away Over/Under', icon: '📊' },
+    homeExactGoals: { label: 'Home – Exact Goals', icon: '🎯' },
+    awayExactGoals: { label: 'Away – Exact Goals', icon: '🎯' },
+    goalRange: { label: 'Goal Range', icon: '📊' },
+    threeWayOverUnder: { label: '3 Way + Over/Under', icon: '📊' },
+    threeWayBtts: { label: '3 Way + BTTS', icon: '⚽' },
+    doubleChanceBtts: { label: 'Double Chance + BTTS', icon: '🔄' },
+    doubleChanceOverUnder: { label: 'Double Chance + Over/Under', icon: '🔄' },
+    overUnderBtts: { label: 'Over/Under + BTTS', icon: '📊' },
+    whichTeamToScore: { label: 'Which Team to Score', icon: '⚽' },
+    oneGoal: { label: '1 Goal Markets', icon: '1️⃣' },
+    oneGoalAnd1x2: { label: '1 Goal + 1X2', icon: '1️⃣' },
+    firstHalfOneGoal: { label: '1st Half – 1 Goal', icon: '1️⃣' },
+    secondHalfOneGoal: { label: '2nd Half – 1 Goal', icon: '1️⃣' },
+    lastGoal: { label: 'Last Goal', icon: '⚽' },
+    tenMinute3Way: { label: '10 Min – 3 Way', icon: '⏱️' },
+    firstHalfHandicap: { label: '1st Half – Handicap', icon: '📈' },
+    secondHalfHandicap: { label: '2nd Half – Handicap', icon: '📈' },
+    firstHalfDoubleChance: { label: '1st Half – Double Chance', icon: '🔄' },
+    secondHalfDoubleChance: { label: '2nd Half – Double Chance', icon: '🔄' },
+    firstHalfDrawNoBet: { label: '1st Half – Draw No Bet', icon: '⏳' },
+    secondHalfDrawNoBet: { label: '2nd Half – Draw No Bet', icon: '⏳' },
+    homeWinBothHalves: { label: 'Home Win Both Halves', icon: '🏆' },
+    awayWinBothHalves: { label: 'Away Win Both Halves', icon: '🏆' },
+    homeScoreBothHalves: { label: 'Home Score Both Halves', icon: '⚽' },
+    awayScoreBothHalves: { label: 'Away Score Both Halves', icon: '⚽' },
+    homeWinEitherHalf: { label: 'Home Win Either Half', icon: '🏆' },
+    awayWinEitherHalf: { label: 'Away Win Either Half', icon: '🏆' },
+    highestScoringHalf: { label: 'Highest Scoring Half', icon: '📊' },
+    homeHighestScoringHalf: { label: 'Home – Highest Scoring Half', icon: '📊' },
+    awayHighestScoringHalf: { label: 'Away – Highest Scoring Half', icon: '📊' },
+    bothHalvesBtts: { label: 'Both Halves – BTTS', icon: '⚽' },
+    bothHalvesOver1_5: { label: 'Both Halves – Over 1.5', icon: '📊' },
+    bothHalvesUnder1_5: { label: 'Both Halves – Under 1.5', icon: '📊' },
+    htFtFirstHalfOverUnder: { label: 'HT/FT + 1st Half O/U', icon: '🔄' },
+    htFtExactGoals: { label: 'HT/FT + Exact Goals', icon: '🔄' },
+    htFtOverUnder: { label: 'HT/FT + Over/Under', icon: '🔄' },
+    htFtCorrectScore: { label: 'HT/FT + Correct Score', icon: '🔄' },
+    firstHalf1x2Btts: { label: '1st Half – 1X2 + BTTS', icon: '⚽' },
+    firstHalf1x2OverUnder: { label: '1st Half – 1X2 + O/U', icon: '📊' },
+    doubleChanceFirstHalfBtts: { label: 'DC + 1st Half BTTS', icon: '🔄' },
+    doubleChanceSecondHalfBtts: { label: 'DC + 2nd Half BTTS', icon: '🔄' },
+    secondHalf3WayBtts: { label: '2nd Half – 3 Way + BTTS', icon: '⚽' },
+    secondHalf3WayOverUnder: { label: '2nd Half – 3 Way + O/U', icon: '📊' },
+    secondHalfCorrectScore: { label: '2nd Half – Correct Score', icon: '📝' },
+    secondHalfExactGoals: { label: '2nd Half – Exact Goals', icon: '🎯' },
+    secondHalfOverUnder: { label: '2nd Half – Over/Under', icon: '📊' },
+    secondHalfDoubleChanceBtts: { label: '2nd Half – DC + BTTS', icon: '🔄' },
   };
 
   // ✅ 12-HOUR TIME FORMAT WITH AM/PM
@@ -685,6 +757,7 @@ const HomePage = () => {
     if (!match || !match.markets) return [];
     if (typeof match.markets !== 'object' || Array.isArray(match.markets)) return [];
     
+    // Return market keys that have at least one selection with a valid odd
     return Object.keys(match.markets).filter(key => {
       const marketData = match.markets[key];
       return marketData && typeof marketData === 'object' && Object.keys(marketData).length > 0;
@@ -728,14 +801,12 @@ const HomePage = () => {
             </div>
             <nav className="nav-pro">
               <button className={`nav-link-pro ${activeTab === 'all' ? 'active' : ''}`} onClick={() => setActiveTab('all')}>Home</button>
-            
               <button className="nav-link-pro" onClick={() => navigate('/matches')}>Matches</button>
             </nav>
           </div>
 
           <div className="header-right-pro">
             <div className="live-indicator-pro">
-              
             </div>
             {user ? (
               <>
