@@ -213,7 +213,7 @@
   transform: rotate(180deg);
 }
 
-/* ===== AUTH BUTTONS - BOTH VISIBLE ON MOBILE ===== */
+/* ===== AUTH BUTTONS ===== */
 .auth-pro {
   display: flex;
   gap: 6px;
@@ -646,7 +646,7 @@
   margin-top: 2px;
 }
 
-/* ===== ALL MARKETS ===== */
+/* ===== ALL MARKETS - IMPROVED GRID ===== */
 .all-markets-pro {
   padding: 0 14px 16px;
   border-top: 1px solid rgba(0, 0, 0, 0.03);
@@ -654,78 +654,89 @@
 
 .markets-grid-pro {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 12px;
-  padding-top: 12px;
+  grid-template-columns: 1fr 1fr;      /* FIXED 2 columns – no auto‑fill gaps */
+  gap: 8px;
+  padding-top: 8px;
 }
 
 .market-section-pro {
-  background: rgba(0, 0, 0, 0.005);
-  border: 1px solid rgba(0, 0, 0, 0.03);
-  border-radius: 6px;
-  padding: 10px 12px;
+  background: #ffffff;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 6px 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  transition: box-shadow 0.2s;
+}
+
+.market-section-pro:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .market-header-pro {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+  gap: 6px;
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
 }
 
 .market-icon {
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .market-header-pro h4 {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: #2d3748;
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .market-options-pro {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
 }
 
 .market-option-pro {
   display: flex;
-  gap: 8px;
+  gap: 4px;
   align-items: center;
-  padding: 4px 12px;
+  padding: 3px 8px;
   background: linear-gradient(135deg, #e8f5e0, #d4edc4);
   border: 1px solid rgba(139, 195, 74, 0.12);
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
-  font-size: 12px;
+  font-size: 11px;
+  flex: 0 0 auto;
 }
 
 .market-option-pro:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   background: linear-gradient(135deg, #d4edc4, #c5e1a5);
-  box-shadow: 0 4px 12px rgba(139, 195, 74, 0.1);
+  box-shadow: 0 2px 6px rgba(139, 195, 74, 0.08);
 }
 
 .market-option-pro.selected {
   background: linear-gradient(135deg, #c5e1a5, #aed581);
   border-color: #8bc34a;
-  box-shadow: 0 4px 12px rgba(139, 195, 74, 0.12);
+  box-shadow: 0 2px 6px rgba(139, 195, 74, 0.12);
 }
 
 .option-label {
   color: rgba(45, 55, 72, 0.7);
   font-weight: 500;
+  font-size: 10px;
 }
 
 .option-odds {
   color: #2d3748;
   font-weight: 700;
-  font-size: 13px;
+  font-size: 11px;
 }
 
 /* ===== NO MARKETS ===== */
@@ -805,10 +816,10 @@
 
   .sidebar-pro {
     position: fixed;
-    bottom: 0;
+    bottom: 60px;
     left: 0;
     right: 0;
-    max-height: 45vh;
+    max-height: calc(100vh - 120px);
     transform: translateY(100%);
     transition: transform 0.3s ease;
     border-radius: 12px 12px 0 0;
@@ -820,6 +831,7 @@
     min-width: unset;
     max-width: unset;
     top: auto;
+    overflow: hidden;
   }
 
   .sidebar-pro:not(.hidden) {
@@ -834,8 +846,68 @@
     display: flex !important;
   }
 
-  .sidebar-pro:not(.hidden) ~ .main-content-pro {
-    padding-bottom: 45vh;
+  .sidebar-body-pro {
+    padding: 8px 16px 16px;
+    flex: 1;
+    overflow-y: auto;
+    max-height: calc(100vh - 200px);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .betslip-list-pro {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 180px;
+    margin-bottom: 8px;
+  }
+
+  .betslip-total-stake-pro {
+    flex-shrink: 0;
+  }
+
+  .betslip-summary-pro {
+    flex-shrink: 0;
+  }
+
+  .place-bet-pro {
+    flex-shrink: 0;
+    margin-top: 8px;
+    width: 100%;
+    padding: 10px;
+    background: linear-gradient(135deg, #aed581, #8bc34a);
+    border: none;
+    border-radius: 6px;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .place-bet-pro:hover {
+    background: linear-gradient(135deg, #8bc34a, #689f38);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(139, 195, 74, 0.2);
+  }
+
+  .mobile-betslip-pro {
+    display: flex;
+    position: fixed;
+    bottom: 72px;
+    right: 16px;
+    background: linear-gradient(135deg, #aed581, #8bc34a);
+    border: none;
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(139, 195, 74, 0.2);
+    z-index: 999;
+    align-items: center;
+    justify-content: center;
   }
 }
 
@@ -1119,7 +1191,7 @@
     backdrop-filter: blur(20px);
     border-top: 1px solid rgba(0, 0, 0, 0.04);
     padding: 6px 0 env(safe-area-inset-bottom, 0);
-    z-index: 999;
+    z-index: 1000;
     height: 60px;
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.04);
   }
@@ -1329,7 +1401,6 @@
     height: 52px;
   }
 
-  /* ===== AUTH BUTTONS - BOTH VISIBLE ON MOBILE ===== */
   .auth-pro .login-btn-pro {
     display: flex !important;
     padding: 4px 12px;
@@ -1541,7 +1612,6 @@
     height: 48px;
   }
 
-  /* ===== AUTH BUTTONS - SMALL MOBILE ===== */
   .auth-pro .login-btn-pro {
     padding: 3px 8px;
     font-size: 10px;
@@ -1759,7 +1829,6 @@
 
 /* Extra Small Mobile */
 @media (max-width: 360px) {
-  /* ===== AUTH BUTTONS - EXTRA SMALL ===== */
   .auth-pro .login-btn-pro {
     padding: 2px 6px;
     font-size: 8px;
@@ -1891,16 +1960,15 @@
 }
 
 /* ============================================================
-   FIX: BET SLIP HEIGHT FOR MOBILE (Not hidden by bottom nav)
+   FIX: BET SLIP HEIGHT FOR MOBILE
    ============================================================ */
-
 @media (max-width: 1024px) {
   .sidebar-pro {
     position: fixed;
-    bottom: 60px; /* ⬅️ THIS IS KEY - stops at bottom nav */
+    bottom: 60px;
     left: 0;
     right: 0;
-    max-height: calc(100vh - 120px); /* ⬅️ Adjusted height */
+    max-height: calc(100vh - 120px);
     transform: translateY(100%);
     transition: transform 0.3s ease;
     border-radius: 12px 12px 0 0;
@@ -1927,12 +1995,11 @@
     padding: 8px 16px 16px;
     flex: 1;
     overflow-y: auto;
-    max-height: calc(100vh - 200px); /* ⬅️ More space for content */
+    max-height: calc(100vh - 200px);
     display: flex;
     flex-direction: column;
   }
 
-  /* Fix: Make bet slip list scrollable but keep button visible */
   .betslip-list-pro {
     flex: 1;
     overflow-y: auto;
@@ -1940,7 +2007,6 @@
     margin-bottom: 8px;
   }
 
-  /* Ensure Place Bet button is always visible */
   .betslip-total-stake-pro {
     flex-shrink: 0;
   }
@@ -1970,11 +2036,10 @@
     box-shadow: 0 4px 12px rgba(139, 195, 74, 0.2);
   }
 
-  /* Mobile Bet Slip Toggle - adjust position */
   .mobile-betslip-pro {
     display: flex;
     position: fixed;
-    bottom: 72px; /* ⬅️ Above bottom nav */
+    bottom: 72px;
     right: 16px;
     background: linear-gradient(135deg, #aed581, #8bc34a);
     border: none;
@@ -1994,7 +2059,6 @@
 /* ============================================================
    BOTTOM NAVIGATION - Keep at bottom
    ============================================================ */
-
 @media (max-width: 1024px) {
   .bottom-nav {
     position: fixed;
@@ -2008,7 +2072,7 @@
     backdrop-filter: blur(20px);
     border-top: 1px solid rgba(0, 0, 0, 0.04);
     padding: 6px 0 env(safe-area-inset-bottom, 0);
-    z-index: 1000; /* ⬅️ Higher than bet slip */
+    z-index: 1000;
     height: 60px;
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.04);
   }
@@ -2067,9 +2131,8 @@
 }
 
 /* ============================================================
-   TELEGRAM POPUP
+   TELEGRAM POPUPS
    ============================================================ */
-
 .telegram-popup-overlay {
   position: fixed;
   top: 0;
@@ -2086,12 +2149,8 @@
 }
 
 @keyframes telegramFadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .telegram-popup {
@@ -2108,14 +2167,8 @@
 }
 
 @keyframes telegramSlideUp {
-  from {
-    transform: translateY(40px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+  from { transform: translateY(40px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
 .telegram-popup-icon {
@@ -2194,7 +2247,7 @@
   color: rgba(45, 55, 72, 0.6);
 }
 
-/* Mobile responsive */
+/* Mobile responsive for Telegram */
 @media (max-width: 768px) {
   .telegram-popup {
     padding: 24px 16px;
@@ -2270,39 +2323,17 @@
     font-size: 12px;
   }
 }
-/* ============================================================
-   SIMPLE TELEGRAM POPUP
-   ============================================================ */
 
-.telegram-popup-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(8px);
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: fadeIn 0.3s ease;
-}
-
+/* ===== SIMPLE TELEGRAM POPUP ===== */
 .telegram-popup-simple {
   background: #ffffff;
   border-radius: 16px;
   padding: 30px 24px 24px;
-  max-width: 340px;
+  max-width: 360px;
   width: 90%;
   text-align: center;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
   animation: slideUp 0.3s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
 }
 
 @keyframes slideUp {
@@ -2367,160 +2398,7 @@
   color: rgba(45, 55, 72, 0.7);
 }
 
-/* Mobile responsive */
-@media (max-width: 480px) {
-  .telegram-popup-simple {
-    padding: 24px 16px 20px;
-    max-width: 300px;
-  }
-
-  .telegram-popup-icon-simple {
-    font-size: 40px;
-  }
-
-  .telegram-popup-simple h2 {
-    font-size: 18px;
-  }
-
-  .telegram-popup-simple p {
-    font-size: 13px;
-  }
-
-  .telegram-join-btn-simple {
-    font-size: 14px;
-    padding: 10px;
-  }
-}
-/* ============================================================
-   TELEGRAM POPUP - SIMPLE VERSION
-   ============================================================ */
-
-.telegram-popup-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(8px);
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: telegramFadeIn 0.3s ease;
-}
-
-@keyframes telegramFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.telegram-popup-simple {
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 30px 24px 24px;
-  max-width: 360px;
-  width: 90%;
-  text-align: center;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  animation: telegramSlideUp 0.3s ease;
-}
-
-@keyframes telegramSlideUp {
-  from { transform: translateY(30px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-.telegram-popup-icon-simple {
-  font-size: 52px;
-  margin-bottom: 12px;
-  display: block;
-}
-
-.telegram-popup-simple h2 {
-  font-size: 20px;
-  font-weight: 700;
-  color: #2d3748;
-  margin-bottom: 8px;
-}
-
-.telegram-popup-simple p {
-  font-size: 14px;
-  color: rgba(45, 55, 72, 0.7);
-  margin-bottom: 20px;
-  line-height: 1.5;
-}
-
-.telegram-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.telegram-join-btn-simple {
-  width: 100%;
-  padding: 14px;
-  background: linear-gradient(135deg, #0088cc, #0077b5);
-  border: none;
-  border-radius: 10px;
-  color: white;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.telegram-join-btn-simple:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(0, 136, 204, 0.3);
-}
-
-.telegram-skip-btn-simple {
-  background: none;
-  border: none;
-  color: rgba(45, 55, 72, 0.4);
-  font-size: 14px;
-  cursor: pointer;
-  padding: 8px;
-  transition: all 0.2s;
-}
-
-.telegram-skip-btn-simple:hover {
-  color: rgba(45, 55, 72, 0.7);
-}
-
-/* Mobile responsive */
-@media (max-width: 480px) {
-  .telegram-popup-simple {
-    padding: 24px 16px 20px;
-    max-width: 300px;
-  }
-
-  .telegram-popup-icon-simple {
-    font-size: 40px;
-  }
-
-  .telegram-popup-simple h2 {
-    font-size: 18px;
-  }
-
-  .telegram-popup-simple p {
-    font-size: 13px;
-  }
-
-  .telegram-join-btn-simple {
-    font-size: 14px;
-    padding: 12px;
-  }
-
-  .telegram-skip-btn-simple {
-    font-size: 12px;
-  }
-}
-/* ============================================================
-   TELEGRAM JOIN IN BET SLIP
-   ============================================================ */
-
+/* ===== TELEGRAM JOIN IN BET SLIP ===== */
 .telegram-join-betslip {
   text-align: center;
   padding: 20px 10px;
@@ -2582,147 +2460,7 @@
   color: rgba(45, 55, 72, 0.6);
 }
 
-/* ============================================================
-   TELEGRAM POPUP OVERLAY
-   ============================================================ */
-
-.telegram-popup-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(8px);
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: telegramFadeIn 0.3s ease;
-}
-
-@keyframes telegramFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.telegram-popup-simple {
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 30px 24px 24px;
-  max-width: 360px;
-  width: 90%;
-  text-align: center;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  animation: telegramSlideUp 0.3s ease;
-}
-
-@keyframes telegramSlideUp {
-  from { transform: translateY(30px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-.telegram-popup-icon-simple {
-  font-size: 52px;
-  margin-bottom: 12px;
-  display: block;
-}
-
-.telegram-popup-simple h2 {
-  font-size: 20px;
-  font-weight: 700;
-  color: #2d3748;
-  margin-bottom: 8px;
-}
-
-.telegram-popup-simple p {
-  font-size: 14px;
-  color: rgba(45, 55, 72, 0.7);
-  margin-bottom: 20px;
-  line-height: 1.5;
-}
-
-.telegram-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.telegram-join-btn-simple {
-  width: 100%;
-  padding: 14px;
-  background: linear-gradient(135deg, #0088cc, #0077b5);
-  border: none;
-  border-radius: 10px;
-  color: white;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.telegram-join-btn-simple:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(0, 136, 204, 0.3);
-}
-
-.telegram-skip-btn-simple {
-  background: none;
-  border: none;
-  color: rgba(45, 55, 72, 0.4);
-  font-size: 14px;
-  cursor: pointer;
-  padding: 8px;
-  transition: all 0.2s;
-}
-
-.telegram-skip-btn-simple:hover {
-  color: rgba(45, 55, 72, 0.7);
-}
-
-/* Mobile responsive */
-@media (max-width: 480px) {
-  .telegram-popup-simple {
-    padding: 24px 16px 20px;
-    max-width: 300px;
-  }
-
-  .telegram-popup-icon-simple {
-    font-size: 40px;
-  }
-
-  .telegram-popup-simple h2 {
-    font-size: 18px;
-  }
-
-  .telegram-popup-simple p {
-    font-size: 13px;
-  }
-
-  .telegram-join-btn-simple {
-    font-size: 14px;
-    padding: 12px;
-  }
-
-  .telegram-skip-btn-simple {
-    font-size: 12px;
-  }
-
-  .telegram-join-betslip h4 {
-    font-size: 13px;
-  }
-
-  .telegram-join-betslip p {
-    font-size: 11px;
-  }
-
-  .telegram-join-btn-betslip {
-    font-size: 13px;
-    padding: 8px;
-  }
-}
-
-/* ===== COMING SOON TAB BADGE ===== */
+/* ===== COMING SOON ===== */
 .sport-tab-pro.coming-soon-tab {
   position: relative;
   border-color: #ff6f00 !important;
@@ -2744,7 +2482,6 @@
   50% { opacity: 0.5; }
 }
 
-/* ===== COMING SOON PAGE ===== */
 .coming-soon-container {
   display: flex;
   justify-content: center;
