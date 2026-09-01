@@ -3,17 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './HomePage.css';
 
-// ===== PROMOTIONAL BANNERS (10 IMAGES) =====
+// ===== PROMOTIONAL BANNERS (10 IMAGES – exact filenames from your folder) =====
 import bannerLiveBetting from '../assets/banner-live-betting.jpeg';
 import bannerCashback from '../assets/banner-cashback.jpeg';
 import bannerSponsors from '../assets/banner-sponsors.jpeg';
-import bannerPromo1 from '../assets/promo1.jpeg';                     // renamed from Gemini_Generated_Image_111.jpeg
-import femalePromotor from '../assets/female_promotor.JPEG';
-import famousFive from '../assets/famous_five_players.JPEG';
+import bannerPromo from '../assets/promo-image.JPEG';
+import femalePromotor from '../assets/Female_promotor.JPEG';
+import famousFive from '../assets/Famous_five_players.JPEG';
 import bannerSponsorsSec from '../assets/banner-sponsors-sec.JPEG';
-import bannerPromo2 from '../assets/promo2.JPEG';                     // renamed from Gemini_Generated_Image_111.JPEG
-// Two duplicates to reach 10 (use any you like)
-// If you have more unique images, replace these with actual files
 
 const HomePage = () => {
   const navigate = useNavigate();
@@ -38,20 +35,20 @@ const HomePage = () => {
   const [showTelegramPopup, setShowTelegramPopup] = useState(false);
   const dropdownRef = useRef(null);
 
-  // ===== CAROUSEL STATE (10 images, 2 at a time = 5 slides) =====
+  // ===== CAROUSEL STATE (10 images, 2 per slide = 5 slides) =====
   const [currentSlide, setCurrentSlide] = useState(0);
   const bannerImages = [
-  { src: bannerLiveBetting, alt: 'Live Betting' },
-  { src: bannerCashback, alt: 'Cashback 1' },
-  { src: bannerSponsors, alt: 'Sponsors 1' },
-  { src: bannerPromo1, alt: 'Promotion 1' },
-  { src: femalePromotor, alt: 'Female Promoter' },
-  { src: famousFive, alt: 'Famous Five Players' },
-  { src: bannerSponsorsSec, alt: 'Sponsors Sec' },
-  { src: bannerPromo2, alt: 'Promotion 2' },
-  { src: bannerCashback, alt: 'Cashback 2' },        // duplicate if you need 10
-  { src: bannerSponsors, alt: 'Sponsors 2' },        // duplicate if you need 10
-];
+    { src: bannerLiveBetting, alt: 'Live Betting' },
+    { src: bannerCashback, alt: 'Cashback 1' },
+    { src: bannerSponsors, alt: 'Sponsors 1' },
+    { src: bannerPromo, alt: 'Promotion 1' },
+    { src: femalePromotor, alt: 'Female Promoter' },
+    { src: famousFive, alt: 'Famous Five Players' },
+    { src: bannerSponsorsSec, alt: 'Sponsors Sec' },
+    { src: bannerCashback, alt: 'Cashback 2' },        // duplicate
+    { src: bannerSponsors, alt: 'Sponsors 2' },        // duplicate
+    { src: bannerPromo, alt: 'Promotion 2' },          // duplicate
+  ];
   const slidesPerView = 2;
   const totalSlides = Math.ceil(bannerImages.length / slidesPerView);
 
