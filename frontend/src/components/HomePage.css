@@ -458,7 +458,7 @@
 }
 
 /* ============================================================
-   CAROUSEL – FULL IMAGE VISIBLE (NO CROP), COMPACT HEIGHT
+   CAROUSEL – 2 IMAGES SIDE BY SIDE, NO WASTED SPACE
    ============================================================ */
 .promo-carousel-container {
   width: 100%;
@@ -477,21 +477,23 @@
 }
 
 .promo-carousel-slide {
-  flex: 0 0 100%;
-  min-width: 100%;
+  flex: 0 0 50%;
+  min-width: 50%;
   height: 140px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: #f5f7fa;
   overflow: hidden;
+  padding: 4px;
 }
 
 .promo-carousel-slide img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   display: block;
+  border-radius: 6px;
 }
 
 /* ===== DOTS ===== */

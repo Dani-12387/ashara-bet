@@ -32,7 +32,7 @@ const HomePage = () => {
   const [showTelegramPopup, setShowTelegramPopup] = useState(false);
   const dropdownRef = useRef(null);
 
-  // ===== CAROUSEL STATE =====
+  // ===== CAROUSEL STATE (2 images at a time) =====
   const [currentSlide, setCurrentSlide] = useState(0);
   const bannerImages = [
     { src: bannerLiveBetting, alt: 'Live Betting' },
@@ -40,6 +40,8 @@ const HomePage = () => {
     { src: bannerSponsors, alt: 'Sponsors' },
     { src: bannerPromo, alt: 'Promotion' }
   ];
+  const slidesPerView = 2;
+  const totalSlides = Math.ceil(bannerImages.length / slidesPerView);
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -51,7 +53,6 @@ const HomePage = () => {
     { id: 'FAST_KENO', name: 'Fast Keno', icon: '🎲', comingSoon: true }
   ];
 
-  // ✅ Only Fast Keno is coming soon
   const comingSoonSports = ['FAST_KENO'];
 
   // ✅ All markets mapping (FULL - 82+ entries)
@@ -564,13 +565,13 @@ const HomePage = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // ===== AUTO-SLIDE CAROUSEL (60 SECONDS) =====
+  // ===== AUTO-SLIDE CAROUSEL (60 SECONDS) – 2 images per slide =====
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % bannerImages.length);
+      setCurrentSlide((prev) => (prev + 1) % totalSlides);
     }, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [totalSlides]);
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -803,7 +804,7 @@ const HomePage = () => {
     return betSlip.some(b => b.matchId === matchId && b.betType === betType && b.market === market);
   };
 
-  // ===== CAROUSEL NAVIGATION =====
+  // ===== CAROUSEL NAVIGATION (2 images per slide) =====
   const goToSlide = (index) => {
     setCurrentSlide(index);
   };
@@ -922,11 +923,11 @@ const HomePage = () => {
             ))}
           </div>
 
-          {/* ===== FULL-WIDTH CAROUSEL – ONE IMAGE AT A TIME ===== */}
+          {/* ===== CAROUSEL – 2 IMAGES AT A TIME ===== */}
           <div className="promo-carousel-container">
             <div 
               className="promo-carousel-track" 
-              style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+              style={{ transform: `translateX(-${currentSlide * 50}%)` }}
             >
               {bannerImages.map((banner, index) => (
                 <div key={index} className="promo-carousel-slide">
@@ -935,7 +936,7 @@ const HomePage = () => {
               ))}
             </div>
             <div className="promo-carousel-dots">
-              {bannerImages.map((_, index) => (
+              {Array.from({ length: totalSlides }).map((_, index) => (
                 <span
                   key={index}
                   className={`promo-carousel-dot ${index === currentSlide ? 'active' : ''}`}
