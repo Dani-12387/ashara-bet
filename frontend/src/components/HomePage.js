@@ -32,6 +32,15 @@ const HomePage = () => {
   const [showTelegramPopup, setShowTelegramPopup] = useState(false);
   const dropdownRef = useRef(null);
 
+  // ===== CAROUSEL STATE =====
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const bannerImages = [
+    { src: bannerLiveBetting, alt: 'Live Betting' },
+    { src: bannerCashback, alt: 'Cashback' },
+    { src: bannerSponsors, alt: 'Sponsors' },
+    { src: bannerPromo, alt: 'Promotion' }
+  ];
+
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
   // ✅ Sports with Aviator navigation
@@ -555,6 +564,14 @@ const HomePage = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // ===== AUTO-SLIDE CAROUSEL (60 SECONDS) =====
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % bannerImages.length);
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     const userData = localStorage.getItem('user');
     if (userData) {
@@ -786,6 +803,11 @@ const HomePage = () => {
     return betSlip.some(b => b.matchId === matchId && b.betType === betType && b.market === market);
   };
 
+  // ===== CAROUSEL NAVIGATION =====
+  const goToSlide = (index) => {
+    setCurrentSlide(index);
+  };
+
   // Bottom Navigation
   const bottomNavItems = [
     { id: 'home', label: 'HOME', icon: '🏠', path: '/' },
@@ -900,35 +922,26 @@ const HomePage = () => {
             ))}
           </div>
 
-          {/* ===== AUTO-SCROLLING MARQUEE BANNERS (FULL VISIBILITY) ===== */}
-          <div className="promo-marquee-container">
-            <div className="promo-marquee-wrapper">
-              {/* First set */}
-              <div className="promo-marquee-slide">
-                <img src={bannerLiveBetting} alt="Live Betting" />
-              </div>
-              <div className="promo-marquee-slide">
-                <img src={bannerCashback} alt="Cashback" />
-              </div>
-              <div className="promo-marquee-slide">
-                <img src={bannerSponsors} alt="Sponsors" />
-              </div>
-              <div className="promo-marquee-slide">
-                <img src={bannerPromo} alt="Promotion" />
-              </div>
-              {/* Duplicate for seamless looping */}
-              <div className="promo-marquee-slide">
-                <img src={bannerLiveBetting} alt="Live Betting" />
-              </div>
-              <div className="promo-marquee-slide">
-                <img src={bannerCashback} alt="Cashback" />
-              </div>
-              <div className="promo-marquee-slide">
-                <img src={bannerSponsors} alt="Sponsors" />
-              </div>
-              <div className="promo-marquee-slide">
-                <img src={bannerPromo} alt="Promotion" />
-              </div>
+          {/* ===== FULL-WIDTH CAROUSEL – ONE IMAGE AT A TIME ===== */}
+          <div className="promo-carousel-container">
+            <div 
+              className="promo-carousel-track" 
+              style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+            >
+              {bannerImages.map((banner, index) => (
+                <div key={index} className="promo-carousel-slide">
+                  <img src={banner.src} alt={banner.alt} />
+                </div>
+              ))}
+            </div>
+            <div className="promo-carousel-dots">
+              {bannerImages.map((_, index) => (
+                <span
+                  key={index}
+                  className={`promo-carousel-dot ${index === currentSlide ? 'active' : ''}`}
+                  onClick={() => goToSlide(index)}
+                />
+              ))}
             </div>
           </div>
 
