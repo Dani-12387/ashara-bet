@@ -45,7 +45,7 @@ const HomePage = () => {
   // ✅ Only Fast Keno is coming soon
   const comingSoonSports = ['FAST_KENO'];
 
-  // ✅ All markets mapping
+  // ✅ All markets mapping (FULL - 82+ entries)
   const allMarkets = {
     result: { label: 'Result', icon: '🏆' },
     doubleChance: { label: 'Double Chance', icon: '🔄' },
@@ -900,19 +900,33 @@ const HomePage = () => {
             ))}
           </div>
 
-          {/* ===== PROMOTIONAL BANNERS - HORIZONTAL SCROLL ===== */}
-          <div className="promo-scroll-container">
-            <div className="promo-scroll-wrapper">
-              <div className="promo-scroll-item">
+          {/* ===== AUTO-SCROLLING MARQUEE BANNERS (FULL VISIBILITY) ===== */}
+          <div className="promo-marquee-container">
+            <div className="promo-marquee-wrapper">
+              {/* First set */}
+              <div className="promo-marquee-slide">
                 <img src={bannerLiveBetting} alt="Live Betting" />
               </div>
-              <div className="promo-scroll-item">
+              <div className="promo-marquee-slide">
                 <img src={bannerCashback} alt="Cashback" />
               </div>
-              <div className="promo-scroll-item">
+              <div className="promo-marquee-slide">
                 <img src={bannerSponsors} alt="Sponsors" />
               </div>
-              <div className="promo-scroll-item">
+              <div className="promo-marquee-slide">
+                <img src={bannerPromo} alt="Promotion" />
+              </div>
+              {/* Duplicate for seamless looping */}
+              <div className="promo-marquee-slide">
+                <img src={bannerLiveBetting} alt="Live Betting" />
+              </div>
+              <div className="promo-marquee-slide">
+                <img src={bannerCashback} alt="Cashback" />
+              </div>
+              <div className="promo-marquee-slide">
+                <img src={bannerSponsors} alt="Sponsors" />
+              </div>
+              <div className="promo-marquee-slide">
                 <img src={bannerPromo} alt="Promotion" />
               </div>
             </div>
