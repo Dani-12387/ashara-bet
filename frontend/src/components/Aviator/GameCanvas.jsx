@@ -48,7 +48,7 @@ const GameCanvas = ({ multiplier, status, crashMultiplier, roundId }) => {
         ctx.stroke();
       }
 
-      // Multiplier labels
+      // Multiplier labels on the Y-axis
       ctx.fillStyle = 'rgba(255,255,255,0.2)';
       ctx.font = '11px Arial';
       ctx.textAlign = 'right';
@@ -56,9 +56,6 @@ const GameCanvas = ({ multiplier, status, crashMultiplier, roundId }) => {
         const y = height - (i / 10) * height * 0.85 - 20;
         ctx.fillText(i + 'x', 40, y + 4);
       }
-
-      // ---------- TRAJECTORY LINE REMOVED ----------
-      // No line is drawn here anymore
 
       // Aircraft position
       const currentMultiplier = multiplier || 1;
@@ -75,7 +72,6 @@ const GameCanvas = ({ multiplier, status, crashMultiplier, roundId }) => {
         ctx.translate(clampedX, clampedY);
         ctx.rotate(-Math.PI / 6);
         
-        // Main body – red
         ctx.fillStyle = '#e74c3c';
         ctx.shadowColor = 'rgba(231, 76, 60, 0.5)';
         ctx.shadowBlur = 20;
@@ -83,7 +79,6 @@ const GameCanvas = ({ multiplier, status, crashMultiplier, roundId }) => {
         ctx.ellipse(0, 0, 20, 8, 0, 0, Math.PI * 2);
         ctx.fill();
         
-        // Tail fins – lighter red
         ctx.fillStyle = '#ff6b6b';
         ctx.shadowBlur = 10;
         ctx.beginPath();
@@ -99,7 +94,6 @@ const GameCanvas = ({ multiplier, status, crashMultiplier, roundId }) => {
         ctx.closePath();
         ctx.fill();
         
-        // Nose – darker red
         ctx.fillStyle = '#c0392b';
         ctx.beginPath();
         ctx.moveTo(-18, -3);
@@ -109,7 +103,6 @@ const GameCanvas = ({ multiplier, status, crashMultiplier, roundId }) => {
         ctx.closePath();
         ctx.fill();
         
-        // Cockpit – blue accent
         ctx.fillStyle = '#3498db';
         ctx.shadowBlur = 0;
         ctx.beginPath();
@@ -157,7 +150,7 @@ const GameCanvas = ({ multiplier, status, crashMultiplier, roundId }) => {
     };
   }, [multiplier, status, crashMultiplier, isCrashed]);
 
-  // Trajectory points still stored (can be used later if needed)
+  // Store trajectory points (kept for possible future use)
   useEffect(() => {
     if (isRunning) {
       setTrajectoryPoints(prev => {
@@ -183,12 +176,30 @@ const GameCanvas = ({ multiplier, status, crashMultiplier, roundId }) => {
     <div className="game-canvas-container">
       <canvas ref={canvasRef} className="game-canvas" />
       <div className="multiplier-overlay">
-        <span className="multiplier-display">
+        {/* ⬇️ BIG MULTIPLIER TEXT – inline styles for size */}
+        <span 
+          className="multiplier-display"
+          style={{
+            fontSize: '60px',
+            fontWeight: 'bold',
+            color: isCrashed ? '#ff4444' : '#ffffff',
+            textShadow: '0 0 30px rgba(255,255,255,0.3), 0 0 60px rgba(78,205,196,0.2)',
+            letterSpacing: '2px'
+          }}
+        >
           {isRunning ? `${(multiplier || 1).toFixed(2)}x` : ''}
           {isCrashed ? `${(crashMultiplier || multiplier || 1).toFixed(2)}x` : ''}
           {isWaiting ? '1.00x' : ''}
         </span>
-        <span className="round-status">
+        <span 
+          className="round-status"
+          style={{
+            fontSize: '16px',
+            fontWeight: '600',
+            color: isRunning ? '#4ecdc4' : isCrashed ? '#ff4444' : '#888',
+            marginTop: '4px'
+          }}
+        >
           {isRunning && '🟢 LIVE'}
           {isCrashed && '💥 CRASHED'}
           {isWaiting && '⏸️ WAITING'}
