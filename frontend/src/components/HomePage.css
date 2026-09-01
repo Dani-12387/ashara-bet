@@ -2873,3 +2873,132 @@
     width: 18px;
   }
 }
+
+@media (max-width: 1024px) {
+  .main-pro {
+    grid-template-columns: 1fr;
+    padding: 10px 8px;      /* ← TIGHTER on tablet */
+    gap: 10px;
+  }
+
+  .match-row-pro {
+    padding: 4px 8px;
+  }
+
+  .result-odds-pro {
+    padding: 0 8px 6px;
+  }
+
+  .league-header-pro {
+    padding: 4px 8px;
+  }
+
+  .all-markets-pro {
+    padding: 0 8px 10px;
+  }
+
+  .markets-grid-pro {
+    gap: 6px;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-pro {
+    padding: 8px 6px;       /* ← EVEN TIGHTER on mobile */
+    gap: 8px;
+  }
+
+  .match-row-pro {
+    padding: 4px 6px;
+  }
+
+  .result-odds-pro {
+    padding: 0 6px 4px;
+    gap: 4px;
+  }
+
+  .result-odd-btn {
+    padding: 4px 6px;
+    min-width: 40px;
+  }
+
+  .result-odd {
+    font-size: 13px;
+  }
+
+  .team-home-pro,
+  .team-away-pro {
+    font-size: 12px;
+  }
+
+  .match-date-pro {
+    font-size: 9px;
+  }
+
+  .badge-live,
+  .badge-upcoming,
+  .badge-finished {
+    font-size: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .main-pro {
+    padding: 6px 4px;
+    gap: 6px;
+  }
+
+  .match-row-pro {
+    flex-wrap: wrap;
+    padding: 3px 4px;
+  }
+
+  .match-info-pro {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .match-teams-pro {
+    gap: 4px;
+  }
+
+  .team-home-pro,
+  .team-away-pro {
+    font-size: 11px;
+  }
+
+  .team-vs-pro {
+    font-size: 8px;
+  }
+
+  .expand-btn-pro {
+    font-size: 8px;
+    padding: 2px 6px;
+  }
+
+  .result-odd-btn {
+    padding: 3px 4px;
+    min-width: 32px;
+  }
+
+  .result-label {
+    font-size: 6px;
+  }
+
+  .result-odd {
+    font-size: 11px;
+  }
+
+  .market-option-pro {
+    font-size: 8px;
+    padding: 2px 5px;
+  }
+
+  .option-label {
+    font-size: 8px;
+  }
+
+  .option-odds {
+    font-size: 8px;
+  }
+}
