@@ -3,6 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './HomePage.css';
 
+// ===== PROMOTIONAL BANNERS =====
+import bannerLiveBetting from '../assets/banner-live-betting.jpeg';
+import bannerCashback from '../assets/banner-cashback.jpeg';
+import bannerSponsors from '../assets/banner-sponsors.jpeg';
+import bannerPromo from '../assets/Gemini_Generated_Image_111.jpeg';
+
 const HomePage = () => {
   const navigate = useNavigate();
   const [matches, setMatches] = useState([]);
@@ -28,7 +34,7 @@ const HomePage = () => {
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-  // ✅ Sports with Aviator navigation – removed Tennis, Cricket, Casino
+  // ✅ Sports with Aviator navigation
   const sports = [
     { id: 'FOOTBALL', name: 'Football', icon: '⚽' },
     { id: 'BASKETBALL', name: 'Basketball', icon: '🏀' },
@@ -39,7 +45,7 @@ const HomePage = () => {
   // ✅ Only Fast Keno is coming soon
   const comingSoonSports = ['FAST_KENO'];
 
-  // ✅ All markets mapping – ADDED firstHalfResult
+  // ✅ All markets mapping
   const allMarkets = {
     result: { label: 'Result', icon: '🏆' },
     doubleChance: { label: 'Double Chance', icon: '🔄' },
@@ -49,7 +55,7 @@ const HomePage = () => {
     exactGoals: { label: 'Exact Goals', icon: '🎯' },
     correctScore: { label: 'Correct Score', icon: '📝' },
     halfTimeResult: { label: 'Half-Time Result', icon: '⏰' },
-    firstHalfResult: { label: '1st Half – 3 Way', icon: '⏰' }, // ← FIXED
+    firstHalfResult: { label: '1st Half – 3 Way', icon: '⏰' },
     halfTimeFullTime: { label: 'HT/FT', icon: '🔄' },
     firstHalfCorrectScore: { label: '1st Half – Correct Score', icon: '📝' },
     oddEven: { label: 'Odd/Even', icon: '🔢' },
@@ -757,7 +763,6 @@ const HomePage = () => {
     if (!match || !match.markets) return [];
     if (typeof match.markets !== 'object' || Array.isArray(match.markets)) return [];
     
-    // Return market keys that have at least one selection with a valid odd
     return Object.keys(match.markets).filter(key => {
       const marketData = match.markets[key];
       return marketData && typeof marketData === 'object' && Object.keys(marketData).length > 0;
@@ -875,7 +880,7 @@ const HomePage = () => {
 
       <div className="main-pro">
         <div className="main-content-pro">
-          {/* ✅ Sports Tabs with Aviator navigation - updated order */}
+          {/* ✅ Sports Tabs */}
           <div className="sports-tabs-pro">
             {sports.map(sport => (
               <button
@@ -895,6 +900,24 @@ const HomePage = () => {
             ))}
           </div>
 
+          {/* ===== PROMOTIONAL BANNERS - HORIZONTAL SCROLL ===== */}
+          <div className="promo-scroll-container">
+            <div className="promo-scroll-wrapper">
+              <div className="promo-scroll-item">
+                <img src={bannerLiveBetting} alt="Live Betting" />
+              </div>
+              <div className="promo-scroll-item">
+                <img src={bannerCashback} alt="Cashback" />
+              </div>
+              <div className="promo-scroll-item">
+                <img src={bannerSponsors} alt="Sponsors" />
+              </div>
+              <div className="promo-scroll-item">
+                <img src={bannerPromo} alt="Promotion" />
+              </div>
+            </div>
+          </div>
+
           <div className="matches-pro">
             {loading ? (
               <div className="loading-pro">
@@ -902,7 +925,6 @@ const HomePage = () => {
                 <p>Loading matches...</p>
               </div>
             ) : comingSoonSports.includes(selectedSport) ? (
-              // Coming Soon Message for Fast Keno
               <div className="coming-soon-container">
                 <div className="coming-soon-content">
                   <div className="coming-soon-icon">
