@@ -458,11 +458,11 @@
 }
 
 /* ============================================================
-   CAROUSEL – FULL IMAGE VISIBLE, NO CROP, COMPACT HEIGHT
+   CAROUSEL – FULL IMAGE VISIBLE (NO CROP), COMPACT HEIGHT
    ============================================================ */
 .promo-carousel-container {
   width: 100%;
-  margin: 6px 0 10px 0;
+  margin: 4px 0 10px 0;
   position: relative;
   overflow: hidden;
   border-radius: 10px;
@@ -479,7 +479,7 @@
 .promo-carousel-slide {
   flex: 0 0 100%;
   min-width: 100%;
-  height: 160px;
+  height: 140px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -497,20 +497,20 @@
 /* ===== DOTS ===== */
 .promo-carousel-dots {
   position: absolute;
-  bottom: 8px;
+  bottom: 6px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
-  gap: 6px;
-  padding: 3px 10px;
+  gap: 5px;
+  padding: 2px 8px;
   background: rgba(0, 0, 0, 0.35);
   border-radius: 20px;
   backdrop-filter: blur(4px);
 }
 
 .promo-carousel-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.6);
   cursor: pointer;
@@ -525,7 +525,7 @@
 
 .promo-carousel-dot.active {
   background: #8bc34a;
-  width: 24px;
+  width: 20px;
   border-radius: 4px;
 }
 
@@ -1500,7 +1500,7 @@
   }
 
   .promo-carousel-slide {
-    height: 140px;
+    height: 120px;
   }
 
   .promo-carousel-container {
@@ -1724,7 +1724,7 @@
   }
 
   .promo-carousel-slide {
-    height: 130px;
+    height: 110px;
   }
 
   .promo-carousel-container {
@@ -1964,7 +1964,7 @@
   }
 
   .promo-carousel-slide {
-    height: 100px;
+    height: 90px;
   }
 
   .promo-carousel-container {
@@ -2042,7 +2042,7 @@
   }
 
   .promo-carousel-slide {
-    height: 80px;
+    height: 70px;
   }
 }
 
