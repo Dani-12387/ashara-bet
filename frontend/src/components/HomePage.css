@@ -410,18 +410,19 @@
   padding-top: 12px;
 }
 
-/* ===== MAIN CONTENT ===== */
+/* ===== MAIN CONTENT – COMPACT, FULL WIDTH ===== */
 .main-pro {
   max-width: 1440px;
   margin: 0 auto;
-  padding: 16px 20px;
+  padding: 12px 16px;
   display: grid;
-  grid-template-columns: 1fr 320px;
-  gap: 20px;
+  grid-template-columns: 1fr 280px;
+  gap: 16px;
 }
 
 .main-content-pro {
   min-width: 0;
+  max-width: 100%;
   transition: padding-bottom 0.3s ease;
 }
 
@@ -456,84 +457,93 @@
 }
 
 /* ============================================================
-   PROMO BANNERS - HORIZONTAL SCROLL
+   FULL-WIDTH CAROUSEL – ONE IMAGE AT A TIME, FULL VISIBLE
    ============================================================ */
-.promo-scroll-container {
+.promo-carousel-container {
   width: 100%;
   margin: 8px 0 16px 0;
   position: relative;
   overflow: hidden;
-}
-
-.promo-scroll-wrapper {
-  display: flex;
-  gap: 10px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 4px 0 10px 0;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
-}
-
-/* Hide scrollbar but keep functionality */
-.promo-scroll-wrapper::-webkit-scrollbar {
-  height: 4px;
-}
-
-.promo-scroll-wrapper::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.03);
-  border-radius: 4px;
-}
-
-.promo-scroll-wrapper::-webkit-scrollbar-thumb {
-  background: rgba(139, 195, 74, 0.3);
-  border-radius: 4px;
-}
-
-.promo-scroll-wrapper::-webkit-scrollbar-thumb:hover {
-  background: rgba(139, 195, 74, 0.5);
-}
-
-.promo-scroll-item {
-  flex: 0 0 auto;
-  width: 280px;
-  scroll-snap-align: start;
-  border-radius: 10px;
-  overflow: hidden;
-  transition: transform 0.2s, box-shadow 0.2s;
+  border-radius: 12px;
+  background: #f5f7fa;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  cursor: pointer;
 }
 
-.promo-scroll-item:hover {
-  transform: scale(1.02);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-}
-
-.promo-scroll-item img {
+.promo-carousel-track {
+  display: flex;
+  transition: transform 0.8s ease-in-out;
   width: 100%;
-  height: 140px;
-  object-fit: cover;
-  display: block;
-  border-radius: 10px;
 }
 
-/* ===== MATCHES ===== */
+.promo-carousel-slide {
+  flex: 0 0 100%;
+  min-width: 100%;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f7fa;
+  overflow: hidden;
+}
+
+.promo-carousel-slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* ===== DOTS ===== */
+.promo-carousel-dots {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  padding: 4px 12px;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 20px;
+  backdrop-filter: blur(4px);
+}
+
+.promo-carousel-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: all 0.3s;
+  border: none;
+}
+
+.promo-carousel-dot:hover {
+  background: rgba(255, 255, 255, 0.9);
+  transform: scale(1.2);
+}
+
+.promo-carousel-dot.active {
+  background: #8bc34a;
+  width: 28px;
+  border-radius: 5px;
+}
+
+/* ===== MATCHES – FULL WIDTH, COMPACT ===== */
 .league-group-pro {
   background: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.03);
   border-radius: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   overflow: hidden;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+  width: 100%;
 }
 
 .league-header-pro {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 14px;
+  gap: 8px;
+  padding: 6px 10px;
   background: rgba(0, 0, 0, 0.005);
   border-bottom: 1px solid rgba(0, 0, 0, 0.03);
 }
@@ -543,14 +553,14 @@
 }
 
 .league-header-pro h3 {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   flex: 1;
   color: #2d3748;
 }
 
 .match-count-pro {
-  font-size: 11px;
+  font-size: 10px;
   color: rgba(45, 55, 72, 0.3);
 }
 
@@ -575,21 +585,21 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 14px;
-  gap: 12px;
+  padding: 6px 10px;
+  gap: 8px;
 }
 
 .match-info-pro {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   flex: 1;
 }
 
 .match-teams-pro {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .team-home-pro,
@@ -600,46 +610,46 @@
 }
 
 .team-vs-pro {
-  font-size: 11px;
+  font-size: 10px;
   color: rgba(45, 55, 72, 0.3);
 }
 
 .match-meta-pro {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .match-date-pro {
-  font-size: 11px;
+  font-size: 10px;
   color: rgba(45, 55, 72, 0.3);
 }
 
 .badge-live {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
   color: #c0392b;
 }
 
 .badge-upcoming {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
   color: rgba(45, 55, 72, 0.3);
 }
 
 .badge-finished {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
   color: #8bc34a;
 }
 
 .expand-btn-pro {
-  padding: 4px 12px;
+  padding: 3px 10px;
   background: rgba(139, 195, 74, 0.06);
   border: 1px solid rgba(139, 195, 74, 0.08);
   border-radius: 4px;
   color: #8bc34a;
-  font-size: 12px;
+  font-size: 11px;
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
@@ -650,23 +660,23 @@
 }
 
 .expand-count {
-  font-size: 10px;
+  font-size: 9px;
   color: rgba(139, 195, 74, 0.5);
   margin-left: 2px;
 }
 
-/* ===== RESULT ODDS ===== */
+/* ===== RESULT ODDS – COMPACT ===== */
 .result-odds-pro {
   display: flex;
-  gap: 8px;
-  padding: 0 14px 12px;
+  gap: 6px;
+  padding: 0 10px 8px;
   flex-wrap: wrap;
 }
 
 .result-odd-btn {
   flex: 1;
-  min-width: 60px;
-  padding: 8px 12px;
+  min-width: 50px;
+  padding: 5px 8px;
   background: linear-gradient(135deg, #e8f5e0, #d4edc4);
   border: 1px solid rgba(139, 195, 74, 0.15);
   border-radius: 8px;
@@ -696,7 +706,7 @@
 }
 
 .result-label {
-  font-size: 10px;
+  font-size: 9px;
   text-transform: uppercase;
   color: rgba(45, 55, 72, 0.5);
   font-weight: 600;
@@ -704,30 +714,30 @@
 }
 
 .result-odd {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   color: #2d3748;
   margin-top: 2px;
 }
 
-/* ===== ALL MARKETS - IMPROVED ===== */
+/* ===== ALL MARKETS ===== */
 .all-markets-pro {
-  padding: 0 14px 16px;
+  padding: 0 10px 12px;
   border-top: 1px solid rgba(0, 0, 0, 0.03);
 }
 
 .markets-grid-pro {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  padding-top: 10px;
+  gap: 8px;
+  padding-top: 8px;
 }
 
 .market-section-pro {
   background: #ffffff;
   border: 1px solid #e9ecef;
   border-radius: 8px;
-  padding: 10px 12px;
+  padding: 6px 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
   transition: box-shadow 0.2s;
 }
@@ -740,17 +750,17 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 8px;
-  padding-bottom: 6px;
+  margin-bottom: 4px;
+  padding-bottom: 4px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.04);
 }
 
 .market-icon {
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .market-header-pro h4 {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: #2d3748;
   margin: 0;
@@ -760,7 +770,7 @@
 .market-options-pro {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   width: 100%;
 }
 
@@ -769,14 +779,14 @@
   justify-content: space-between;
   align-items: center;
   width: 100%;
-  padding: 8px 14px;
+  padding: 6px 10px;
   background: linear-gradient(135deg, #e8f5e0, #d4edc4);
   border: 1px solid rgba(139, 195, 74, 0.12);
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
-  font-size: 13px;
-  min-height: 38px;
+  font-size: 12px;
+  min-height: 34px;
 }
 
 .market-option-pro:hover {
@@ -794,15 +804,15 @@
 .option-label {
   color: rgba(45, 55, 72, 0.7);
   font-weight: 500;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .option-odds {
   color: #2d3748;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 13px;
   background: rgba(255, 255, 255, 0.4);
-  padding: 2px 10px;
+  padding: 2px 8px;
   border-radius: 4px;
 }
 
@@ -823,9 +833,9 @@
   flex: 1;
   min-width: 50px;
   justify-content: center;
-  gap: 8px;
-  padding: 6px 10px;
-  min-height: 34px;
+  gap: 6px;
+  padding: 4px 8px;
+  min-height: 30px;
 }
 
 /* ===== NO MARKETS ===== */
@@ -843,7 +853,7 @@
 }
 
 /* ============================================================
-   SIDEBAR / BET SLIP
+   SIDEBAR / BET SLIP – NARROWER
    ============================================================ */
 .sidebar-pro {
   background: #ffffff;
@@ -857,7 +867,8 @@
   flex-direction: column;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
   width: 100%;
-  min-width: 280px;
+  min-width: 240px;
+  max-width: 280px;
   z-index: 10;
   overflow: hidden;
 }
@@ -869,16 +880,16 @@
 /* Desktop - Show bet slip always */
 @media (min-width: 1025px) {
   .main-pro {
-    grid-template-columns: 1fr 320px;
-    gap: 24px;
+    grid-template-columns: 1fr 280px;
+    gap: 16px;
   }
 
   .sidebar-pro {
     display: flex !important;
     position: sticky;
     top: 80px;
-    min-width: 280px;
-    max-width: 320px;
+    min-width: 240px;
+    max-width: 280px;
     margin-left: auto;
   }
 
@@ -899,8 +910,8 @@
 @media (max-width: 1024px) {
   .main-pro {
     grid-template-columns: 1fr;
-    padding: 12px;
-    gap: 12px;
+    padding: 10px 8px;
+    gap: 10px;
   }
 
   .sidebar-pro {
@@ -1429,7 +1440,7 @@
 
   .main-pro {
     grid-template-columns: 1fr;
-    padding: 12px;
+    padding: 10px 8px;
   }
 
   .mobile-toggle-pro {
@@ -1446,11 +1457,11 @@
 
   .markets-grid-pro {
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    gap: 6px;
   }
 
   .market-section-pro {
-    padding: 8px 10px;
+    padding: 6px 8px;
   }
 
   .market-options-pro {
@@ -1458,40 +1469,30 @@
   }
 
   .market-option-pro {
-    font-size: 12px;
-    padding: 6px 10px;
-    min-height: 34px;
+    font-size: 11px;
+    padding: 5px 8px;
+    min-height: 30px;
   }
 
   .option-label {
-    font-size: 12px;
+    font-size: 11px;
   }
 
   .option-odds {
-    font-size: 13px;
+    font-size: 12px;
   }
 
   .result-odd-btn {
     min-width: 50px;
-    padding: 6px 10px;
+    padding: 5px 8px;
   }
 
   .result-odd {
-    font-size: 14px;
+    font-size: 13px;
   }
 
-  /* PROMO BANNERS - MOBILE */
-  .promo-scroll-item {
-    width: 200px;
-  }
-
-  .promo-scroll-item img {
-    height: 110px;
-  }
-
-  .promo-scroll-wrapper {
-    gap: 8px;
-    padding: 4px 0 8px 0;
+  .promo-carousel-slide {
+    height: 150px;
   }
 }
 
@@ -1560,8 +1561,8 @@
   }
 
   .main-pro {
-    padding: 8px 10px;
-    gap: 12px;
+    padding: 8px 6px;
+    gap: 8px;
   }
 
   .sports-tabs-pro {
@@ -1575,7 +1576,7 @@
   }
 
   .league-header-pro {
-    padding: 6px 10px;
+    padding: 4px 8px;
   }
 
   .league-header-pro h3 {
@@ -1591,8 +1592,8 @@
   }
 
   .match-row-pro {
-    padding: 6px 10px;
-    gap: 8px;
+    padding: 4px 6px;
+    gap: 6px;
   }
 
   .team-home-pro,
@@ -1605,17 +1606,17 @@
   }
 
   .match-date-pro {
-    font-size: 10px;
+    font-size: 9px;
   }
 
   .result-odds-pro {
     gap: 4px;
-    padding: 0 10px 8px;
+    padding: 0 6px 6px;
   }
 
   .result-odd-btn {
-    min-width: 50px;
-    padding: 5px 8px;
+    min-width: 45px;
+    padding: 4px 6px;
   }
 
   .result-label {
@@ -1623,22 +1624,22 @@
   }
 
   .result-odd {
-    font-size: 13px;
+    font-size: 12px;
   }
 
   .expand-btn-pro {
-    font-size: 10px;
-    padding: 3px 10px;
+    font-size: 9px;
+    padding: 2px 8px;
   }
 
   .markets-grid-pro {
     grid-template-columns: 1fr 1fr;
-    gap: 6px;
-    padding-top: 8px;
+    gap: 4px;
+    padding-top: 6px;
   }
 
   .market-section-pro {
-    padding: 6px 8px;
+    padding: 4px 6px;
   }
 
   .market-header-pro h4 {
@@ -1646,17 +1647,17 @@
   }
 
   .market-icon {
-    font-size: 12px;
+    font-size: 11px;
   }
 
   .market-options-pro {
-    gap: 4px;
+    gap: 3px;
   }
 
   .market-option-pro {
     font-size: 10px;
-    padding: 5px 8px;
-    min-height: 30px;
+    padding: 4px 6px;
+    min-height: 28px;
   }
 
   .option-label {
@@ -1664,7 +1665,7 @@
   }
 
   .option-odds {
-    font-size: 11px;
+    font-size: 10px;
   }
 
   .sidebar-pro {
@@ -1710,17 +1711,8 @@
     right: 12px;
   }
 
-  /* PROMO BANNERS - SMALLER */
-  .promo-scroll-item {
-    width: 160px;
-  }
-
-  .promo-scroll-item img {
-    height: 90px;
-  }
-
-  .promo-scroll-wrapper {
-    gap: 6px;
+  .promo-carousel-slide {
+    height: 150px;
   }
 }
 
@@ -1786,8 +1778,8 @@
   }
 
   .main-pro {
-    padding: 6px 8px;
-    gap: 8px;
+    padding: 6px 4px;
+    gap: 6px;
   }
 
   .sport-tab-pro {
@@ -1800,7 +1792,7 @@
   }
 
   .league-header-pro {
-    padding: 4px 8px;
+    padding: 3px 6px;
   }
 
   .league-header-pro h3 {
@@ -1816,7 +1808,17 @@
   }
 
   .match-row-pro {
-    padding: 4px 8px;
+    padding: 3px 4px;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .match-info-pro {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .match-teams-pro {
     gap: 4px;
   }
 
@@ -1830,17 +1832,17 @@
   }
 
   .match-date-pro {
-    font-size: 9px;
+    font-size: 8px;
   }
 
   .result-odds-pro {
     gap: 3px;
-    padding: 0 8px 6px;
+    padding: 0 4px 4px;
   }
 
   .result-odd-btn {
-    min-width: 40px;
-    padding: 4px 6px;
+    min-width: 32px;
+    padding: 3px 4px;
   }
 
   .result-label {
@@ -1852,14 +1854,14 @@
   }
 
   .expand-btn-pro {
-    font-size: 9px;
-    padding: 2px 8px;
+    font-size: 8px;
+    padding: 2px 6px;
   }
 
   .markets-grid-pro {
     grid-template-columns: 1fr 1fr;
     gap: 4px;
-    padding-top: 6px;
+    padding-top: 4px;
   }
 
   .market-section-pro {
@@ -1880,8 +1882,8 @@
 
   .market-option-pro {
     font-size: 9px;
-    padding: 4px 6px;
-    min-height: 26px;
+    padding: 3px 5px;
+    min-height: 24px;
   }
 
   .option-label {
@@ -1945,17 +1947,23 @@
     right: 8px;
   }
 
-  /* PROMO BANNERS - EXTRA SMALL */
-  .promo-scroll-item {
-    width: 130px;
+  .promo-carousel-slide {
+    height: 120px;
   }
 
-  .promo-scroll-item img {
-    height: 75px;
+  .promo-carousel-dots {
+    bottom: 6px;
+    gap: 5px;
+    padding: 3px 10px;
   }
 
-  .promo-scroll-wrapper {
-    gap: 4px;
+  .promo-carousel-dot {
+    width: 7px;
+    height: 7px;
+  }
+
+  .promo-carousel-dot.active {
+    width: 18px;
   }
 }
 
@@ -1986,8 +1994,8 @@
   }
 
   .result-odd-btn {
-    min-width: 34px;
-    padding: 3px 4px;
+    min-width: 28px;
+    padding: 2px 3px;
   }
 
   .result-odd {
@@ -2000,8 +2008,8 @@
 
   .market-option-pro {
     font-size: 8px;
-    padding: 3px 5px;
-    min-height: 24px;
+    padding: 2px 4px;
+    min-height: 22px;
   }
 
   .option-odds {
@@ -2013,12 +2021,8 @@
     font-size: 8px;
   }
 
-  .promo-scroll-item {
-    width: 110px;
-  }
-
-  .promo-scroll-item img {
-    height: 65px;
+  .promo-carousel-slide {
+    height: 100px;
   }
 }
 
@@ -2714,291 +2718,5 @@
   box-shadow: 0 8px 25px rgba(255, 111, 0, 0.3);
 }
 
-/* ===== MARQUEE BANNERS - AUTO SCROLLING (FULL VISIBILITY) ===== */
-.promo-marquee-container {
-  width: 100%;
-  margin: 8px 0 16px 0;
-  overflow: hidden;
-  background: #f5f7fa;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  padding: 8px 0;
-}
-
-.promo-marquee-wrapper {
-  display: flex;
-  gap: 12px;
-  animation: marqueeScroll 20s linear infinite;
-  width: max-content;
-}
-
-.promo-marquee-wrapper:hover {
-  animation-play-state: paused;
-}
-
-.promo-marquee-slide {
-  flex: 0 0 auto;
-  width: 300px;
-  height: 140px;
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
-  transition: transform 0.3s;
-  background: #fff;
-}
-
-.promo-marquee-slide:hover {
-  transform: scale(1.03);
-}
-
-.promo-marquee-slide img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-}
-
-@keyframes marqueeScroll {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-
-@media (max-width: 768px) {
-  .promo-marquee-slide { width: 220px; height: 110px; }
-  .promo-marquee-wrapper { gap: 8px; animation-duration: 15s; }
-}
-@media (max-width: 480px) {
-  .promo-marquee-slide { width: 160px; height: 90px; }
-  .promo-marquee-wrapper { gap: 6px; animation-duration: 12s; }
-}
-@media (max-width: 360px) {
-  .promo-marquee-slide { width: 130px; height: 75px; }
-}
-
-/* ===== FULL-WIDTH CAROUSEL – ONE IMAGE AT A TIME ===== */
-/* ===== FULL-WIDTH CAROUSEL – FULL IMAGE VISIBLE, COMPACT ===== */
-.promo-carousel-container {
-  width: 100%;
-  margin: 8px 0 16px 0;
-  position: relative;
-  overflow: hidden;
-  border-radius: 12px;
-  background: #f5f7fa;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.promo-carousel-track {
-  display: flex;
-  transition: transform 0.8s ease-in-out;
-  width: 100%;
-}
-
-.promo-carousel-slide {
-  flex: 0 0 100%;
-  min-width: 100%;
-  height: 200px;              /* ← FIXED COMPACT HEIGHT */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #f5f7fa;
-  overflow: hidden;
-}
-
-.promo-carousel-slide img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;        /* ← FULL IMAGE, NO CROPPING */
-  display: block;
-}
-
-/* ===== DOTS ===== */
-.promo-carousel-dots {
-  position: absolute;
-  bottom: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 8px;
-  padding: 4px 12px;
-  background: rgba(0, 0, 0, 0.35);
-  border-radius: 20px;
-  backdrop-filter: blur(4px);
-}
-
-.promo-carousel-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.6);
-  cursor: pointer;
-  transition: all 0.3s;
-  border: none;
-}
-
-.promo-carousel-dot:hover {
-  background: rgba(255, 255, 255, 0.9);
-  transform: scale(1.2);
-}
-
-.promo-carousel-dot.active {
-  background: #8bc34a;
-  width: 28px;
-  border-radius: 5px;
-}
-
-/* ===== RESPONSIVE – EVEN SHORTER ON MOBILE ===== */
-@media (max-width: 768px) {
-  .promo-carousel-slide {
-    height: 150px;
-  }
-}
-
-@media (max-width: 480px) {
-  .promo-carousel-slide {
-    height: 120px;
-  }
-
-  .promo-carousel-dots {
-    bottom: 6px;
-    gap: 5px;
-    padding: 3px 10px;
-  }
-
-  .promo-carousel-dot {
-    width: 7px;
-    height: 7px;
-  }
-
-  .promo-carousel-dot.active {
-    width: 18px;
-  }
-}
-
-@media (max-width: 1024px) {
-  .main-pro {
-    grid-template-columns: 1fr;
-    padding: 10px 8px;      /* ← TIGHTER on tablet */
-    gap: 10px;
-  }
-
-  .match-row-pro {
-    padding: 4px 8px;
-  }
-
-  .result-odds-pro {
-    padding: 0 8px 6px;
-  }
-
-  .league-header-pro {
-    padding: 4px 8px;
-  }
-
-  .all-markets-pro {
-    padding: 0 8px 10px;
-  }
-
-  .markets-grid-pro {
-    gap: 6px;
-  }
-}
-
-@media (max-width: 768px) {
-  .main-pro {
-    padding: 8px 6px;       /* ← EVEN TIGHTER on mobile */
-    gap: 8px;
-  }
-
-  .match-row-pro {
-    padding: 4px 6px;
-  }
-
-  .result-odds-pro {
-    padding: 0 6px 4px;
-    gap: 4px;
-  }
-
-  .result-odd-btn {
-    padding: 4px 6px;
-    min-width: 40px;
-  }
-
-  .result-odd {
-    font-size: 13px;
-  }
-
-  .team-home-pro,
-  .team-away-pro {
-    font-size: 12px;
-  }
-
-  .match-date-pro {
-    font-size: 9px;
-  }
-
-  .badge-live,
-  .badge-upcoming,
-  .badge-finished {
-    font-size: 8px;
-  }
-}
-
-@media (max-width: 480px) {
-  .main-pro {
-    padding: 6px 4px;
-    gap: 6px;
-  }
-
-  .match-row-pro {
-    flex-wrap: wrap;
-    padding: 3px 4px;
-  }
-
-  .match-info-pro {
-    flex-wrap: wrap;
-    gap: 4px;
-  }
-
-  .match-teams-pro {
-    gap: 4px;
-  }
-
-  .team-home-pro,
-  .team-away-pro {
-    font-size: 11px;
-  }
-
-  .team-vs-pro {
-    font-size: 8px;
-  }
-
-  .expand-btn-pro {
-    font-size: 8px;
-    padding: 2px 6px;
-  }
-
-  .result-odd-btn {
-    padding: 3px 4px;
-    min-width: 32px;
-  }
-
-  .result-label {
-    font-size: 6px;
-  }
-
-  .result-odd {
-    font-size: 11px;
-  }
-
-  .market-option-pro {
-    font-size: 8px;
-    padding: 2px 5px;
-  }
-
-  .option-label {
-    font-size: 8px;
-  }
-
-  .option-odds {
-    font-size: 8px;
-  }
-}
+/* ===== REMOVED MARQUEE – we use carousel instead ===== */
+/* (No .promo-marquee-* styles are present) */
