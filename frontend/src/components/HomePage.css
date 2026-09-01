@@ -410,11 +410,11 @@
   padding-top: 12px;
 }
 
-/* ===== MAIN CONTENT – FULL WIDTH, NO WASTED SPACE ===== */
+/* ===== MAIN CONTENT – COMPACT, FULL WIDTH ===== */
 .main-pro {
   max-width: 100%;
   margin: 0 auto;
-  padding: 10px 8px;
+  padding: 8px 8px;
   display: grid;
   grid-template-columns: 1fr 260px;
   gap: 12px;
@@ -431,7 +431,7 @@
 .sports-tabs-pro {
   display: flex;
   gap: 4px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   flex-wrap: wrap;
 }
 
@@ -458,11 +458,11 @@
 }
 
 /* ============================================================
-   FULL-WIDTH CAROUSEL – NO CROP, NO WASTED SPACE
+   CAROUSEL – COMPACT, FIXED HEIGHT, FILLS CONTAINER
    ============================================================ */
 .promo-carousel-container {
   width: 100%;
-  margin: 6px 0 12px 0;
+  margin: 6px 0 10px 0;
   position: relative;
   overflow: hidden;
   border-radius: 10px;
@@ -479,6 +479,7 @@
 .promo-carousel-slide {
   flex: 0 0 100%;
   min-width: 100%;
+  height: 180px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -488,15 +489,15 @@
 
 .promo-carousel-slide img {
   width: 100%;
-  height: auto;          /* ← FIX: no cropping, full image visible */
+  height: 100%;
+  object-fit: cover;
   display: block;
-  object-fit: unset;     /* remove object-fit */
 }
 
 /* ===== DOTS ===== */
 .promo-carousel-dots {
   position: absolute;
-  bottom: 10px;
+  bottom: 8px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -533,7 +534,7 @@
   background: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.03);
   border-radius: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   overflow: hidden;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
   width: 100%;
@@ -675,7 +676,7 @@
 .result-odds-pro {
   display: flex;
   gap: 4px;
-  padding: 0 8px 6px;
+  padding: 0 8px 4px;
   flex-wrap: wrap;
   width: 100%;
 }
@@ -917,8 +918,8 @@
 @media (max-width: 1024px) {
   .main-pro {
     grid-template-columns: 1fr;
-    padding: 10px 8px;
-    gap: 10px;
+    padding: 8px 6px;
+    gap: 8px;
   }
 
   .sidebar-pro {
@@ -1447,7 +1448,7 @@
 
   .main-pro {
     grid-template-columns: 1fr;
-    padding: 10px 8px;
+    padding: 8px 6px;
   }
 
   .mobile-toggle-pro {
@@ -1499,7 +1500,11 @@
   }
 
   .promo-carousel-slide {
-    /* no fixed height – auto adjusts */
+    height: 140px;
+  }
+
+  .promo-carousel-container {
+    margin: 4px 0 8px 0;
   }
 }
 
@@ -1568,13 +1573,13 @@
   }
 
   .main-pro {
-    padding: 8px 6px;
-    gap: 8px;
+    padding: 6px 4px;
+    gap: 6px;
   }
 
   .sports-tabs-pro {
     gap: 3px;
-    margin-bottom: 10px;
+    margin-bottom: 6px;
   }
 
   .sport-tab-pro {
@@ -1583,7 +1588,7 @@
   }
 
   .league-header-pro {
-    padding: 4px 8px;
+    padding: 3px 6px;
   }
 
   .league-header-pro h3 {
@@ -1599,8 +1604,8 @@
   }
 
   .match-row-pro {
-    padding: 4px 6px;
-    gap: 6px;
+    padding: 3px 6px;
+    gap: 4px;
   }
 
   .team-home-pro,
@@ -1618,7 +1623,7 @@
 
   .result-odds-pro {
     gap: 4px;
-    padding: 0 6px 6px;
+    padding: 0 6px 4px;
   }
 
   .result-odd-btn {
@@ -1719,7 +1724,11 @@
   }
 
   .promo-carousel-slide {
-    /* no fixed height – auto adjusts */
+    height: 140px;
+  }
+
+  .promo-carousel-container {
+    margin: 4px 0 8px 0;
   }
 }
 
@@ -1785,8 +1794,8 @@
   }
 
   .main-pro {
-    padding: 6px 4px;
-    gap: 6px;
+    padding: 4px 4px;
+    gap: 4px;
   }
 
   .sport-tab-pro {
@@ -1799,7 +1808,7 @@
   }
 
   .league-header-pro {
-    padding: 3px 6px;
+    padding: 2px 4px;
   }
 
   .league-header-pro h3 {
@@ -1815,9 +1824,9 @@
   }
 
   .match-row-pro {
-    padding: 3px 4px;
+    padding: 2px 4px;
     flex-wrap: wrap;
-    gap: 4px;
+    gap: 3px;
   }
 
   .match-info-pro {
@@ -1844,7 +1853,7 @@
 
   .result-odds-pro {
     gap: 3px;
-    padding: 0 4px 4px;
+    padding: 0 4px 3px;
   }
 
   .result-odd-btn {
@@ -1955,22 +1964,26 @@
   }
 
   .promo-carousel-slide {
-    /* no fixed height – auto adjusts */
+    height: 100px;
+  }
+
+  .promo-carousel-container {
+    margin: 4px 0 6px 0;
   }
 
   .promo-carousel-dots {
-    bottom: 6px;
-    gap: 5px;
-    padding: 3px 10px;
+    bottom: 4px;
+    padding: 2px 8px;
+    gap: 4px;
   }
 
   .promo-carousel-dot {
-    width: 7px;
-    height: 7px;
+    width: 6px;
+    height: 6px;
   }
 
   .promo-carousel-dot.active {
-    width: 18px;
+    width: 16px;
   }
 }
 
@@ -2029,7 +2042,7 @@
   }
 
   .promo-carousel-slide {
-    /* no fixed height – auto adjusts */
+    height: 80px;
   }
 }
 
