@@ -6,7 +6,6 @@ const GameCanvas = ({ multiplier, status, crashMultiplier, roundId }) => {
   const animationRef = useRef(null);
   const [trajectoryPoints, setTrajectoryPoints] = useState([]);
 
-  // Normalise status to check conditions
   const isRunning = status === 'RUNNING' || status === 'active';
   const isCrashed = status === 'CRASHED' || status === 'crashed';
   const isWaiting = status === 'WAITING' || status === 'idle' || status === 'BETTING_OPEN';
@@ -58,61 +57,34 @@ const GameCanvas = ({ multiplier, status, crashMultiplier, roundId }) => {
         ctx.fillText(i + 'x', 40, y + 4);
       }
 
-      // Draw trajectory
-      const maxMultiplier = Math.max(multiplier, 1.5);
-      const points = trajectoryPoints;
-      
-      if (points.length > 1) {
-        ctx.beginPath();
-        ctx.moveTo(60, height - 20);
-        
-        for (let i = 0; i < points.length; i++) {
-          const x = 60 + (i / (points.length - 1)) * (width - 80);
-          const y = height - 20 - (points[i] / maxMultiplier) * (height * 0.85 - 30);
-          ctx.lineTo(x, y);
-        }
-        
-        const isCrashedNow = isCrashed;
-        const gradientLine = ctx.createLinearGradient(0, 0, width, 0);
-        if (isCrashedNow) {
-          gradientLine.addColorStop(0, '#ff6b6b');
-          gradientLine.addColorStop(1, '#dc3545');
-        } else {
-          gradientLine.addColorStop(0, '#4ecdc4');
-          gradientLine.addColorStop(1, '#44bd9e');
-        }
-        ctx.strokeStyle = gradientLine;
-        ctx.lineWidth = 3;
-        ctx.stroke();
+      // ---------- TRAJECTORY LINE REMOVED ----------
+      // No line is drawn here anymore
 
-        ctx.shadowColor = isCrashedNow ? 'rgba(220,53,69,0.3)' : 'rgba(78,205,196,0.3)';
-        ctx.shadowBlur = 20;
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-      }
-
-      // Aircraft
+      // Aircraft position
       const currentMultiplier = multiplier || 1;
-      const xPos = 60 + ((currentMultiplier - 1) / (Math.max(multiplier, crashMultiplier || 2) || 2)) * (width - 80);
-      const yPos = height - 20 - (currentMultiplier / Math.max(multiplier, crashMultiplier || 2)) * (height * 0.85 - 30);
+      const maxMult = Math.max(multiplier, crashMultiplier || 2) || 2;
+      const xPos = 60 + ((currentMultiplier - 1) / maxMult) * (width - 80);
+      const yPos = height - 20 - (currentMultiplier / maxMult) * (height * 0.85 - 30);
       
       const clampedX = Math.min(Math.max(xPos, 60), width - 30);
       const clampedY = Math.min(Math.max(yPos, 30), height - 20);
 
-      // Draw aircraft
+      // Draw aircraft – RED
       if (!isCrashed) {
         ctx.save();
         ctx.translate(clampedX, clampedY);
         ctx.rotate(-Math.PI / 6);
         
-        ctx.fillStyle = '#ffd700';
-        ctx.shadowColor = 'rgba(255,215,0,0.5)';
+        // Main body – red
+        ctx.fillStyle = '#e74c3c';
+        ctx.shadowColor = 'rgba(231, 76, 60, 0.5)';
         ctx.shadowBlur = 20;
         ctx.beginPath();
         ctx.ellipse(0, 0, 20, 8, 0, 0, Math.PI * 2);
         ctx.fill();
         
-        ctx.fillStyle = '#ffed4a';
+        // Tail fins – lighter red
+        ctx.fillStyle = '#ff6b6b';
         ctx.shadowBlur = 10;
         ctx.beginPath();
         ctx.moveTo(-5, -12);
@@ -127,7 +99,8 @@ const GameCanvas = ({ multiplier, status, crashMultiplier, roundId }) => {
         ctx.closePath();
         ctx.fill();
         
-        ctx.fillStyle = '#f39c12';
+        // Nose – darker red
+        ctx.fillStyle = '#c0392b';
         ctx.beginPath();
         ctx.moveTo(-18, -3);
         ctx.lineTo(-25, -6);
@@ -136,7 +109,8 @@ const GameCanvas = ({ multiplier, status, crashMultiplier, roundId }) => {
         ctx.closePath();
         ctx.fill();
         
-        ctx.fillStyle = '#4ecdc4';
+        // Cockpit – blue accent
+        ctx.fillStyle = '#3498db';
         ctx.shadowBlur = 0;
         ctx.beginPath();
         ctx.arc(8, 0, 4, 0, Math.PI * 2);
@@ -183,7 +157,7 @@ const GameCanvas = ({ multiplier, status, crashMultiplier, roundId }) => {
     };
   }, [multiplier, status, crashMultiplier, isCrashed]);
 
-  // Update trajectory points
+  // Trajectory points still stored (can be used later if needed)
   useEffect(() => {
     if (isRunning) {
       setTrajectoryPoints(prev => {
