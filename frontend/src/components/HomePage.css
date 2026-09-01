@@ -410,19 +410,20 @@
   padding-top: 12px;
 }
 
-/* ===== MAIN CONTENT – COMPACT, FULL WIDTH ===== */
+/* ===== MAIN CONTENT – FULL WIDTH, NO WASTED SPACE ===== */
 .main-pro {
-  max-width: 1440px;
+  max-width: 100%;
   margin: 0 auto;
-  padding: 12px 16px;
+  padding: 10px 8px;
   display: grid;
-  grid-template-columns: 1fr 280px;
-  gap: 16px;
+  grid-template-columns: 1fr 260px;
+  gap: 12px;
 }
 
 .main-content-pro {
   min-width: 0;
   max-width: 100%;
+  width: 100%;
   transition: padding-bottom 0.3s ease;
 }
 
@@ -430,17 +431,17 @@
 .sports-tabs-pro {
   display: flex;
   gap: 4px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   flex-wrap: wrap;
 }
 
 .sport-tab-pro {
-  padding: 6px 16px;
+  padding: 5px 12px;
   background: rgba(0, 0, 0, 0.02);
   border: 1px solid rgba(0, 0, 0, 0.03);
   border-radius: 6px;
   color: rgba(45, 55, 72, 0.4);
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -457,14 +458,14 @@
 }
 
 /* ============================================================
-   FULL-WIDTH CAROUSEL – ONE IMAGE AT A TIME, FULL VISIBLE
+   FULL-WIDTH CAROUSEL – IMAGE FILLS CONTAINER
    ============================================================ */
 .promo-carousel-container {
   width: 100%;
-  margin: 8px 0 16px 0;
+  margin: 6px 0 12px 0;
   position: relative;
   overflow: hidden;
-  border-radius: 12px;
+  border-radius: 10px;
   background: #f5f7fa;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
@@ -489,27 +490,27 @@
 .promo-carousel-slide img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   display: block;
 }
 
 /* ===== DOTS ===== */
 .promo-carousel-dots {
   position: absolute;
-  bottom: 12px;
+  bottom: 10px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
-  gap: 8px;
-  padding: 4px 12px;
+  gap: 6px;
+  padding: 3px 10px;
   background: rgba(0, 0, 0, 0.35);
   border-radius: 20px;
   backdrop-filter: blur(4px);
 }
 
 .promo-carousel-dot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.6);
   cursor: pointer;
@@ -524,8 +525,8 @@
 
 .promo-carousel-dot.active {
   background: #8bc34a;
-  width: 28px;
-  border-radius: 5px;
+  width: 24px;
+  border-radius: 4px;
 }
 
 /* ===== MATCHES – FULL WIDTH, COMPACT ===== */
@@ -533,7 +534,7 @@
   background: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.03);
   border-radius: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   overflow: hidden;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
   width: 100%;
@@ -542,31 +543,32 @@
 .league-header-pro {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
+  gap: 6px;
+  padding: 4px 8px;
   background: rgba(0, 0, 0, 0.005);
   border-bottom: 1px solid rgba(0, 0, 0, 0.03);
 }
 
 .league-icon-pro {
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .league-header-pro h3 {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   flex: 1;
   color: #2d3748;
 }
 
 .match-count-pro {
-  font-size: 10px;
+  font-size: 9px;
   color: rgba(45, 55, 72, 0.3);
 }
 
 .match-card-pro {
   border-bottom: 1px solid rgba(0, 0, 0, 0.03);
   transition: all 0.2s;
+  width: 100%;
 }
 
 .match-card-pro:last-child {
@@ -585,74 +587,79 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px 10px;
-  gap: 8px;
+  padding: 4px 8px;
+  gap: 6px;
+  width: 100%;
 }
 
 .match-info-pro {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   flex: 1;
+  min-width: 0;
 }
 
 .match-teams-pro {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
+  white-space: nowrap;
 }
 
 .team-home-pro,
 .team-away-pro {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   color: #2d3748;
 }
 
 .team-vs-pro {
-  font-size: 10px;
+  font-size: 9px;
   color: rgba(45, 55, 72, 0.3);
 }
 
 .match-meta-pro {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
+  flex-shrink: 0;
 }
 
 .match-date-pro {
-  font-size: 10px;
+  font-size: 9px;
   color: rgba(45, 55, 72, 0.3);
 }
 
 .badge-live {
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 600;
   color: #c0392b;
 }
 
 .badge-upcoming {
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 600;
   color: rgba(45, 55, 72, 0.3);
 }
 
 .badge-finished {
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 600;
   color: #8bc34a;
 }
 
 .expand-btn-pro {
-  padding: 3px 10px;
+  padding: 2px 8px;
   background: rgba(139, 195, 74, 0.06);
   border: 1px solid rgba(139, 195, 74, 0.08);
   border-radius: 4px;
   color: #8bc34a;
-  font-size: 11px;
+  font-size: 10px;
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .expand-btn-pro:hover {
@@ -660,26 +667,27 @@
 }
 
 .expand-count {
-  font-size: 9px;
+  font-size: 8px;
   color: rgba(139, 195, 74, 0.5);
   margin-left: 2px;
 }
 
-/* ===== RESULT ODDS – COMPACT ===== */
+/* ===== RESULT ODDS – FULL WIDTH, COMPACT ===== */
 .result-odds-pro {
   display: flex;
-  gap: 6px;
-  padding: 0 10px 8px;
+  gap: 4px;
+  padding: 0 8px 6px;
   flex-wrap: wrap;
+  width: 100%;
 }
 
 .result-odd-btn {
   flex: 1;
-  min-width: 50px;
-  padding: 5px 8px;
+  min-width: 40px;
+  padding: 4px 6px;
   background: linear-gradient(135deg, #e8f5e0, #d4edc4);
   border: 1px solid rgba(139, 195, 74, 0.15);
-  border-radius: 8px;
+  border-radius: 6px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -688,15 +696,15 @@
 }
 
 .result-odd-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   background: linear-gradient(135deg, #d4edc4, #c5e1a5);
-  box-shadow: 0 4px 12px rgba(139, 195, 74, 0.12);
+  box-shadow: 0 2px 8px rgba(139, 195, 74, 0.12);
 }
 
 .result-odd-btn.selected {
   background: linear-gradient(135deg, #c5e1a5, #aed581);
   border-color: #8bc34a;
-  box-shadow: 0 4px 12px rgba(139, 195, 74, 0.15);
+  box-shadow: 0 2px 8px rgba(139, 195, 74, 0.15);
 }
 
 .result-odd-btn:disabled {
@@ -706,31 +714,31 @@
 }
 
 .result-label {
-  font-size: 9px;
+  font-size: 8px;
   text-transform: uppercase;
   color: rgba(45, 55, 72, 0.5);
   font-weight: 600;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
 }
 
 .result-odd {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: #2d3748;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
-/* ===== ALL MARKETS ===== */
+/* ===== ALL MARKETS – COMPACT ===== */
 .all-markets-pro {
-  padding: 0 10px 12px;
+  padding: 0 8px 10px;
   border-top: 1px solid rgba(0, 0, 0, 0.03);
 }
 
 .markets-grid-pro {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  padding-top: 8px;
+  gap: 6px;
+  padding-top: 6px;
 }
 
 .market-section-pro {
@@ -749,14 +757,14 @@
 .market-header-pro {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   margin-bottom: 4px;
   padding-bottom: 4px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.04);
 }
 
 .market-icon {
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .market-header-pro h4 {
@@ -779,40 +787,40 @@
   justify-content: space-between;
   align-items: center;
   width: 100%;
-  padding: 6px 10px;
+  padding: 4px 8px;
   background: linear-gradient(135deg, #e8f5e0, #d4edc4);
   border: 1px solid rgba(139, 195, 74, 0.12);
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
-  font-size: 12px;
-  min-height: 34px;
+  font-size: 11px;
+  min-height: 30px;
 }
 
 .market-option-pro:hover {
   transform: translateY(-1px);
   background: linear-gradient(135deg, #d4edc4, #c5e1a5);
-  box-shadow: 0 3px 10px rgba(139, 195, 74, 0.15);
+  box-shadow: 0 2px 6px rgba(139, 195, 74, 0.12);
 }
 
 .market-option-pro.selected {
   background: linear-gradient(135deg, #c5e1a5, #aed581);
   border-color: #8bc34a;
-  box-shadow: 0 3px 10px rgba(139, 195, 74, 0.2);
+  box-shadow: 0 2px 6px rgba(139, 195, 74, 0.15);
 }
 
 .option-label {
   color: rgba(45, 55, 72, 0.7);
   font-weight: 500;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .option-odds {
   color: #2d3748;
   font-weight: 700;
-  font-size: 13px;
+  font-size: 12px;
   background: rgba(255, 255, 255, 0.4);
-  padding: 2px 8px;
+  padding: 1px 6px;
   border-radius: 4px;
 }
 
@@ -833,9 +841,9 @@
   flex: 1;
   min-width: 50px;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
   padding: 4px 8px;
-  min-height: 30px;
+  min-height: 28px;
 }
 
 /* ===== NO MARKETS ===== */
@@ -867,8 +875,8 @@
   flex-direction: column;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
   width: 100%;
-  min-width: 240px;
-  max-width: 280px;
+  min-width: 220px;
+  max-width: 260px;
   z-index: 10;
   overflow: hidden;
 }
@@ -880,16 +888,16 @@
 /* Desktop - Show bet slip always */
 @media (min-width: 1025px) {
   .main-pro {
-    grid-template-columns: 1fr 280px;
-    gap: 16px;
+    grid-template-columns: 1fr 260px;
+    gap: 12px;
   }
 
   .sidebar-pro {
     display: flex !important;
     position: sticky;
     top: 80px;
-    min-width: 240px;
-    max-width: 280px;
+    min-width: 220px;
+    max-width: 260px;
     margin-left: auto;
   }
 
@@ -2717,6 +2725,3 @@
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(255, 111, 0, 0.3);
 }
-
-/* ===== REMOVED MARQUEE – we use carousel instead ===== */
-/* (No .promo-marquee-* styles are present) */
