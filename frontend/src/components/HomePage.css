@@ -458,7 +458,7 @@
 }
 
 /* ============================================================
-   CAROUSEL – COMPACT, FIXED HEIGHT, FILLS CONTAINER
+   CAROUSEL – FULL IMAGE VISIBLE, NO CROP, COMPACT HEIGHT
    ============================================================ */
 .promo-carousel-container {
   width: 100%;
@@ -479,7 +479,7 @@
 .promo-carousel-slide {
   flex: 0 0 100%;
   min-width: 100%;
-  height: 180px;
+  height: 160px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -490,7 +490,7 @@
 .promo-carousel-slide img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
 }
 
@@ -1724,7 +1724,7 @@
   }
 
   .promo-carousel-slide {
-    height: 140px;
+    height: 130px;
   }
 
   .promo-carousel-container {
