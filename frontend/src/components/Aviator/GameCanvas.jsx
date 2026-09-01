@@ -174,32 +174,38 @@ const GameCanvas = ({ multiplier, status, crashMultiplier, roundId }) => {
 
   return (
     <div className="game-canvas-container">
+      {/* ✅ INLINE STYLE TO FORCE BIG MULTIPLIER SIZE */}
+      <style>
+        {`
+          .multiplier-display {
+            font-size: 80px !important;
+            font-weight: 900 !important;
+            color: #ffffff !important;
+            text-shadow: 0 0 30px rgba(255,255,255,0.3), 0 0 60px rgba(78,205,196,0.2) !important;
+            letter-spacing: 2px !important;
+            line-height: 1.2 !important;
+          }
+          .multiplier-display.crashed {
+            color: #ff4444 !important;
+            text-shadow: 0 0 30px rgba(255,68,68,0.5) !important;
+          }
+          .round-status {
+            font-size: 18px !important;
+            font-weight: 600 !important;
+          }
+        `}
+      </style>
+
       <canvas ref={canvasRef} className="game-canvas" />
       <div className="multiplier-overlay">
-        {/* ⬇️ BIG MULTIPLIER TEXT – inline styles for size */}
         <span 
-          className="multiplier-display"
-          style={{
-            fontSize: '60px',
-            fontWeight: 'bold',
-            color: isCrashed ? '#ff4444' : '#ffffff',
-            textShadow: '0 0 30px rgba(255,255,255,0.3), 0 0 60px rgba(78,205,196,0.2)',
-            letterSpacing: '2px'
-          }}
+          className={`multiplier-display ${isCrashed ? 'crashed' : ''}`}
         >
           {isRunning ? `${(multiplier || 1).toFixed(2)}x` : ''}
           {isCrashed ? `${(crashMultiplier || multiplier || 1).toFixed(2)}x` : ''}
           {isWaiting ? '1.00x' : ''}
         </span>
-        <span 
-          className="round-status"
-          style={{
-            fontSize: '16px',
-            fontWeight: '600',
-            color: isRunning ? '#4ecdc4' : isCrashed ? '#ff4444' : '#888',
-            marginTop: '4px'
-          }}
-        >
+        <span className="round-status">
           {isRunning && '🟢 LIVE'}
           {isCrashed && '💥 CRASHED'}
           {isWaiting && '⏸️ WAITING'}
