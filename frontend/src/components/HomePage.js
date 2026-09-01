@@ -3,11 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './HomePage.css';
 
-// ===== PROMOTIONAL BANNERS =====
+// ===== PROMOTIONAL BANNERS (10 IMAGES) =====
 import bannerLiveBetting from '../assets/banner-live-betting.jpeg';
 import bannerCashback from '../assets/banner-cashback.jpeg';
 import bannerSponsors from '../assets/banner-sponsors.jpeg';
 import bannerPromo from '../assets/Gemini_Generated_Image_111.jpeg';
+import femalePromotor from '../assets/Female promotor.JPEG';
+import famousFive from '../assets/Fomus five player.JPEG';
+import bannerSponsorsSec from '../assets/banner-sponsors sec.JPEG';
+import bannerPromoUppercase from '../assets/Gemini_Generated_Image_111.JPEG';
 
 const HomePage = () => {
   const navigate = useNavigate();
@@ -32,13 +36,19 @@ const HomePage = () => {
   const [showTelegramPopup, setShowTelegramPopup] = useState(false);
   const dropdownRef = useRef(null);
 
-  // ===== CAROUSEL STATE (2 images at a time) =====
+  // ===== CAROUSEL STATE (10 images, 2 at a time = 5 slides) =====
   const [currentSlide, setCurrentSlide] = useState(0);
   const bannerImages = [
     { src: bannerLiveBetting, alt: 'Live Betting' },
-    { src: bannerCashback, alt: 'Cashback' },
-    { src: bannerSponsors, alt: 'Sponsors' },
-    { src: bannerPromo, alt: 'Promotion' }
+    { src: bannerCashback, alt: 'Cashback 1' },
+    { src: bannerSponsors, alt: 'Sponsors 1' },
+    { src: bannerPromo, alt: 'Promotion 1' },
+    { src: femalePromotor, alt: 'Female Promoter' },
+    { src: famousFive, alt: 'Famous Five Players' },
+    { src: bannerSponsorsSec, alt: 'Sponsors Sec' },
+    { src: bannerPromoUppercase, alt: 'Promotion 2' },
+    { src: bannerCashback, alt: 'Cashback 2' },        // duplicate
+    { src: bannerSponsors, alt: 'Sponsors 2' },        // duplicate
   ];
   const slidesPerView = 2;
   const totalSlides = Math.ceil(bannerImages.length / slidesPerView);
@@ -923,7 +933,7 @@ const HomePage = () => {
             ))}
           </div>
 
-          {/* ===== CAROUSEL – 2 IMAGES AT A TIME ===== */}
+          {/* ===== CAROUSEL – 2 IMAGES AT A TIME (10 images = 5 slides) ===== */}
           <div className="promo-carousel-container">
             <div 
               className="promo-carousel-track" 
