@@ -34,6 +34,8 @@ const UserManagement = () => {
     password: '',
     role: 'user',
     status: 'active',
+    // ✅ ADDED: Referral Code field
+    referralCode: '',
     profile: {
       firstName: '',
       lastName: '',
@@ -151,7 +153,7 @@ const UserManagement = () => {
     }
   };
 
-  // Update user
+  // Update user – now sends referralCode
   const handleUpdateUser = async (e) => {
     e.preventDefault();
     try {
@@ -323,6 +325,8 @@ const UserManagement = () => {
           password: '',
           role: user.role || 'user',
           status: user.status || 'active',
+          // ✅ ADDED: Pre-fill referral code
+          referralCode: user.referralCode || '',
           profile: {
             firstName: user.profile?.firstName || '',
             lastName: user.profile?.lastName || '',
@@ -352,6 +356,7 @@ const UserManagement = () => {
       password: '',
       role: 'user',
       status: 'active',
+      referralCode: '', // ✅ Added
       profile: {
         firstName: '',
         lastName: '',
@@ -724,7 +729,7 @@ const UserManagement = () => {
                 </div>
               </form>
             ) : (
-              // ---------- ADD / EDIT MODE ----------
+              // ---------- ADD / EDIT MODE (with Referral Code field) ----------
               <form onSubmit={modalMode === 'add' ? handleAddUser : handleUpdateUser}>
                 <div className="um-form-grid">
                   <div className="um-form-group">
@@ -789,6 +794,20 @@ const UserManagement = () => {
                       <option value="suspended">Suspended</option>
                     </select>
                   </div>
+
+                  {/* ✅ ADDED: Referral Code field */}
+                  <div className="um-form-group">
+                    <label>Referral Code</label>
+                    <input
+                      type="text"
+                      name="referralCode"
+                      value={formData.referralCode}
+                      onChange={handleInputChange}
+                      placeholder="Leave blank to auto-generate"
+                    />
+                    <small className="um-hint">Admins can manually set or regenerate a referral code</small>
+                  </div>
+
                   <div className="um-form-group">
                     <label>First Name</label>
                     <input
