@@ -13,6 +13,7 @@ let gameState = {
   multiplier: 1.00,
   crashPoint: 0,
   nextCrashPoint: 0,
+  crashPointQueue: [],        // ✅ NEW: queue of crash points
   roundNumber: 0,
   playersActive: 0,
   totalBets: 0,
@@ -199,8 +200,29 @@ async function processCashOut(bet) {
   }
 }
 
-// ========== HELPER: Start a new round with a given crash point ==========
-function startNewRound(crashPoint) {
+// ========== HELPER: Get the next crash point from queue or fallback ==========
+function getNextCrashPoint() {
+  // 1. Use the first item from the queue if available
+  if (gameState.crashPointQueue && gameState.crashPointQueue.length > 0) {
+    const cp = gameState.crashPointQueue.shift();
+    console.log(`📌 Using crash point from queue: ${cp}x (${gameState.crashPointQueue.length} left)`);
+    return cp;
+  }
+  // 2. Use the single nextCrashPoint if set
+  if (gameState.nextCrashPoint > 1.01) {
+    const cp = gameState.nextCrashPoint;
+    gameState.nextCrashPoint = 0; // reset after use
+    console.log(`📌 Using single nextCrashPoint: ${cp}x`);
+    return cp;
+  }
+  // 3. Fallback: random
+  const cp = 2 + Math.random() * 98;
+  console.log(`📌 Using random crash point: ${cp.toFixed(2)}x`);
+  return cp;
+}
+
+// ========== HELPER: Start a new round using the queue ==========
+function startNewRound() {
   // Move pending bets to active
   for (const p of pendingBets) {
     activeBets.push({ ...p, status: 'active', activatedAt: new Date() });
@@ -214,11 +236,11 @@ function startNewRound(crashPoint) {
   gameState.totalBets = activeBets.length;
   gameState.totalAmount = activeBets.reduce((s, b) => s + b.amount, 0);
 
-  gameState.crashPoint = crashPoint || gameState.nextCrashPoint;
+  // Get crash point from queue or fallback
+  gameState.crashPoint = getNextCrashPoint();
   if (gameState.crashPoint <= 1.01) {
     gameState.crashPoint = 2 + Math.random() * 98;
   }
-  gameState.nextCrashPoint = 0; // reset after use
 
   startGameLoop();
   broadcastGameState();
@@ -273,11 +295,7 @@ async function crashGame() {
       console.log(`⏳ Auto‑start scheduled in ${gameState.autoStartDelay} seconds...`);
       setTimeout(() => {
         console.log('🚀 Auto‑starting next round...');
-        // Use the nextCrashPoint if set, otherwise random
-        const crashPoint = gameState.nextCrashPoint > 1.01
-          ? gameState.nextCrashPoint
-          : 2 + Math.random() * 98;
-        startNewRound(crashPoint);
+        startNewRound(); // uses the queue or fallback
       }, gameState.autoStartDelay * 1000);
     }
   }, 3000);
@@ -292,13 +310,7 @@ exports.startGame = async (req, res) => {
     if (gameState.status === 'active') {
       return res.status(400).json({ success: false, message: 'Game already active' });
     }
-
-    // Start a new round with the current nextCrashPoint
-    const crashPoint = gameState.nextCrashPoint > 1.01
-      ? gameState.nextCrashPoint
-      : 2 + Math.random() * 98;
-    startNewRound(crashPoint);
-
+    startNewRound(); // uses the queue or fallback
     res.json({
       success: true,
       message: `Round ${gameState.roundNumber} started!`,
@@ -404,6 +416,7 @@ exports.getGameState = async (req, res) => {
       totalAmount: activeBets.reduce((s, b) => s + b.amount, 0),
       pendingBets: pendingBets.length,
       nextCrashPoint: gameState.nextCrashPoint,
+      crashPointQueue: gameState.crashPointQueue || [], // ✅ include queue in state
       autoStart: gameState.autoStart,
       autoStartDelay: gameState.autoStartDelay,
       minBet: gameState.minBet,
@@ -477,6 +490,100 @@ exports.getEndedBets = async (req, res) => {
     res.json(formatted);
   } catch (error) {
     console.error('❌ Error getting ended bets:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ============================================
+//  QUEUE MANAGEMENT (NEW)
+// ============================================
+
+// Get the current crash point queue
+exports.getCrashPointQueue = async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      queue: gameState.crashPointQueue || [],
+      nextCrashPoint: gameState.nextCrashPoint
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Set the entire queue (replace)
+exports.setCrashPointQueue = async (req, res) => {
+  try {
+    const { queue } = req.body;
+    if (!Array.isArray(queue)) {
+      return res.status(400).json({ success: false, message: 'Queue must be an array' });
+    }
+    const valid = queue.every(v => typeof v === 'number' && v > 1.01);
+    if (!valid) {
+      return res.status(400).json({ success: false, message: 'All values must be numbers > 1.01' });
+    }
+    gameState.crashPointQueue = queue.map(v => Math.round(v * 100) / 100);
+    res.json({
+      success: true,
+      message: `Queue updated with ${gameState.crashPointQueue.length} points`,
+      queue: gameState.crashPointQueue
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Add a single crash point to the queue
+exports.addCrashPointToQueue = async (req, res) => {
+  try {
+    const { value } = req.body;
+    if (!value || isNaN(value) || value <= 1.01) {
+      return res.status(400).json({ success: false, message: 'Invalid crash point' });
+    }
+    const rounded = Math.round(parseFloat(value) * 100) / 100;
+    gameState.crashPointQueue.push(rounded);
+    res.json({
+      success: true,
+      message: `Added ${rounded}x to queue`,
+      queue: gameState.crashPointQueue
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Remove a specific crash point from the queue by index
+exports.removeCrashPointFromQueue = async (req, res) => {
+  try {
+    const { index } = req.params;
+    if (index === undefined || isNaN(index)) {
+      return res.status(400).json({ success: false, message: 'Invalid index' });
+    }
+    const idx = parseInt(index);
+    if (idx < 0 || idx >= gameState.crashPointQueue.length) {
+      return res.status(400).json({ success: false, message: 'Index out of range' });
+    }
+    const removed = gameState.crashPointQueue.splice(idx, 1);
+    res.json({
+      success: true,
+      message: `Removed ${removed[0]}x from queue`,
+      queue: gameState.crashPointQueue
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Clear the entire queue
+exports.clearCrashPointQueue = async (req, res) => {
+  try {
+    gameState.crashPointQueue = [];
+    res.json({
+      success: true,
+      message: 'Queue cleared',
+      queue: []
+    });
+  } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };

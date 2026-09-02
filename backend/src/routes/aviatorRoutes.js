@@ -55,11 +55,30 @@ router.post('/stop', authMiddleware, adminMiddleware, aviatorController.stopGame
 // 🔒 Close game & refund all bets
 router.post('/close', authMiddleware, adminMiddleware, aviatorController.closeGame);
 
-// 🎯 Set next crash point
+// 🎯 Set next crash point (single fallback)
 router.post('/set-crash', authMiddleware, adminMiddleware, aviatorController.setCrashPoint);
 
 // ⚙️ Update settings
 router.post('/settings', authMiddleware, adminMiddleware, aviatorController.updateSettings);
+
+// ============================================
+// CRASH POINT QUEUE MANAGEMENT (NEW)
+// ============================================
+
+// 📋 Get the current crash point queue
+router.get('/crash-queue', authMiddleware, adminMiddleware, aviatorController.getCrashPointQueue);
+
+// 📝 Replace the entire queue (set multiple points at once)
+router.post('/crash-queue/set', authMiddleware, adminMiddleware, aviatorController.setCrashPointQueue);
+
+// ➕ Add a single crash point to the end of the queue
+router.post('/crash-queue/add', authMiddleware, adminMiddleware, aviatorController.addCrashPointToQueue);
+
+// ❌ Remove a specific crash point from the queue by index
+router.delete('/crash-queue/:index', authMiddleware, adminMiddleware, aviatorController.removeCrashPointFromQueue);
+
+// 🧹 Clear the entire queue
+router.delete('/crash-queue/clear', authMiddleware, adminMiddleware, aviatorController.clearCrashPointQueue);
 
 // ============================================
 // DATA RETRIEVAL (Admin & Player)

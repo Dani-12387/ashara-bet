@@ -36,6 +36,10 @@ const AviatorManagement = () => {
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('success');
 
+  // Crash point queue state
+  const [crashQueue, setCrashQueue] = useState([]);
+  const [newCrashPoint, setNewCrashPoint] = useState('');
+
   const API_URL = process.env.REACT_APP_API_URL || 'https://ashara-bet.onrender.com';
 
   // ===== FETCH FUNCTIONS =====
@@ -100,12 +104,28 @@ const AviatorManagement = () => {
     }
   };
 
+  // Fetch crash queue
+  const fetchCrashQueue = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/api/aviator/crash-queue`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.success) {
+        setCrashQueue(response.data.queue || []);
+      }
+    } catch (error) {
+      console.error('Error fetching crash queue:', error);
+    }
+  };
+
   // ===== SOCKET.IO SETUP =====
   useEffect(() => {
     fetchGameState();
     fetchHistory();
     fetchActiveBets();
     fetchEndedBets();
+    fetchCrashQueue();
 
     const token = localStorage.getItem('token');
     if (!token) {
@@ -134,6 +154,7 @@ const AviatorManagement = () => {
         fetchActiveBets();
         fetchEndedBets();
         fetchGameState();
+        fetchCrashQueue(); // refresh queue after crash
       }
     });
 
@@ -157,9 +178,9 @@ const AviatorManagement = () => {
       fetchHistory();
       fetchActiveBets();
       fetchEndedBets();
+      fetchCrashQueue();
     });
 
-    // Periodic refresh for ended bets (every 30 seconds)
     const interval = setInterval(() => {
       fetchEndedBets();
     }, 30000);
@@ -188,6 +209,7 @@ const AviatorManagement = () => {
         showMessage(`✅ Game started! Round ${gameState.roundNumber + 1}`, 'success');
         await fetchGameState();
         await fetchActiveBets();
+        await fetchCrashQueue();
       } else {
         showMessage('❌ Failed to start game: ' + response.data.message, 'error');
       }
@@ -214,6 +236,7 @@ const AviatorManagement = () => {
         await fetchHistory();
         await fetchActiveBets();
         await fetchEndedBets();
+        await fetchCrashQueue();
       } else {
         showMessage('❌ Failed to stop game: ' + response.data.message, 'error');
       }
@@ -243,6 +266,7 @@ const AviatorManagement = () => {
         await fetchHistory();
         await fetchActiveBets();
         await fetchEndedBets();
+        await fetchCrashQueue();
       } else {
         showMessage('❌ Failed to close game: ' + response.data.message, 'error');
       }
@@ -277,11 +301,9 @@ const AviatorManagement = () => {
     }
   };
 
-  // ✅ Toggle auto-start (new function)
   const toggleAutoStart = async () => {
     const newAutoStart = !settings.autoStart;
     setSettings(prev => ({ ...prev, autoStart: newAutoStart }));
-    // Optionally update settings on the server immediately
     try {
       const token = localStorage.getItem('token');
       await axios.post(
@@ -314,6 +336,7 @@ const AviatorManagement = () => {
       if (response.data.success) {
         showMessage(`✅ Next crash point set to ${crashPoint.toFixed(2)}x!`, 'success');
         setGameState(prev => ({ ...prev, nextCrashPoint: crashPoint }));
+        fetchCrashQueue();
       } else {
         showMessage('❌ Failed to set crash point: ' + response.data.message, 'error');
       }
@@ -323,6 +346,117 @@ const AviatorManagement = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // ----- Queue management -----
+  const addCrashPointToQueue = async () => {
+    const val = parseFloat(newCrashPoint);
+    if (!val || val <= 1.01) {
+      showMessage('Please enter a valid crash point (>= 1.01)', 'error');
+      return;
+    }
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `${API_URL}/api/aviator/crash-queue/add`,
+        { value: val },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (response.data.success) {
+        showMessage(`Added ${val}x to queue`, 'success');
+        setNewCrashPoint('');
+        fetchCrashQueue();
+      } else {
+        showMessage(response.data.message, 'error');
+      }
+    } catch (error) {
+      console.error('Error adding crash point:', error);
+      showMessage('Failed to add crash point', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const removeCrashPointFromQueue = async (index) => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const response = await axios.delete(
+        `${API_URL}/api/aviator/crash-queue/${index}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (response.data.success) {
+        showMessage('Removed from queue', 'success');
+        fetchCrashQueue();
+      } else {
+        showMessage(response.data.message, 'error');
+      }
+    } catch (error) {
+      console.error('Error removing crash point:', error);
+      showMessage('Failed to remove', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const clearCrashQueue = async () => {
+    if (!window.confirm('Clear the entire crash point queue?')) return;
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const response = await axios.delete(
+        `${API_URL}/api/aviator/crash-queue/clear`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (response.data.success) {
+        showMessage('Queue cleared', 'success');
+        fetchCrashQueue();
+      } else {
+        showMessage(response.data.message, 'error');
+      }
+    } catch (error) {
+      console.error('Error clearing queue:', error);
+      showMessage('Failed to clear queue', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const presetCrashPoints = (values) => {
+    // Replace queue with these values
+    const points = values.map(v => parseFloat(v)).filter(v => v > 1.01);
+    if (points.length === 0) {
+      showMessage('No valid crash points', 'error');
+      return;
+    }
+    // We'll use the setCrashPointQueue endpoint (assume we'll add it)
+    // For simplicity, we'll add them one by one
+    (async () => {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem('token');
+        // Clear existing queue first
+        await axios.delete(`${API_URL}/api/aviator/crash-queue/clear`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        // Add each point
+        for (const val of points) {
+          await axios.post(
+            `${API_URL}/api/aviator/crash-queue/add`,
+            { value: val },
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+        }
+        showMessage(`Queue set to ${points.join(', ')}`, 'success');
+        fetchCrashQueue();
+      } catch (error) {
+        console.error('Error setting presets:', error);
+        showMessage('Failed to set presets', 'error');
+      } finally {
+        setLoading(false);
+      }
+    })();
   };
 
   // ===== UI HELPERS =====
@@ -359,7 +493,7 @@ const AviatorManagement = () => {
       )}
 
       <div className="management-grid">
-        {/* GAME CONTROLS */}
+        {/* GAME CONTROLS (unchanged) */}
         <div className="management-card game-controls">
           <h2>🎮 Game Controls</h2>
           <div className="game-status-display">
@@ -378,79 +512,36 @@ const AviatorManagement = () => {
               {gameState.status === 'crashed' && <span className="odd-counter-crashed">💥 Crashed!</span>}
             </div>
             <div className="game-stats">
-              <div className="stat-item">
-                <label>Round</label>
-                <span>#{gameState.roundNumber || 0}</span>
-              </div>
-              <div className="stat-item">
-                <label>Active Players</label>
-                <span>{gameState.playersActive || 0}</span>
-              </div>
-              <div className="stat-item">
-                <label>Total Bets</label>
-                <span>{gameState.totalBets || 0}</span>
-              </div>
-              <div className="stat-item">
-                <label>Total Amount</label>
-                <span>${gameState.totalAmount?.toFixed(2) || '0.00'}</span>
-              </div>
+              <div className="stat-item"><label>Round</label><span>#{gameState.roundNumber || 0}</span></div>
+              <div className="stat-item"><label>Active Players</label><span>{gameState.playersActive || 0}</span></div>
+              <div className="stat-item"><label>Total Bets</label><span>{gameState.totalBets || 0}</span></div>
+              <div className="stat-item"><label>Total Amount</label><span>${gameState.totalAmount?.toFixed(2) || '0.00'}</span></div>
             </div>
           </div>
           <div className="control-buttons">
-            <button
-              className={`btn-start ${gameState.status === 'active' ? 'disabled' : ''}`}
-              onClick={startGame}
-              disabled={gameState.status === 'active' || loading}
-            >
+            <button className={`btn-start ${gameState.status === 'active' ? 'disabled' : ''}`} onClick={startGame} disabled={gameState.status === 'active' || loading}>
               {loading ? '⏳ Loading...' : `🚀 Start Round ${gameState.roundNumber + 1}`}
             </button>
-            <button
-              className={`btn-stop ${gameState.status !== 'active' ? 'disabled' : ''}`}
-              onClick={stopGame}
-              disabled={gameState.status !== 'active' || loading}
-            >
+            <button className={`btn-stop ${gameState.status !== 'active' ? 'disabled' : ''}`} onClick={stopGame} disabled={gameState.status !== 'active' || loading}>
               {loading ? '⏳ Loading...' : `🛑 Stop at ${gameState.multiplier.toFixed(2)}x`}
             </button>
-            <button
-              className="btn-close"
-              onClick={closeGame}
-              disabled={loading}
-            >
+            <button className="btn-close" onClick={closeGame} disabled={loading}>
               {loading ? '⏳ Loading...' : '🔒 Close Game'}
             </button>
-            {/* ✅ NEW: Auto-start toggle button */}
-            <button
-              className={`btn-auto-start ${settings.autoStart ? 'enabled' : 'disabled'}`}
-              onClick={toggleAutoStart}
-              disabled={loading}
-            >
+            <button className={`btn-auto-start ${settings.autoStart ? 'enabled' : 'disabled'}`} onClick={toggleAutoStart} disabled={loading}>
               {settings.autoStart ? '⏸️ Auto-start ON' : '▶️ Auto-start OFF'}
             </button>
           </div>
         </div>
 
-        {/* SET NEXT CRASH POINT */}
+        {/* SET NEXT CRASH POINT (single) – kept for backwards compatibility */}
         <div className="management-card crash-control">
           <h2>🎯 Set Next Crash Point</h2>
-          <p className="hint">Set the multiplier where the game will crash in the next round</p>
+          <p className="hint">Set the multiplier where the game will crash in the next round (fallback)</p>
           <div className="crash-input-group">
-            <input
-              type="number"
-              id="nextCrashPoint"
-              placeholder="e.g., 2.50"
-              step="0.01"
-              min="1.01"
-              max="100"
-              defaultValue={gameState.nextCrashPoint || 2}
-            />
+            <input type="number" id="nextCrashPoint" placeholder="e.g., 2.50" step="0.01" min="1.01" max="100" defaultValue={gameState.nextCrashPoint || 2} />
             <span className="multiplier-suffix">x</span>
-            <button
-              className="btn-set-crash"
-              onClick={setNextCrashPoint}
-              disabled={loading}
-            >
-              Set Crash Point
-            </button>
+            <button className="btn-set-crash" onClick={setNextCrashPoint} disabled={loading}>Set Crash Point</button>
           </div>
           <div className="crash-presets">
             <span>Quick Set:</span>
@@ -460,151 +551,114 @@ const AviatorManagement = () => {
             <button onClick={() => { document.getElementById('nextCrashPoint').value = '5.0'; }}>5.0x</button>
             <button onClick={() => { document.getElementById('nextCrashPoint').value = '10.0'; }}>10.0x</button>
             <button onClick={() => { document.getElementById('nextCrashPoint').value = '50.0'; }}>50.0x</button>
-            {/* ✅ NEW: 100x preset */}
             <button onClick={() => { document.getElementById('nextCrashPoint').value = '100.0'; }}>100x</button>
           </div>
         </div>
 
-        {/* GAME SETTINGS */}
+        {/* NEW: CRASH POINT QUEUE MANAGEMENT */}
+        <div className="management-card crash-queue">
+          <h2>📋 Crash Point Queue</h2>
+          <p className="hint">Points will be used in order for each round. When empty, uses the single fallback above.</p>
+          <div className="queue-input-group">
+            <input
+              type="number"
+              step="0.01"
+              min="1.01"
+              placeholder="e.g., 2.5"
+              value={newCrashPoint}
+              onChange={(e) => setNewCrashPoint(e.target.value)}
+            />
+            <span className="multiplier-suffix">x</span>
+            <button className="btn-queue-add" onClick={addCrashPointToQueue} disabled={loading}>Add</button>
+          </div>
+          <div className="queue-presets">
+            <span>Presets:</span>
+            <button onClick={() => presetCrashPoints([2, 3, 5, 10])}>2,3,5,10</button>
+            <button onClick={() => presetCrashPoints([50, 100])}>50,100</button>
+            <button onClick={() => presetCrashPoints([10, 20, 50, 100])}>10,20,50,100</button>
+            <button onClick={() => presetCrashPoints([1.5, 2, 2.5, 3, 5])}>1.5-5</button>
+            <button onClick={clearCrashQueue} className="btn-queue-clear" disabled={loading}>Clear All</button>
+          </div>
+          {crashQueue.length === 0 ? (
+            <p className="no-data">Queue is empty</p>
+          ) : (
+            <div className="queue-list">
+              {crashQueue.map((point, idx) => (
+                <div key={idx} className="queue-item">
+                  <span>{point}x</span>
+                  <button onClick={() => removeCrashPointFromQueue(idx)} disabled={loading} className="btn-queue-remove">✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="queue-status">
+            <span>Queue length: {crashQueue.length}</span>
+            <span>{crashQueue.length > 0 ? `Next: ${crashQueue[0]}x` : 'Falling back to single point'}</span>
+          </div>
+        </div>
+
+        {/* GAME SETTINGS (unchanged) */}
         <div className="management-card game-settings">
           <h2>⚙️ Game Settings</h2>
           <div className="settings-grid">
             <div className="setting-group">
               <label>Auto Start</label>
               <div className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={settings.autoStart}
-                  onChange={(e) => {
-                    setSettings({ ...settings, autoStart: e.target.checked });
-                    if (e.target.checked) showMessage('⚠️ Auto-start enabled! Game will start automatically after crash.', 'warning');
-                  }}
-                />
+                <input type="checkbox" checked={settings.autoStart} onChange={(e) => {
+                  setSettings({ ...settings, autoStart: e.target.checked });
+                  if (e.target.checked) showMessage('⚠️ Auto-start enabled! Game will start automatically after crash.', 'warning');
+                }} />
                 <span className="toggle-slider"></span>
               </div>
-              <small style={{ color: '#888', fontSize: '0.7rem' }}>
-                {settings.autoStart ? '⚠️ Auto-start ON' : '✅ Manual start only'}
-              </small>
+              <small style={{ color: '#888', fontSize: '0.7rem' }}>{settings.autoStart ? '⚠️ Auto-start ON' : '✅ Manual start only'}</small>
             </div>
             <div className="setting-group">
               <label>Auto Start Delay (seconds)</label>
-              <input
-                type="number"
-                value={settings.autoStartDelay}
-                onChange={(e) => setSettings({ ...settings, autoStartDelay: parseInt(e.target.value) || 10 })}
-                min="3"
-                max="60"
-                disabled={!settings.autoStart}
-              />
+              <input type="number" value={settings.autoStartDelay} onChange={(e) => setSettings({ ...settings, autoStartDelay: parseInt(e.target.value) || 10 })} min="3" max="60" disabled={!settings.autoStart} />
             </div>
             <div className="setting-group">
               <label>Minimum Bet ($)</label>
-              <input
-                type="number"
-                value={settings.minBet}
-                onChange={(e) => setSettings({ ...settings, minBet: parseFloat(e.target.value) || 1 })}
-                min="0.01"
-                step="0.01"
-              />
+              <input type="number" value={settings.minBet} onChange={(e) => setSettings({ ...settings, minBet: parseFloat(e.target.value) || 1 })} min="0.01" step="0.01" />
             </div>
             <div className="setting-group">
               <label>Maximum Bet ($)</label>
-              <input
-                type="number"
-                value={settings.maxBet}
-                onChange={(e) => setSettings({ ...settings, maxBet: parseFloat(e.target.value) || 1000 })}
-                min="1"
-                step="1"
-              />
+              <input type="number" value={settings.maxBet} onChange={(e) => setSettings({ ...settings, maxBet: parseFloat(e.target.value) || 1000 })} min="1" step="1" />
             </div>
             <div className="setting-group">
               <label>House Edge (%)</label>
-              <input
-                type="number"
-                value={settings.houseEdge}
-                onChange={(e) => setSettings({ ...settings, houseEdge: parseFloat(e.target.value) || 5 })}
-                min="0"
-                max="20"
-                step="0.5"
-              />
+              <input type="number" value={settings.houseEdge} onChange={(e) => setSettings({ ...settings, houseEdge: parseFloat(e.target.value) || 5 })} min="0" max="20" step="0.5" />
             </div>
           </div>
-          <button
-            className="btn-save-settings"
-            onClick={updateSettings}
-            disabled={loading}
-          >
-            💾 Save Settings
-          </button>
+          <button className="btn-save-settings" onClick={updateSettings} disabled={loading}>💾 Save Settings</button>
         </div>
 
-        {/* ===== LIVE / ENDED BETS TABS ===== */}
+        {/* LIVE / ENDED BETS TABS (unchanged) */}
         <div className="management-card live-bets">
           <div className="live-bets-header">
-            <button
-              className={`tab-btn ${activeTab === 'live' ? 'active' : ''}`}
-              onClick={() => setActiveTab('live')}
-            >
-              🟢 Live Bets ({activeBets.length})
-            </button>
-            <button
-              className={`tab-btn ${activeTab === 'ended' ? 'active' : ''}`}
-              onClick={() => setActiveTab('ended')}
-            >
-              🔚 Ended Bets ({endedBets.length})
-            </button>
+            <button className={`tab-btn ${activeTab === 'live' ? 'active' : ''}`} onClick={() => setActiveTab('live')}>🟢 Live Bets ({activeBets.length})</button>
+            <button className={`tab-btn ${activeTab === 'ended' ? 'active' : ''}`} onClick={() => setActiveTab('ended')}>🔚 Ended Bets ({endedBets.length})</button>
           </div>
-
           <div className="bets-table-wrapper">
             {activeTab === 'live' ? (
-              // ----- LIVE BETS TABLE -----
-              activeBets.length === 0 ? (
-                <p className="no-data">No active or pending bets</p>
-              ) : (
+              activeBets.length === 0 ? <p className="no-data">No active or pending bets</p> : (
                 <table className="bets-table">
-                  <thead>
-                    <tr>
-                      <th>Player</th>
-                      <th>Bet Amount</th>
-                      <th>Cash Out</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
+                  <thead><tr><th>Player</th><th>Bet Amount</th><th>Cash Out</th><th>Status</th></tr></thead>
                   <tbody>
                     {activeBets.map((bet) => (
                       <tr key={bet._id || bet.betId}>
                         <td>{bet.user?.username || bet.username || 'Unknown'}</td>
                         <td>${(bet.amount || bet.stake)?.toFixed(2)}</td>
                         <td>{bet.autoCashOut ? bet.autoCashOut + 'x' : 'Manual'}</td>
-                        <td>
-                          <span className={`bet-status ${bet.status}`}>
-                            {bet.status === 'active' ? '🟢 Active' :
-                             bet.status === 'pending' ? '⏳ Pending' :
-                             bet.status === 'cashed' ? '✅ Cashed' :
-                             bet.status === 'lost' ? '❌ Lost' : '⏳'}
-                          </span>
-                        </td>
+                        <td><span className={`bet-status ${bet.status}`}>{bet.status === 'active' ? '🟢 Active' : bet.status === 'pending' ? '⏳ Pending' : bet.status === 'cashed' ? '✅ Cashed' : bet.status === 'lost' ? '❌ Lost' : '⏳'}</span></td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               )
             ) : (
-              // ----- ENDED BETS TABLE -----
-              endedBets.length === 0 ? (
-                <p className="no-data">No ended bets yet</p>
-              ) : (
+              endedBets.length === 0 ? <p className="no-data">No ended bets yet</p> : (
                 <table className="bets-table">
-                  <thead>
-                    <tr>
-                      <th>Player</th>
-                      <th>Stake</th>
-                      <th>Cash Out</th>
-                      <th>Payout</th>
-                      <th>Status</th>
-                      <th>Ended At</th>
-                    </tr>
-                  </thead>
+                  <thead><tr><th>Player</th><th>Stake</th><th>Cash Out</th><th>Payout</th><th>Status</th><th>Ended At</th></tr></thead>
                   <tbody>
                     {endedBets.map((bet) => (
                       <tr key={bet._id || bet.betId}>
@@ -612,14 +666,8 @@ const AviatorManagement = () => {
                         <td>${(bet.amount || bet.stake)?.toFixed(2)}</td>
                         <td>{bet.cashoutMultiplier ? bet.cashoutMultiplier + 'x' : '—'}</td>
                         <td>${(bet.winAmount || 0).toFixed(2)}</td>
-                        <td>
-                          <span className={`bet-status ${bet.status}`}>
-                            {bet.status === 'cashed' ? '✅ Cashed' : '❌ Lost'}
-                          </span>
-                        </td>
-                        <td>
-                          {bet.endedAt ? new Date(bet.endedAt).toLocaleTimeString() : '—'}
-                        </td>
+                        <td><span className={`bet-status ${bet.status}`}>{bet.status === 'cashed' ? '✅ Cashed' : '❌ Lost'}</span></td>
+                        <td>{bet.endedAt ? new Date(bet.endedAt).toLocaleTimeString() : '—'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -629,13 +677,11 @@ const AviatorManagement = () => {
           </div>
         </div>
 
-        {/* GAME HISTORY */}
+        {/* GAME HISTORY (unchanged) */}
         <div className="management-card game-history">
           <h2>📜 Game History ({history.length})</h2>
           <div className="history-wrapper">
-            {history.length === 0 ? (
-              <p className="no-data">No game history</p>
-            ) : (
+            {history.length === 0 ? <p className="no-data">No game history</p> : (
               <div className="history-list">
                 {history.slice(0, 20).map((game, index) => (
                   <div key={index} className={`history-item ${game.crashed ? 'crashed' : 'cashed'}`}>
