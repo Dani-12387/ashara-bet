@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const { protect, authorize } = require('../middleware/authMiddleware');
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
-const Match = require('../models/Match'); // ✅ ADD THIS IMPORT
+const Match = require('../models/Match');
 
 // ============================================
 // USER MANAGEMENT ROUTES
@@ -61,8 +61,8 @@ router.post('/users', protect, authorize('admin'), async (req, res) => {
       }
     });
 
-    res.status(201).json({ 
-      success: true, 
+    res.status(201).json({
+      success: true,
       message: 'User created successfully',
       user: { ...user.toObject(), password: undefined }
     });
@@ -72,22 +72,61 @@ router.post('/users', protect, authorize('admin'), async (req, res) => {
   }
 });
 
-// Update user
+// ✅ Update user – now accepts referralCode
 router.put('/users/:id', protect, authorize('admin'), async (req, res) => {
   try {
-    const { username, email, phone, role, status, profile } = req.body;
+    const { username, email, phone, role, status, profile, referralCode } = req.body;
 
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      { username, email, phone, role, status, profile },
-      { new: true, runValidators: true }
-    ).select('-password');
-
+    const user = await User.findById(req.params.id);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    res.json({ success: true, message: 'User updated successfully', user });
+    // Update fields
+    if (username !== undefined) user.username = username;
+    if (email !== undefined) user.email = email;
+    if (phone !== undefined) user.phone = phone;
+    if (role !== undefined) user.role = role;
+    if (status !== undefined) user.status = status;
+    if (profile !== undefined) user.profile = profile;
+
+    // ✅ Handle referral code
+    if (referralCode !== undefined) {
+      if (referralCode && referralCode.trim()) {
+        const code = referralCode.trim().toUpperCase();
+        // Check uniqueness (excluding this user)
+        const existing = await User.findOne({
+          referralCode: code,
+          _id: { $ne: user._id }
+        });
+        if (existing) {
+          return res.status(400).json({
+            success: false,
+            message: 'Referral code already taken by another user'
+          });
+        }
+        user.referralCode = code;
+      }
+      // If referralCode is empty, keep existing (do nothing)
+    }
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'User updated successfully',
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        status: user.status,
+        referralCode: user.referralCode,
+        profile: user.profile,
+        wallet: user.wallet
+      }
+    });
   } catch (error) {
     console.error('Error updating user:', error);
     res.status(500).json({ message: error.message });
@@ -143,7 +182,7 @@ router.post('/users/:id/balance', protect, authorize('admin'), async (req, res) 
       user.wallet = { balance: 0, bonusBalance: 0, lockedBalance: 0 };
     }
 
-    switch(action) {
+    switch (action) {
       case 'add':
         user.wallet.balance = (user.wallet.balance || 0) + (parseFloat(balance) || 0);
         user.wallet.bonusBalance = (user.wallet.bonusBalance || 0) + (parseFloat(bonusBalance) || 0);
@@ -165,8 +204,8 @@ router.post('/users/:id/balance', protect, authorize('admin'), async (req, res) 
 
     await user.save();
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Balance updated successfully',
       user: {
         id: user._id,
@@ -184,9 +223,9 @@ router.post('/users/:id/balance', protect, authorize('admin'), async (req, res) 
 // Reset user password
 router.post('/users/:id/reset-password', protect, authorize('admin'), async (req, res) => {
   try {
-    const temporaryPassword = Math.random().toString(36).slice(-8) + 
-                             Math.random().toString(36).slice(-8).toUpperCase();
-    
+    const temporaryPassword = Math.random().toString(36).slice(-8) +
+      Math.random().toString(36).slice(-8).toUpperCase();
+
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(temporaryPassword, salt);
 
@@ -199,8 +238,8 @@ router.post('/users/:id/reset-password', protect, authorize('admin'), async (req
       return res.status(404).json({ message: 'User not found' });
     }
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Password reset successfully',
       temporaryPassword
     });
@@ -215,7 +254,7 @@ router.put('/users/:id/verify-kyc', protect, authorize('admin'), async (req, res
   try {
     const user = await User.findByIdAndUpdate(
       req.params.id,
-      { 
+      {
         'kyc.status': 'verified',
         'kyc.verifiedAt': new Date()
       },
@@ -251,6 +290,7 @@ router.get('/users/:id/history', protect, authorize('admin'), async (req, res) =
       }));
       res.json(formattedTransactions);
     } else if (type === 'betting') {
+      // Mock betting history – replace with actual Bet model if available
       const bettingHistory = [
         {
           date: new Date(),
@@ -279,22 +319,95 @@ router.get('/users/:id/history', protect, authorize('admin'), async (req, res) =
   }
 });
 
-// Dashboard stats
+// ============================================
+// REFERRAL MANAGEMENT ROUTES (NEW)
+// ============================================
+
+// Get user referrals (admin)
+router.get('/users/:id/referrals', protect, authorize('admin'), async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id)
+      .populate('referrals', 'username email createdAt status');
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const referrals = (user.referrals || []).map(ref => ({
+      username: ref.username,
+      email: ref.email,
+      createdAt: ref.createdAt,
+      status: ref.status === 'active' ? 'Active' : 'Inactive'
+    }));
+
+    res.json({
+      success: true,
+      referralCode: user.referralCode || '',
+      referrals,
+      referralEarnings: user.referralEarnings || 0
+    });
+  } catch (error) {
+    console.error('Error fetching referrals:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Generate new referral code (admin)
+router.post('/users/:id/generate-referral', protect, authorize('admin'), async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Generate unique code
+    let code;
+    let exists = true;
+    let attempts = 0;
+    while (exists && attempts < 20) {
+      code = 'REF' + Math.random().toString(36).substring(2, 8).toUpperCase();
+      const existing = await User.findOne({ referralCode: code, _id: { $ne: user._id } });
+      if (!existing) exists = false;
+      attempts++;
+    }
+
+    if (!code) {
+      return res.status(500).json({ success: false, message: 'Could not generate unique code' });
+    }
+
+    user.referralCode = code;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'New referral code generated',
+      referralCode: code
+    });
+  } catch (error) {
+    console.error('Error generating referral code:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// DASHBOARD STATS
+// ============================================
+
 router.get('/dashboard-stats', protect, authorize('admin'), async (req, res) => {
   try {
     const totalUsers = await User.countDocuments();
     const activeUsers = await User.countDocuments({ status: 'active' });
-    
+
     const totalDeposits = await Transaction.aggregate([
       { $match: { type: 'deposit', status: 'approved' } },
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]);
-    
+
     const totalWithdrawals = await Transaction.aggregate([
       { $match: { type: 'withdrawal', status: 'approved' } },
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]);
-    
+
     const stats = {
       totalUsers: totalUsers || 0,
       activeUsers: activeUsers || 0,
@@ -304,7 +417,7 @@ router.get('/dashboard-stats', protect, authorize('admin'), async (req, res) => 
       todayProfit: 0,
       activeMatches: 0
     };
-    
+
     res.json(stats);
   } catch (error) {
     console.error('Error fetching stats:', error);
@@ -319,7 +432,7 @@ router.get('/recent-transactions', protect, authorize('admin'), async (req, res)
       .populate('user', 'username')
       .sort('-createdAt')
       .limit(10);
-    
+
     const formatted = recentTransactions.map(t => ({
       userName: t.user?.username || 'Unknown',
       type: t.type,
@@ -327,7 +440,7 @@ router.get('/recent-transactions', protect, authorize('admin'), async (req, res)
       status: t.status,
       date: t.createdAt
     }));
-    
+
     res.json(formatted);
   } catch (error) {
     console.error('Error fetching transactions:', error);
@@ -336,7 +449,7 @@ router.get('/recent-transactions', protect, authorize('admin'), async (req, res)
 });
 
 // ============================================
-// MATCH MANAGEMENT ROUTES - ADD THIS SECTION
+// MATCH MANAGEMENT ROUTES
 // ============================================
 
 // Get all matches (admin)
@@ -386,9 +499,9 @@ router.get('/matches/:id', protect, authorize('admin'), async (req, res) => {
 // Create match (admin)
 router.post('/matches', protect, authorize('admin'), async (req, res) => {
   try {
-    const { 
-      sport, league, country, homeTeam, awayTeam, date, 
-      odds, score, status, markets 
+    const {
+      sport, league, country, homeTeam, awayTeam, date,
+      odds, score, status, markets
     } = req.body;
 
     console.log('Creating match with markets:', markets);
@@ -425,9 +538,9 @@ router.post('/matches', protect, authorize('admin'), async (req, res) => {
 // Update match (admin)
 router.put('/matches/:id', protect, authorize('admin'), async (req, res) => {
   try {
-    const { 
-      sport, league, country, homeTeam, awayTeam, date, 
-      odds, score, status, markets 
+    const {
+      sport, league, country, homeTeam, awayTeam, date,
+      odds, score, status, markets
     } = req.body;
 
     const match = await Match.findById(req.params.id);
@@ -435,7 +548,6 @@ router.put('/matches/:id', protect, authorize('admin'), async (req, res) => {
       return res.status(404).json({ success: false, message: 'Match not found' });
     }
 
-    // Update fields
     if (sport) match.sport = sport;
     if (league) match.league = league;
     if (country) match.country = country;
@@ -443,19 +555,18 @@ router.put('/matches/:id', protect, authorize('admin'), async (req, res) => {
     if (awayTeam) match.awayTeam = awayTeam;
     if (date) match.date = date;
     if (status) match.status = status;
-    
+
     if (odds) {
       match.odds.home = parseFloat(odds.home) || match.odds.home;
       match.odds.draw = parseFloat(odds.draw) || match.odds.draw;
       match.odds.away = parseFloat(odds.away) || match.odds.away;
     }
-    
+
     if (score) {
       match.score.home = score.home || match.score.home;
       match.score.away = score.away || match.score.away;
     }
-    
-    // ← IMPORTANT: Update markets
+
     if (markets !== undefined) {
       match.markets = markets;
     }
