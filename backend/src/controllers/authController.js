@@ -8,7 +8,6 @@ exports.register = async (req, res) => {
   try {
     const { username, email, phone, password, referralCode } = req.body;
 
-    // Check if user exists (including phone)
     const existingUser = await User.findOne({ 
       $or: [{ email }, { username }, { phone }] 
     });
@@ -25,21 +24,17 @@ exports.register = async (req, res) => {
       }
     }
 
-    // ✅ Find referrer if referralCode provided
     let referredBy = null;
     if (referralCode && referralCode.trim()) {
       const referrer = await User.findOne({ referralCode: referralCode.trim().toUpperCase() });
       if (referrer) {
         referredBy = referrer._id;
       }
-      // If referrer not found, silently ignore (no error)
     }
 
-    // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // ✅ Create user – wallet will be set by the pre‑save hook in the model
     const user = new User({
       username,
       email,
@@ -47,19 +42,17 @@ exports.register = async (req, res) => {
       password: hashedPassword,
       role: "user",
       status: "active",
-      referredBy // ✅ store the referrer's ObjectId
+      referredBy
     });
 
     await user.save();
 
-    // ✅ If referredBy exists, add this new user to the referrer's referrals array
     if (referredBy) {
       await User.findByIdAndUpdate(referredBy, {
         $push: { referrals: user._id }
       });
     }
 
-    // Create token
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET || "mysecretkey123",
@@ -77,7 +70,7 @@ exports.register = async (req, res) => {
         phone: user.phone,
         role: user.role,
         status: user.status,
-        referralCode: user.referralCode // ✅ include referral code in response
+        referralCode: user.referralCode
       }
     });
   } catch (error) {
@@ -113,7 +106,6 @@ exports.login = async (req, res) => {
       return res.status(403).json({ success: false, message: "Account is not active. Please contact admin." });
     }
 
-    // ✅ Update last login (optional)
     await user.updateLogin();
 
     const token = jwt.sign(
@@ -133,7 +125,7 @@ exports.login = async (req, res) => {
         phone: user.phone,
         role: user.role,
         status: user.status,
-        referralCode: user.referralCode // ✅ include referral code
+        referralCode: user.referralCode
       }
     });
   } catch (error) {
@@ -162,7 +154,7 @@ exports.getMe = async (req, res) => {
         role: user.role,
         status: user.status,
         wallet: user.wallet,
-        referralCode: user.referralCode, // ✅ include referral code
+        referralCode: user.referralCode,
         createdAt: user.createdAt
       }
     });
@@ -176,7 +168,7 @@ exports.getMe = async (req, res) => {
   }
 };
 
-// @desc    Check if phone exists (optional endpoint)
+// @desc    Check if phone exists
 // @route   POST /api/auth/check-phone
 exports.checkPhone = async (req, res) => {
   try {
@@ -196,20 +188,24 @@ exports.checkPhone = async (req, res) => {
   }
 };
 
-// ✅ NEW: Get referral info (code + referred friends)
-// @route   GET /api/user/referral-info
+// ✅ REFERRAL INFO – properly exported
 exports.getReferralInfo = async (req, res) => {
   try {
+    console.log('🔍 Fetching referral info for user:', req.user.id);
     const userId = req.user.id;
+
     const user = await User.findById(userId)
       .populate('referrals', 'username email createdAt status');
 
     if (!user) {
+      console.log('❌ User not found');
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    // Map referrals to the format expected by the frontend
-    const referrals = user.referrals.map(ref => ({
+    console.log('✅ User found, referralCode:', user.referralCode);
+    console.log('✅ Referrals count:', user.referrals?.length || 0);
+
+    const referrals = (user.referrals || []).map(ref => ({
       username: ref.username,
       email: ref.email,
       createdAt: ref.createdAt,
@@ -218,11 +214,11 @@ exports.getReferralInfo = async (req, res) => {
 
     res.json({
       success: true,
-      referralCode: user.referralCode,
+      referralCode: user.referralCode || '',
       referrals: referrals
     });
   } catch (error) {
-    console.error('Error fetching referral info:', error);
+    console.error('❌ Error fetching referral info:', error);
     res.status(500).json({ 
       success: false, 
       message: error.message 
