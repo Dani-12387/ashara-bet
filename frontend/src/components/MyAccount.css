@@ -528,3 +528,32 @@
     font-size: 13px;
   }
 }
+
+/* Referral Card */
+.simple-referral-card {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  border-radius: 10px;
+  padding: 20px;
+  margin-top: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+.referral-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.referral-icon { font-size: 24px; }
+.referral-header h3 { font-size: 18px; font-weight: 600; color: #2d3748; margin: 0; }
+.referral-code-area { background: rgba(139,195,74,0.04); border: 1px solid rgba(139,195,74,0.12); border-radius: 8px; padding: 14px 16px; margin-bottom: 16px; }
+.referral-label { font-size: 13px; color: rgba(45,55,72,0.6); display: block; margin-bottom: 6px; }
+.referral-code-display { display: flex; align-items: center; gap: 12px; }
+.referral-code-text { font-size: 22px; font-weight: 700; color: #8bc34a; letter-spacing: 2px; }
+.referral-copy-btn { padding: 4px 14px; background: #8bc34a; border: none; border-radius: 4px; color: white; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+.referral-copy-btn:hover { background: #689f38; }
+.referral-hint { font-size: 12px; color: rgba(45,55,72,0.4); margin: 6px 0 0; }
+.referred-friends-section h4 { font-size: 15px; font-weight: 600; color: #2d3748; margin: 0 0 10px; }
+.no-referrals { color: rgba(45,55,72,0.4); font-size: 14px; padding: 12px 0; }
+.referral-loading { color: rgba(45,55,72,0.3); font-size: 13px; }
+.referral-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.referral-table th { text-align: left; color: rgba(45,55,72,0.4); font-weight: 500; padding: 8px 6px 6px 0; border-bottom: 1px solid rgba(0,0,0,0.04); }
+.referral-table td { padding: 8px 6px 8px 0; border-bottom: 1px solid rgba(0,0,0,0.02); color: #2d3748; }
+.status-badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+.status-badge.active { background: rgba(139,195,74,0.12); color: #8bc34a; }
+.status-badge.pending { background: rgba(255,193,7,0.12); color: #f59f00; }

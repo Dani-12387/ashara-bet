@@ -10,7 +10,8 @@ const Register = () => {
     email: '',
     phone: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    referralCode: ''  // ✅ NEW – added
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -18,10 +19,9 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // ✅ ADD THIS - API URL from environment variable
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-  const { username, email, phone, password, confirmPassword } = formData;
+  const { username, email, phone, password, confirmPassword, referralCode } = formData;
 
   const handleChange = (e) => {
     setFormData({
@@ -86,13 +86,16 @@ const Register = () => {
     setLoading(true);
 
     try {
-      // ✅ FIXED: Use API_URL
-      const response = await axios.post(`${API_URL}/api/auth/register`, {
+      // ✅ Send referralCode if provided
+      const payload = {
         username,
         email,
         phone,
-        password
-      });
+        password,
+        referralCode: referralCode.trim() || undefined
+      };
+
+      const response = await axios.post(`${API_URL}/api/auth/register`, payload);
 
       if (response.data.success) {
         setSuccess('Registration successful! Redirecting to login...');
@@ -102,7 +105,8 @@ const Register = () => {
           email: '',
           phone: '',
           password: '',
-          confirmPassword: ''
+          confirmPassword: '',
+          referralCode: ''
         });
 
         setTimeout(() => {
@@ -163,6 +167,7 @@ const Register = () => {
         )}
 
         <form onSubmit={handleSubmit}>
+          {/* Username */}
           <div className="form-group">
             <label htmlFor="username">
               <span className="label-icon">👤</span>
@@ -188,6 +193,7 @@ const Register = () => {
             )}
           </div>
 
+          {/* Email */}
           <div className="form-group">
             <label htmlFor="email">
               <span className="label-icon">📧</span>
@@ -213,6 +219,7 @@ const Register = () => {
             )}
           </div>
 
+          {/* Phone */}
           <div className="form-group">
             <label htmlFor="phone">
               <span className="label-icon">📱</span>
@@ -243,6 +250,7 @@ const Register = () => {
             <small className="phone-hint">Ethiopian phone number (09 or 07 followed by 8 digits)</small>
           </div>
 
+          {/* Password */}
           <div className="form-group">
             <label htmlFor="password">
               <span className="label-icon">🔒</span>
@@ -285,6 +293,7 @@ const Register = () => {
             )}
           </div>
 
+          {/* Confirm Password */}
           <div className="form-group">
             <label htmlFor="confirmPassword">
               <span className="label-icon">🔒</span>
@@ -316,6 +325,27 @@ const Register = () => {
             {confirmPassword && password === confirmPassword && password.length >= 6 && (
               <div className="password-match-success">✓ Passwords match</div>
             )}
+          </div>
+
+          {/* ✅ REFERRAL CODE FIELD - ADDED (nothing removed) */}
+          <div className="form-group">
+            <label htmlFor="referralCode">
+              <span className="label-icon">🎁</span>
+              Referral Code <span style={{ fontWeight: 'normal', color: '#888', fontSize: '0.8rem' }}>(optional)</span>
+            </label>
+            <div className="input-wrapper">
+              <input
+                type="text"
+                id="referralCode"
+                name="referralCode"
+                value={referralCode}
+                onChange={handleChange}
+                placeholder="Enter referral code if you have one"
+                className={error && !referralCode ? 'error' : ''}
+                disabled={loading}
+              />
+            </div>
+            <small className="phone-hint">Enter the code of the person who referred you</small>
           </div>
 
           <div className="simple-requirements">

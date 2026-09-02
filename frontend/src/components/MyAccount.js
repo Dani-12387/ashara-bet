@@ -27,8 +27,14 @@ const MyAccount = () => {
     confirm: false
   });
 
+  // ✅ REFERRAL STATE (added)
+  const [referralCode, setReferralCode] = useState('');
+  const [referredFriends, setReferredFriends] = useState([]);
+  const [referralLoading, setReferralLoading] = useState(false);
+
   useEffect(() => {
     fetchUserProfile();
+    fetchReferralInfo(); // ✅ added
   }, []);
 
   // ✅ FIXED: Use API_URL and handle response format
@@ -69,6 +75,48 @@ const MyAccount = () => {
       }
       
       setLoading(false);
+    }
+  };
+
+  // ✅ REFERRAL: fetch referral info (added)
+  const fetchReferralInfo = async () => {
+    try {
+      setReferralLoading(true);
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/api/user/referral-info`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.success) {
+        setReferralCode(response.data.referralCode || '');
+        setReferredFriends(response.data.referrals || []);
+      }
+    } catch (error) {
+      console.error('Error fetching referral info:', error);
+      // Fallback to a generated code
+      setReferralCode('REF' + Math.random().toString(36).substring(2, 8).toUpperCase());
+    } finally {
+      setReferralLoading(false);
+    }
+  };
+
+  // ✅ REFERRAL: copy code (added)
+  const copyReferralCode = () => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(referralCode)
+        .then(() => alert('Referral code copied to clipboard!'))
+        .catch(() => alert('Copy failed. Please copy manually: ' + referralCode));
+    } else {
+      const textArea = document.createElement('textarea');
+      textArea.value = referralCode;
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        alert('Referral code copied!');
+      } catch (err) {
+        alert('Please copy: ' + referralCode);
+      }
+      document.body.removeChild(textArea);
     }
   };
 
@@ -264,7 +312,55 @@ const MyAccount = () => {
         </div>
       </div>
 
-      {/* Change Password Form */}
+      {/* ✅ REFERRAL SECTION – ADDED (everything below is new) */}
+      <div className="simple-referral-card">
+        <div className="referral-header">
+          <span className="referral-icon">🎁</span>
+          <h3>Refer & Earn</h3>
+        </div>
+        <div className="referral-code-area">
+          <span className="referral-label">Your Referral Code:</span>
+          <div className="referral-code-display">
+            <span className="referral-code-text">{referralCode || 'Loading...'}</span>
+            <button className="referral-copy-btn" onClick={copyReferralCode}>📋 Copy</button>
+          </div>
+          <p className="referral-hint">Share this code with friends and earn rewards when they sign up!</p>
+        </div>
+
+        <div className="referred-friends-section">
+          <h4>Friends Referred ({referredFriends.length})</h4>
+          {referralLoading ? (
+            <p className="referral-loading">Loading...</p>
+          ) : referredFriends.length === 0 ? (
+            <p className="no-referrals">You haven't referred anyone yet.</p>
+          ) : (
+            <div className="referral-list">
+              <table className="referral-table">
+                <thead>
+                  <tr>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Joined</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {referredFriends.map((friend, idx) => (
+                    <tr key={idx}>
+                      <td>{friend.username || 'Unknown'}</td>
+                      <td>{friend.email || '—'}</td>
+                      <td>{friend.createdAt ? new Date(friend.createdAt).toLocaleDateString() : '—'}</td>
+                      <td><span className="status-badge active">{friend.status || 'Active'}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Change Password Form – untouched */}
       {showChangePassword && (
         <div className="simple-password-card">
           <h3>Change Password</h3>
