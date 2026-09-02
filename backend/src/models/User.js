@@ -76,11 +76,10 @@ const userSchema = new mongoose.Schema({
             default: false
         }
     },
-    // ✅ REFERRAL FIELDS – add these
+    // ✅ REFERRAL FIELDS
     referralCode: {
         type: String,
         unique: true,
-        required: true,
         uppercase: true
     },
     referredBy: {
@@ -96,7 +95,7 @@ const userSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
-    // login tracking
+    // Login tracking
     lastLogin: {
         type: Date
     },
@@ -110,9 +109,9 @@ const userSchema = new mongoose.Schema({
     }
 });
 
-// ✅ Generate unique referral code before saving
+// ✅ Generate unique referral code for new users
 userSchema.pre('save', async function(next) {
-    // Only generate if new or referralCode is empty
+    // Only generate if new or referralCode is missing
     if (this.isNew || !this.referralCode) {
         let code;
         let exists = true;
@@ -133,7 +132,7 @@ userSchema.pre('save', async function(next) {
         }
     }
     
-    // Set wallet default for new users
+    // Set wallet defaults for new users
     if (this.isNew) {
         this.wallet = this.wallet || {};
         this.wallet.balance = 20;
@@ -145,7 +144,7 @@ userSchema.pre('save', async function(next) {
     next();
 });
 
-// ✅ Method to claim welcome bonus
+// ✅ Claim welcome bonus
 userSchema.methods.claimWelcomeBonus = function() {
     if (!this.wallet.welcomeBonusClaimed) {
         this.wallet.balance += 10;
@@ -156,7 +155,7 @@ userSchema.methods.claimWelcomeBonus = function() {
     return false;
 };
 
-// ✅ Method to update login
+// ✅ Update login timestamp
 userSchema.methods.updateLogin = function() {
     this.lastLogin = new Date();
     this.loginCount = (this.loginCount || 0) + 1;
