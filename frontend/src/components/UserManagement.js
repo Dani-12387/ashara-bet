@@ -14,10 +14,11 @@ const UserManagement = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [historyData, setHistoryData] = useState([]);
   const [historyType, setHistoryType] = useState('');
-  
-  // ✅ API URL from environment variable
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-  
+
   // Balance form state
   const [balanceData, setBalanceData] = useState({
     balance: 0,
@@ -65,36 +66,44 @@ const UserManagement = () => {
       setLoading(false);
     } catch (error) {
       console.error('Error fetching users:', error);
-      alert('Failed to fetch users');
+      setErrorMessage('Failed to fetch users');
       setLoading(false);
     }
+  };
+
+  // Clear messages
+  const clearMessages = () => {
+    setErrorMessage('');
+    setSuccessMessage('');
   };
 
   // Handle input change for forms
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    
+
     if (name.includes('.')) {
-      const [parent, child] = name.split('.');
-      if (parent === 'profile') {
-        setFormData({
-          ...formData,
-          profile: {
-            ...formData.profile,
-            [child]: value
-          }
-        });
-      } else if (parent === 'address') {
-        setFormData({
-          ...formData,
-          profile: {
-            ...formData.profile,
-            address: {
-              ...formData.profile.address,
-              [child]: value
+      const parts = name.split('.');
+      if (parts[0] === 'profile') {
+        if (parts[1] === 'address') {
+          setFormData({
+            ...formData,
+            profile: {
+              ...formData.profile,
+              address: {
+                ...formData.profile.address,
+                [parts[2]]: value
+              }
             }
-          }
-        });
+          });
+        } else {
+          setFormData({
+            ...formData,
+            profile: {
+              ...formData.profile,
+              [parts[1]]: value
+            }
+          });
+        }
       }
     } else {
       setFormData({
@@ -102,6 +111,7 @@ const UserManagement = () => {
         [name]: value
       });
     }
+    clearMessages();
   };
 
   // Handle balance input change
@@ -111,6 +121,7 @@ const UserManagement = () => {
       ...balanceData,
       [name]: name === 'action' ? value : parseFloat(value) || 0
     });
+    clearMessages();
   };
 
   // Add new user
@@ -118,9 +129,9 @@ const UserManagement = () => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
-      
+
       if (!formData.username || !formData.email || !formData.phone || !formData.password) {
-        alert('Username, Email, Phone and Password are required');
+        setErrorMessage('Username, Email, Phone and Password are required');
         return;
       }
 
@@ -129,14 +140,14 @@ const UserManagement = () => {
       });
 
       if (response.data.success) {
-        alert('User created successfully');
+        setSuccessMessage('User created successfully');
         setShowModal(false);
         resetForm();
         fetchUsers();
       }
     } catch (error) {
       console.error('Error creating user:', error);
-      alert(error.response?.data?.message || 'Failed to create user');
+      setErrorMessage(error.response?.data?.message || 'Failed to create user');
     }
   };
 
@@ -145,7 +156,7 @@ const UserManagement = () => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
-      
+
       const updateData = { ...formData };
       if (!updateData.password) {
         delete updateData.password;
@@ -156,14 +167,14 @@ const UserManagement = () => {
       });
 
       if (response.data.success) {
-        alert('User updated successfully');
+        setSuccessMessage('User updated successfully');
         setShowModal(false);
         resetForm();
         fetchUsers();
       }
     } catch (error) {
       console.error('Error updating user:', error);
-      alert(error.response?.data?.message || 'Failed to update user');
+      setErrorMessage(error.response?.data?.message || 'Failed to update user');
     }
   };
 
@@ -172,7 +183,7 @@ const UserManagement = () => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
-      
+
       const response = await axios.post(
         `${API_URL}/api/admin/users/${selectedUser._id}/balance`,
         balanceData,
@@ -180,14 +191,14 @@ const UserManagement = () => {
       );
 
       if (response.data.success) {
-        alert(`Balance updated successfully! New balance: ETB ${response.data.user.wallet.balance}`);
+        setSuccessMessage(`Balance updated! New balance: ETB ${response.data.user.wallet.balance}`);
         setShowModal(false);
         resetForm();
         fetchUsers();
       }
     } catch (error) {
       console.error('Error updating balance:', error);
-      alert(error.response?.data?.message || 'Failed to update balance');
+      setErrorMessage(error.response?.data?.message || 'Failed to update balance');
     }
   };
 
@@ -204,33 +215,33 @@ const UserManagement = () => {
       });
 
       if (response.data.success) {
-        alert('User deleted successfully');
+        setSuccessMessage('User deleted');
         fetchUsers();
       }
     } catch (error) {
       console.error('Error deleting user:', error);
-      alert(error.response?.data?.message || 'Failed to delete user');
+      setErrorMessage(error.response?.data?.message || 'Failed to delete user');
     }
   };
 
   // Suspend/Activate user
   const handleToggleStatus = async (userId, currentStatus) => {
     const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
-    
+
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.put(`${API_URL}/api/admin/users/${userId}/status`, 
+      const response = await axios.put(`${API_URL}/api/admin/users/${userId}/status`,
         { status: newStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       if (response.data.success) {
-        alert(`User ${newStatus} successfully`);
+        setSuccessMessage(`User ${newStatus}`);
         fetchUsers();
       }
     } catch (error) {
       console.error('Error updating user status:', error);
-      alert(error.response?.data?.message || 'Failed to update user status');
+      setErrorMessage(error.response?.data?.message || 'Failed to update user status');
     }
   };
 
@@ -248,10 +259,11 @@ const UserManagement = () => {
 
       if (response.data.success) {
         alert(`Password reset successfully. Temporary password: ${response.data.temporaryPassword}`);
+        setSuccessMessage('Password reset');
       }
     } catch (error) {
       console.error('Error resetting password:', error);
-      alert(error.response?.data?.message || 'Failed to reset password');
+      setErrorMessage(error.response?.data?.message || 'Failed to reset password');
     }
   };
 
@@ -264,12 +276,12 @@ const UserManagement = () => {
       });
 
       if (response.data.success) {
-        alert('KYC verified successfully');
+        setSuccessMessage('KYC verified');
         fetchUsers();
       }
     } catch (error) {
       console.error('Error verifying KYC:', error);
-      alert(error.response?.data?.message || 'Failed to verify KYC');
+      setErrorMessage(error.response?.data?.message || 'Failed to verify KYC');
     }
   };
 
@@ -286,12 +298,13 @@ const UserManagement = () => {
       setShowHistory(true);
     } catch (error) {
       console.error('Error fetching history:', error);
-      alert('Failed to fetch history');
+      setErrorMessage('Failed to fetch history');
     }
   };
 
   // Open modal for different actions
   const openModal = (mode, user = null) => {
+    clearMessages();
     setModalMode(mode);
     if (user) {
       setSelectedUser(user);
@@ -359,20 +372,21 @@ const UserManagement = () => {
       action: 'add'
     });
     setSelectedUser(null);
+    clearMessages();
   };
 
   // Filter users based on search and filters
   const filteredUsers = users.filter(user => {
-    const matchesSearch = 
+    const matchesSearch =
       user.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.profile?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.profile?.lastName?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesRole = filterRole === 'all' || user.role === filterRole;
     const matchesStatus = filterStatus === 'all' || user.status === filterStatus;
-    
+
     return matchesSearch && matchesRole && matchesStatus;
   });
 
@@ -398,11 +412,15 @@ const UserManagement = () => {
     <div className="user-management">
       {/* Header */}
       <div className="um-header">
-        <h1>User Management</h1>
+        <h1>👥 User Management</h1>
         <button className="um-btn-primary" onClick={() => openModal('add')}>
           + Add New User
         </button>
       </div>
+
+      {/* Messages */}
+      {errorMessage && <div className="um-error-message">{errorMessage}</div>}
+      {successMessage && <div className="um-success-message">{successMessage}</div>}
 
       {/* Filters */}
       <div className="um-filters">
@@ -413,7 +431,7 @@ const UserManagement = () => {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-        <select 
+        <select
           className="um-filter-select"
           value={filterRole}
           onChange={(e) => setFilterRole(e.target.value)}
@@ -424,7 +442,7 @@ const UserManagement = () => {
           <option value="manager">Manager</option>
           <option value="support">Support</option>
         </select>
-        <select 
+        <select
           className="um-filter-select"
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
@@ -463,6 +481,10 @@ const UserManagement = () => {
                         <div className="um-user-fullname">
                           {user.profile?.firstName} {user.profile?.lastName}
                         </div>
+                        {/* ✅ Show referral code if present */}
+                        {user.referralCode && (
+                          <div className="um-user-referral">🔑 {user.referralCode}</div>
+                        )}
                       </div>
                     </div>
                   </td>
@@ -487,7 +509,7 @@ const UserManagement = () => {
                       {user.kyc?.status || 'Not Submitted'}
                     </span>
                     {user.kyc?.status === 'pending' && (
-                      <button 
+                      <button
                         className="um-verify-btn"
                         onClick={() => handleVerifyKYC(user._id)}
                       >
@@ -497,63 +519,63 @@ const UserManagement = () => {
                   </td>
                   <td>
                     <div className="wallet-info">
-                      <span className="wallet-balance">ETB {user.wallet?.balance || 0}</span>
-                      <span className="wallet-bonus">Bonus: ETB {user.wallet?.bonusBalance || 0}</span>
+                      <span className="wallet-balance">{formatETB(user.wallet?.balance)}</span>
+                      <span className="wallet-bonus">Bonus: {formatETB(user.wallet?.bonusBalance)}</span>
                     </div>
                   </td>
                   <td>{new Date(user.createdAt).toLocaleDateString()}</td>
                   <td>
                     <div className="um-action-buttons">
-                      <button 
+                      <button
                         className="um-action-btn view"
                         onClick={() => openModal('view', user)}
                         title="View Details"
                       >
                         View
                       </button>
-                      <button 
+                      <button
                         className="um-action-btn edit"
                         onClick={() => openModal('edit', user)}
                         title="Edit User"
                       >
                         Edit
                       </button>
-                      <button 
+                      <button
                         className="um-action-btn balance"
                         onClick={() => openModal('balance', user)}
-                        title="Set Balance"
+                        title="Manage Balance"
                       >
                         Balance
                       </button>
-                      <button 
+                      <button
                         className="um-action-btn history"
                         onClick={() => handleViewHistory(user._id, 'betting')}
                         title="Betting History"
                       >
                         Bets
                       </button>
-                      <button 
+                      <button
                         className="um-action-btn history"
                         onClick={() => handleViewHistory(user._id, 'transaction')}
                         title="Transaction History"
                       >
                         Trans
                       </button>
-                      <button 
+                      <button
                         className="um-action-btn reset"
                         onClick={() => handleResetPassword(user._id)}
                         title="Reset Password"
                       >
                         Reset
                       </button>
-                      <button 
+                      <button
                         className={`um-action-btn ${user.status === 'active' ? 'suspend' : 'activate'}`}
                         onClick={() => handleToggleStatus(user._id, user.status)}
                         title={user.status === 'active' ? 'Suspend User' : 'Activate User'}
                       >
                         {user.status === 'active' ? 'Suspend' : 'Activate'}
                       </button>
-                      <button 
+                      <button
                         className="um-action-btn delete"
                         onClick={() => handleDeleteUser(user._id)}
                         title="Delete User"
@@ -575,21 +597,22 @@ const UserManagement = () => {
         </table>
       </div>
 
-      {/* User Modal */}
+      {/* ===== MODAL ===== */}
       {showModal && (
         <div className="um-modal-overlay">
           <div className="um-modal">
             <div className="um-modal-header">
               <h2>
-                {modalMode === 'add' ? 'Add New User' : 
-                 modalMode === 'edit' ? 'Edit User' : 
-                 modalMode === 'view' ? 'User Details' : 
+                {modalMode === 'add' ? 'Add New User' :
+                 modalMode === 'edit' ? 'Edit User' :
+                 modalMode === 'view' ? 'User Details' :
                  modalMode === 'balance' ? 'Manage Balance' : ''}
               </h2>
               <button className="um-modal-close" onClick={() => setShowModal(false)}>✖</button>
             </div>
-            
+
             {modalMode === 'view' ? (
+              // ---------- VIEW MODE ----------
               <div className="um-view-details">
                 <div className="um-detail-section">
                   <h3>Account Information</h3>
@@ -598,6 +621,7 @@ const UserManagement = () => {
                   <p><strong>Phone:</strong> {selectedUser?.phone ? formatPhone(selectedUser.phone) : 'Not provided'}</p>
                   <p><strong>Role:</strong> {selectedUser?.role}</p>
                   <p><strong>Status:</strong> {selectedUser?.status}</p>
+                  <p><strong>Referral Code:</strong> {selectedUser?.referralCode || 'Not generated'}</p>
                 </div>
                 <div className="um-detail-section">
                   <h3>Personal Information</h3>
@@ -614,20 +638,21 @@ const UserManagement = () => {
                   <p><strong>Zip Code:</strong> {selectedUser?.profile?.address?.zipCode || 'Not provided'}</p>
                 </div>
                 <div className="um-detail-section">
-                  <h3>Wallet Information</h3>
-                  <p><strong>Balance:</strong> ETB {selectedUser?.wallet?.balance || 0}</p>
-                  <p><strong>Bonus Balance:</strong> ETB {selectedUser?.wallet?.bonusBalance || 0}</p>
-                  <p><strong>Locked Balance:</strong> ETB {selectedUser?.wallet?.lockedBalance || 0}</p>
+                  <h3>Wallet</h3>
+                  <p><strong>Balance:</strong> {formatETB(selectedUser?.wallet?.balance)}</p>
+                  <p><strong>Bonus:</strong> {formatETB(selectedUser?.wallet?.bonusBalance)}</p>
+                  <p><strong>Locked:</strong> {formatETB(selectedUser?.wallet?.lockedBalance)}</p>
                 </div>
               </div>
             ) : modalMode === 'balance' ? (
+              // ---------- BALANCE MODE ----------
               <form onSubmit={handleUpdateBalance}>
                 <div className="um-balance-form">
                   <div className="um-current-balance">
                     <h3>Current Balance</h3>
-                    <p>Balance: ETB {selectedUser?.wallet?.balance || 0}</p>
-                    <p>Bonus: ETB {selectedUser?.wallet?.bonusBalance || 0}</p>
-                    <p>Locked: ETB {selectedUser?.wallet?.lockedBalance || 0}</p>
+                    <p>Balance: {formatETB(selectedUser?.wallet?.balance)}</p>
+                    <p>Bonus: {formatETB(selectedUser?.wallet?.bonusBalance)}</p>
+                    <p>Locked: {formatETB(selectedUser?.wallet?.lockedBalance)}</p>
                   </div>
 
                   <div className="um-form-group">
@@ -679,13 +704,13 @@ const UserManagement = () => {
                   <div className="um-preview">
                     <h4>Preview</h4>
                     {balanceData.action === 'add' && (
-                      <p>New Balance: ETB {(selectedUser?.wallet?.balance || 0) + balanceData.balance}</p>
+                      <p>New Balance: {formatETB((selectedUser?.wallet?.balance || 0) + balanceData.balance)}</p>
                     )}
                     {balanceData.action === 'deduct' && (
-                      <p>New Balance: ETB {Math.max(0, (selectedUser?.wallet?.balance || 0) - balanceData.balance)}</p>
+                      <p>New Balance: {formatETB(Math.max(0, (selectedUser?.wallet?.balance || 0) - balanceData.balance))}</p>
                     )}
                     {balanceData.action === 'set' && (
-                      <p>New Balance: ETB {balanceData.balance}</p>
+                      <p>New Balance: {formatETB(balanceData.balance)}</p>
                     )}
                   </div>
                 </div>
@@ -699,6 +724,7 @@ const UserManagement = () => {
                 </div>
               </form>
             ) : (
+              // ---------- ADD / EDIT MODE ----------
               <form onSubmit={modalMode === 'add' ? handleAddUser : handleUpdateUser}>
                 <div className="um-form-grid">
                   <div className="um-form-group">
@@ -732,6 +758,7 @@ const UserManagement = () => {
                       required
                       maxLength="10"
                     />
+                    <small className="um-hint">Ethiopian phone number (09 or 07 + 8 digits)</small>
                   </div>
                   {modalMode === 'add' && (
                     <div className="um-form-group">
@@ -793,7 +820,7 @@ const UserManagement = () => {
                     <label>Street Address</label>
                     <input
                       type="text"
-                      name="address.street"
+                      name="profile.address.street"
                       value={formData.profile.address.street}
                       onChange={handleInputChange}
                     />
@@ -802,7 +829,7 @@ const UserManagement = () => {
                     <label>City</label>
                     <input
                       type="text"
-                      name="address.city"
+                      name="profile.address.city"
                       value={formData.profile.address.city}
                       onChange={handleInputChange}
                     />
@@ -811,7 +838,7 @@ const UserManagement = () => {
                     <label>State</label>
                     <input
                       type="text"
-                      name="address.state"
+                      name="profile.address.state"
                       value={formData.profile.address.state}
                       onChange={handleInputChange}
                     />
@@ -820,7 +847,7 @@ const UserManagement = () => {
                     <label>Country</label>
                     <input
                       type="text"
-                      name="address.country"
+                      name="profile.address.country"
                       value={formData.profile.address.country}
                       onChange={handleInputChange}
                     />
@@ -829,7 +856,7 @@ const UserManagement = () => {
                     <label>Zip Code</label>
                     <input
                       type="text"
-                      name="address.zipCode"
+                      name="profile.address.zipCode"
                       value={formData.profile.address.zipCode}
                       onChange={handleInputChange}
                     />
@@ -849,7 +876,7 @@ const UserManagement = () => {
         </div>
       )}
 
-      {/* History Modal */}
+      {/* ===== HISTORY MODAL ===== */}
       {showHistory && (
         <div className="um-modal-overlay">
           <div className="um-modal um-history-modal">
@@ -891,16 +918,16 @@ const UserManagement = () => {
                           <>
                             <td>{new Date(item.date).toLocaleDateString()}</td>
                             <td>{item.event}</td>
-                            <td>ETB {item.amount}</td>
+                            <td>{formatETB(item.amount)}</td>
                             <td>{item.odds}</td>
                             <td><span className={`um-status-badge ${item.status}`}>{item.status}</span></td>
-                            <td>ETB {item.winnings || 0}</td>
+                            <td>{formatETB(item.winnings || 0)}</td>
                           </>
                         ) : (
                           <>
                             <td>{new Date(item.date).toLocaleDateString()}</td>
                             <td><span className={`um-badge ${item.type}`}>{item.type}</span></td>
-                            <td>ETB {item.amount}</td>
+                            <td>{formatETB(item.amount)}</td>
                             <td>{item.method}</td>
                             <td><span className={`um-status-badge ${item.status}`}>{item.status}</span></td>
                           </>
