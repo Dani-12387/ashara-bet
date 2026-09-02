@@ -132,7 +132,7 @@ const AviatorManagement = () => {
       if (data.status === 'CRASHED' || data.status === 'crashed') {
         fetchHistory();
         fetchActiveBets();
-        fetchEndedBets(); // refresh ended bets on crash
+        fetchEndedBets();
         fetchGameState();
       }
     });
@@ -148,7 +148,7 @@ const AviatorManagement = () => {
 
     socket.on('bet:cashed_out', () => {
       fetchActiveBets();
-      fetchEndedBets(); // refresh ended bets on cashout
+      fetchEndedBets();
       fetchGameState();
     });
 
@@ -277,6 +277,26 @@ const AviatorManagement = () => {
     }
   };
 
+  // ✅ Toggle auto-start (new function)
+  const toggleAutoStart = async () => {
+    const newAutoStart = !settings.autoStart;
+    setSettings(prev => ({ ...prev, autoStart: newAutoStart }));
+    // Optionally update settings on the server immediately
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(
+        `${API_URL}/api/aviator/settings`,
+        { ...settings, autoStart: newAutoStart },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setGameState(prev => ({ ...prev, autoStart: newAutoStart }));
+      showMessage(`Auto-start ${newAutoStart ? 'enabled' : 'disabled'}`, 'success');
+    } catch (error) {
+      console.error('Error toggling auto-start:', error);
+      showMessage('Failed to update auto-start', 'error');
+    }
+  };
+
   const setNextCrashPoint = async () => {
     try {
       const crashPoint = parseFloat(document.getElementById('nextCrashPoint')?.value);
@@ -398,6 +418,14 @@ const AviatorManagement = () => {
             >
               {loading ? '⏳ Loading...' : '🔒 Close Game'}
             </button>
+            {/* ✅ NEW: Auto-start toggle button */}
+            <button
+              className={`btn-auto-start ${settings.autoStart ? 'enabled' : 'disabled'}`}
+              onClick={toggleAutoStart}
+              disabled={loading}
+            >
+              {settings.autoStart ? '⏸️ Auto-start ON' : '▶️ Auto-start OFF'}
+            </button>
           </div>
         </div>
 
@@ -432,6 +460,8 @@ const AviatorManagement = () => {
             <button onClick={() => { document.getElementById('nextCrashPoint').value = '5.0'; }}>5.0x</button>
             <button onClick={() => { document.getElementById('nextCrashPoint').value = '10.0'; }}>10.0x</button>
             <button onClick={() => { document.getElementById('nextCrashPoint').value = '50.0'; }}>50.0x</button>
+            {/* ✅ NEW: 100x preset */}
+            <button onClick={() => { document.getElementById('nextCrashPoint').value = '100.0'; }}>100x</button>
           </div>
         </div>
 
