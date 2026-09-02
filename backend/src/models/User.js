@@ -71,13 +71,32 @@ const userSchema = new mongoose.Schema({
             type: Number,
             default: 0
         },
-        // ✅ Add welcome bonus tracking
         welcomeBonusClaimed: {
             type: Boolean,
             default: false
         }
     },
-    // ✅ Add login tracking
+    // ✅ REFERRAL FIELDS – add these
+    referralCode: {
+        type: String,
+        unique: true,
+        required: true,
+        uppercase: true
+    },
+    referredBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    },
+    referrals: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    }],
+    referralEarnings: {
+        type: Number,
+        default: 0
+    },
+    // login tracking
     lastLogin: {
         type: Date
     },
@@ -91,12 +110,33 @@ const userSchema = new mongoose.Schema({
     }
 });
 
-// ✅ Pre-save hook to set welcome bonus
-userSchema.pre('save', function(next) {
-    // Set balance for new users
+// ✅ Generate unique referral code before saving
+userSchema.pre('save', async function(next) {
+    // Only generate if new or referralCode is empty
+    if (this.isNew || !this.referralCode) {
+        let code;
+        let exists = true;
+        let attempts = 0;
+        const User = mongoose.model('User');
+        
+        while (exists && attempts < 10) {
+            code = 'REF' + Math.random().toString(36).substring(2, 8).toUpperCase();
+            const existing = await User.findOne({ referralCode: code });
+            if (!existing) exists = false;
+            attempts++;
+        }
+        if (!exists) {
+            this.referralCode = code;
+        } else {
+            // Fallback: use timestamp + random
+            this.referralCode = 'REF' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 4).toUpperCase();
+        }
+    }
+    
+    // Set wallet default for new users
     if (this.isNew) {
         this.wallet = this.wallet || {};
-        this.wallet.balance = 20; // Default balance
+        this.wallet.balance = 20;
         this.wallet.bonusBalance = 0;
         this.wallet.lockedBalance = 0;
         this.wallet.welcomeBonusClaimed = true;
@@ -105,10 +145,10 @@ userSchema.pre('save', function(next) {
     next();
 });
 
-// ✅ Method to add welcome bonus (if you want to give extra bonus)
+// ✅ Method to claim welcome bonus
 userSchema.methods.claimWelcomeBonus = function() {
     if (!this.wallet.welcomeBonusClaimed) {
-        this.wallet.balance += 10; // Extra 10 bonus
+        this.wallet.balance += 10;
         this.wallet.bonusBalance += 10;
         this.wallet.welcomeBonusClaimed = true;
         return true;
@@ -116,7 +156,7 @@ userSchema.methods.claimWelcomeBonus = function() {
     return false;
 };
 
-// ✅ Method to update last login
+// ✅ Method to update login
 userSchema.methods.updateLogin = function() {
     this.lastLogin = new Date();
     this.loginCount = (this.loginCount || 0) + 1;

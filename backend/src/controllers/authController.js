@@ -6,7 +6,7 @@ const jwt = require("jsonwebtoken");
 // @route   POST /api/auth/register
 exports.register = async (req, res) => {
   try {
-    const { username, email, phone, password } = req.body;
+    const { username, email, phone, password, referralCode } = req.body;
 
     // Check if user exists (including phone)
     const existingUser = await User.findOne({ 
@@ -14,45 +14,50 @@ exports.register = async (req, res) => {
     });
     
     if (existingUser) {
-      // Determine which field already exists
       if (existingUser.email === email) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Email already exists" 
-        });
+        return res.status(400).json({ success: false, message: "Email already exists" });
       }
       if (existingUser.username === username) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Username already exists" 
-        });
+        return res.status(400).json({ success: false, message: "Username already exists" });
       }
       if (existingUser.phone === phone) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Phone number already exists" 
-        });
+        return res.status(400).json({ success: false, message: "Phone number already exists" });
       }
+    }
+
+    // ✅ Find referrer if referralCode provided
+    let referredBy = null;
+    if (referralCode && referralCode.trim()) {
+      const referrer = await User.findOne({ referralCode: referralCode.trim().toUpperCase() });
+      if (referrer) {
+        referredBy = referrer._id;
+      }
+      // If referrer not found, silently ignore (no error)
     }
 
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create user with phone number
-    const user = await User.create({
+    // ✅ Create user – wallet will be set by the pre‑save hook in the model
+    const user = new User({
       username,
       email,
-      phone, // Add phone number
+      phone,
       password: hashedPassword,
-      role: "user", // Default role
-      status: "active", // Default status
-      wallet: {
-        balance: 0,
-        bonusBalance: 0,
-        lockedBalance: 0
-      }
+      role: "user",
+      status: "active",
+      referredBy // ✅ store the referrer's ObjectId
     });
+
+    await user.save();
+
+    // ✅ If referredBy exists, add this new user to the referrer's referrals array
+    if (referredBy) {
+      await User.findByIdAndUpdate(referredBy, {
+        $push: { referrals: user._id }
+      });
+    }
 
     // Create token
     const token = jwt.sign(
@@ -69,9 +74,10 @@ exports.register = async (req, res) => {
         id: user._id,
         username: user.username,
         email: user.email,
-        phone: user.phone, // Include phone in response
+        phone: user.phone,
         role: user.role,
-        status: user.status
+        status: user.status,
+        referralCode: user.referralCode // ✅ include referral code in response
       }
     });
   } catch (error) {
@@ -90,37 +96,26 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Find user (can also login with phone in future)
     const user = await User.findOne({ 
-      $or: [{ email }, { phone: email }] // Allow login with email or phone
+      $or: [{ email }, { phone: email }] 
     }).select("+password");
     
     if (!user) {
-      return res.status(401).json({ 
-        success: false, 
-        message: "Invalid credentials" 
-      });
+      return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
 
-    // Check password
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    
     if (!isPasswordValid) {
-      return res.status(401).json({ 
-        success: false, 
-        message: "Invalid credentials" 
-      });
+      return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
 
-    // Check if user is active
     if (user.status !== "active") {
-      return res.status(403).json({ 
-        success: false, 
-        message: "Account is not active. Please contact admin." 
-      });
+      return res.status(403).json({ success: false, message: "Account is not active. Please contact admin." });
     }
 
-    // Create token
+    // ✅ Update last login (optional)
+    await user.updateLogin();
+
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET || "mysecretkey123",
@@ -135,9 +130,10 @@ exports.login = async (req, res) => {
         id: user._id,
         username: user.username,
         email: user.email,
-        phone: user.phone, // Include phone in response
+        phone: user.phone,
         role: user.role,
-        status: user.status
+        status: user.status,
+        referralCode: user.referralCode // ✅ include referral code
       }
     });
   } catch (error) {
@@ -162,10 +158,11 @@ exports.getMe = async (req, res) => {
         id: user._id,
         username: user.username,
         email: user.email,
-        phone: user.phone, // Include phone in response
+        phone: user.phone,
         role: user.role,
         status: user.status,
-        wallet: user.wallet, // Include wallet info
+        wallet: user.wallet,
+        referralCode: user.referralCode, // ✅ include referral code
         createdAt: user.createdAt
       }
     });
@@ -184,9 +181,7 @@ exports.getMe = async (req, res) => {
 exports.checkPhone = async (req, res) => {
   try {
     const { phone } = req.body;
-    
     const existingUser = await User.findOne({ phone });
-    
     res.json({
       success: true,
       exists: !!existingUser
@@ -197,6 +192,40 @@ exports.checkPhone = async (req, res) => {
       success: false, 
       message: "Failed to check phone", 
       error: error.message 
+    });
+  }
+};
+
+// ✅ NEW: Get referral info (code + referred friends)
+// @route   GET /api/user/referral-info
+exports.getReferralInfo = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await User.findById(userId)
+      .populate('referrals', 'username email createdAt status');
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Map referrals to the format expected by the frontend
+    const referrals = user.referrals.map(ref => ({
+      username: ref.username,
+      email: ref.email,
+      createdAt: ref.createdAt,
+      status: ref.status === 'active' ? 'Active' : 'Inactive'
+    }));
+
+    res.json({
+      success: true,
+      referralCode: user.referralCode,
+      referrals: referrals
+    });
+  } catch (error) {
+    console.error('Error fetching referral info:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message 
     });
   }
 };

@@ -1,8 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcryptjs'); // Add this import for password hashing
+const bcrypt = require('bcryptjs');
 const { protect } = require('../middleware/authMiddleware');
 const User = require('../models/User');
+
+// ✅ Import the authController to access getReferralInfo
+const authController = require('../controllers/authController');
+
+// ==================== USER PROFILE ====================
 
 // Get user profile
 router.get('/profile', protect, async (req, res) => {
@@ -19,6 +24,7 @@ router.get('/profile', protect, async (req, res) => {
         status: user.status,
         profile: user.profile,
         wallet: user.wallet,
+        referralCode: user.referralCode, // ✅ include referral code
         createdAt: user.createdAt
       }
     });
@@ -49,13 +55,16 @@ router.put('/profile', protect, async (req, res) => {
         role: user.role,
         status: user.status,
         profile: user.profile,
-        wallet: user.wallet
+        wallet: user.wallet,
+        referralCode: user.referralCode
       }
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
+
+// ==================== WALLET / BALANCE ====================
 
 // Get user balance (deprecated - use /wallet instead)
 router.get('/balance', protect, async (req, res) => {
@@ -71,7 +80,7 @@ router.get('/balance', protect, async (req, res) => {
   }
 });
 
-// NEW: Get user wallet (complete wallet info)
+// Get user wallet (complete wallet info)
 router.get('/wallet', protect, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -84,6 +93,8 @@ router.get('/wallet', protect, async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
+// ==================== STATS ====================
 
 // Get user stats
 router.get('/stats', protect, async (req, res) => {
@@ -100,6 +111,8 @@ router.get('/stats', protect, async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
+// ==================== PASSWORD ====================
 
 // Change password
 router.post('/change-password', protect, async (req, res) => {
@@ -124,5 +137,10 @@ router.post('/change-password', protect, async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
+// ==================== REFERRAL ====================
+
+// ✅ NEW: Get referral info (code + referred friends)
+router.get('/referral-info', protect, authController.getReferralInfo);
 
 module.exports = router;
