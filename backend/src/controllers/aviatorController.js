@@ -199,7 +199,33 @@ async function processCashOut(bet) {
   }
 }
 
-// ========== CRASH GAME ==========
+// ========== HELPER: Start a new round with a given crash point ==========
+function startNewRound(crashPoint) {
+  // Move pending bets to active
+  for (const p of pendingBets) {
+    activeBets.push({ ...p, status: 'active', activatedAt: new Date() });
+  }
+  pendingBets = [];
+
+  gameState.status = 'active';
+  gameState.multiplier = 1.00;
+  gameState.roundNumber += 1;
+  gameState.startTime = Date.now();
+  gameState.totalBets = activeBets.length;
+  gameState.totalAmount = activeBets.reduce((s, b) => s + b.amount, 0);
+
+  gameState.crashPoint = crashPoint || gameState.nextCrashPoint;
+  if (gameState.crashPoint <= 1.01) {
+    gameState.crashPoint = 2 + Math.random() * 98;
+  }
+  gameState.nextCrashPoint = 0; // reset after use
+
+  startGameLoop();
+  broadcastGameState();
+  console.log(`🚀 Round ${gameState.roundNumber} started with crash point ${gameState.crashPoint.toFixed(2)}x`);
+}
+
+// ========== CRASH GAME – with Auto‑Start ==========
 async function crashGame() {
   if (gameState.status === 'crashed') return;
   console.log(`💥 Game crashed at ${gameState.multiplier.toFixed(2)}x`);
@@ -234,11 +260,26 @@ async function crashGame() {
 
   broadcastGameState();
 
-  setTimeout(() => {
-    console.log('🔄 Resetting to idle. Admin must start next round.');
+  // ===== AUTO-START LOGIC =====
+  // Wait 3 seconds for the "reset to idle" message, then if autoStart is enabled, start next round.
+  setTimeout(async () => {
+    console.log('🔄 Resetting to idle. Auto‑start:', gameState.autoStart);
     gameState.status = 'idle';
     gameState.multiplier = 1.00;
     broadcastGameState();
+
+    // ✅ If auto‑start is enabled, start a new round after the configured delay
+    if (gameState.autoStart && gameState.autoStartDelay > 0) {
+      console.log(`⏳ Auto‑start scheduled in ${gameState.autoStartDelay} seconds...`);
+      setTimeout(() => {
+        console.log('🚀 Auto‑starting next round...');
+        // Use the nextCrashPoint if set, otherwise random
+        const crashPoint = gameState.nextCrashPoint > 1.01
+          ? gameState.nextCrashPoint
+          : 2 + Math.random() * 98;
+        startNewRound(crashPoint);
+      }, gameState.autoStartDelay * 1000);
+    }
   }, 3000);
 }
 
@@ -252,25 +293,11 @@ exports.startGame = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Game already active' });
     }
 
-    for (const p of pendingBets) {
-      activeBets.push({ ...p, status: 'active', activatedAt: new Date() });
-    }
-    pendingBets = [];
-
-    gameState.status = 'active';
-    gameState.multiplier = 1.00;
-    gameState.roundNumber += 1;
-    gameState.startTime = Date.now();
-    gameState.totalBets = activeBets.length;
-    gameState.totalAmount = activeBets.reduce((s, b) => s + b.amount, 0);
-
-    gameState.crashPoint = gameState.nextCrashPoint > 1.01
+    // Start a new round with the current nextCrashPoint
+    const crashPoint = gameState.nextCrashPoint > 1.01
       ? gameState.nextCrashPoint
       : 2 + Math.random() * 98;
-    gameState.nextCrashPoint = 0;
-
-    startGameLoop();
-    broadcastGameState();
+    startNewRound(crashPoint);
 
     res.json({
       success: true,
