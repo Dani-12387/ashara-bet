@@ -348,11 +348,11 @@ const AviatorManagement = () => {
     }
   };
 
-  // ----- Queue management -----
-  const addCrashPointToQueue = async () => {
-    const val = parseFloat(newCrashPoint);
+  // ===== QUEUE MANAGEMENT =====
+  const addCrashPointToQueue = async (value) => {
+    const val = parseFloat(value);
     if (!val || val <= 1.01) {
-      showMessage('Please enter a valid crash point (>= 1.01)', 'error');
+      showMessage('Invalid crash point (must be > 1.01)', 'error');
       return;
     }
     try {
@@ -424,23 +424,18 @@ const AviatorManagement = () => {
   };
 
   const presetCrashPoints = (values) => {
-    // Replace queue with these values
     const points = values.map(v => parseFloat(v)).filter(v => v > 1.01);
     if (points.length === 0) {
       showMessage('No valid crash points', 'error');
       return;
     }
-    // We'll use the setCrashPointQueue endpoint (assume we'll add it)
-    // For simplicity, we'll add them one by one
     (async () => {
       try {
         setLoading(true);
         const token = localStorage.getItem('token');
-        // Clear existing queue first
         await axios.delete(`${API_URL}/api/aviator/crash-queue/clear`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        // Add each point
         for (const val of points) {
           await axios.post(
             `${API_URL}/api/aviator/crash-queue/add`,
@@ -457,6 +452,26 @@ const AviatorManagement = () => {
         setLoading(false);
       }
     })();
+  };
+
+  // ===== NUMBER GRID =====
+  const generateNumberGrid = () => {
+    const numbers = [];
+    // Decimals from 1.1 to 29.9 (step 0.1)
+    for (let i = 1.1; i <= 29.9; i += 0.1) {
+      numbers.push(Math.round(i * 10) / 10);
+    }
+    // Whole numbers from 30 to 100
+    for (let i = 30; i <= 100; i++) {
+      numbers.push(i);
+    }
+    return numbers;
+  };
+
+  const gridNumbers = generateNumberGrid();
+
+  const handleNumberClick = (num) => {
+    addCrashPointToQueue(num);
   };
 
   // ===== UI HELPERS =====
@@ -493,7 +508,7 @@ const AviatorManagement = () => {
       )}
 
       <div className="management-grid">
-        {/* GAME CONTROLS (unchanged) */}
+        {/* GAME CONTROLS */}
         <div className="management-card game-controls">
           <h2>🎮 Game Controls</h2>
           <div className="game-status-display">
@@ -534,7 +549,7 @@ const AviatorManagement = () => {
           </div>
         </div>
 
-        {/* SET NEXT CRASH POINT (single) – kept for backwards compatibility */}
+        {/* SET NEXT CRASH POINT (single fallback) */}
         <div className="management-card crash-control">
           <h2>🎯 Set Next Crash Point</h2>
           <p className="hint">Set the multiplier where the game will crash in the next round (fallback)</p>
@@ -555,10 +570,11 @@ const AviatorManagement = () => {
           </div>
         </div>
 
-        {/* NEW: CRASH POINT QUEUE MANAGEMENT */}
+        {/* CRASH POINT QUEUE MANAGEMENT */}
         <div className="management-card crash-queue">
           <h2>📋 Crash Point Queue</h2>
-          <p className="hint">Points will be used in order for each round. When empty, uses the single fallback above.</p>
+          <p className="hint">Points will be used in order for each round. Click any number below to add it to the queue.</p>
+
           <div className="queue-input-group">
             <input
               type="number"
@@ -569,19 +585,24 @@ const AviatorManagement = () => {
               onChange={(e) => setNewCrashPoint(e.target.value)}
             />
             <span className="multiplier-suffix">x</span>
-            <button className="btn-queue-add" onClick={addCrashPointToQueue} disabled={loading}>Add</button>
+            <button className="btn-queue-add" onClick={() => addCrashPointToQueue(newCrashPoint)} disabled={loading}>Add</button>
+            <button className="btn-queue-clear" onClick={clearCrashQueue} disabled={loading}>Clear All</button>
           </div>
+
           <div className="queue-presets">
             <span>Presets:</span>
             <button onClick={() => presetCrashPoints([2, 3, 5, 10])}>2,3,5,10</button>
             <button onClick={() => presetCrashPoints([50, 100])}>50,100</button>
             <button onClick={() => presetCrashPoints([10, 20, 50, 100])}>10,20,50,100</button>
             <button onClick={() => presetCrashPoints([1.5, 2, 2.5, 3, 5])}>1.5-5</button>
-            <button onClick={clearCrashQueue} className="btn-queue-clear" disabled={loading}>Clear All</button>
           </div>
-          {crashQueue.length === 0 ? (
-            <p className="no-data">Queue is empty</p>
-          ) : (
+
+          <div className="queue-status">
+            <span>Queue length: {crashQueue.length}</span>
+            <span>{crashQueue.length > 0 ? `Next: ${crashQueue[0]}x` : 'Falling back to single point'}</span>
+          </div>
+
+          {crashQueue.length > 0 && (
             <div className="queue-list">
               {crashQueue.map((point, idx) => (
                 <div key={idx} className="queue-item">
@@ -591,13 +612,27 @@ const AviatorManagement = () => {
               ))}
             </div>
           )}
-          <div className="queue-status">
-            <span>Queue length: {crashQueue.length}</span>
-            <span>{crashQueue.length > 0 ? `Next: ${crashQueue[0]}x` : 'Falling back to single point'}</span>
+
+          {/* ✅ NUMBER GRID – Click any number to add to queue */}
+          <div className="number-grid-container">
+            <h4>Click a number to add to queue:</h4>
+            <div className="number-grid">
+              {gridNumbers.map((num) => (
+                <button
+                  key={num}
+                  className={`grid-number ${crashQueue.includes(num) ? 'in-queue' : ''}`}
+                  onClick={() => handleNumberClick(num)}
+                  disabled={loading}
+                  title={crashQueue.includes(num) ? 'Already in queue' : `Add ${num}x to queue`}
+                >
+                  {num}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* GAME SETTINGS (unchanged) */}
+        {/* GAME SETTINGS */}
         <div className="management-card game-settings">
           <h2>⚙️ Game Settings</h2>
           <div className="settings-grid">
@@ -632,7 +667,7 @@ const AviatorManagement = () => {
           <button className="btn-save-settings" onClick={updateSettings} disabled={loading}>💾 Save Settings</button>
         </div>
 
-        {/* LIVE / ENDED BETS TABS (unchanged) */}
+        {/* LIVE / ENDED BETS TABS */}
         <div className="management-card live-bets">
           <div className="live-bets-header">
             <button className={`tab-btn ${activeTab === 'live' ? 'active' : ''}`} onClick={() => setActiveTab('live')}>🟢 Live Bets ({activeBets.length})</button>
@@ -677,7 +712,7 @@ const AviatorManagement = () => {
           </div>
         </div>
 
-        {/* GAME HISTORY (unchanged) */}
+        {/* GAME HISTORY */}
         <div className="management-card game-history">
           <h2>📜 Game History ({history.length})</h2>
           <div className="history-wrapper">
