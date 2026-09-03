@@ -185,7 +185,7 @@ const AdminTransactions = () => {
                     <span className="label">Method:</span>
                     <span className="value">{transaction.paymentMethod}</span>
                   </div>
-                  {/* ✅ Show the Telebirr account used */}
+                  {/* ✅ DISPLAY TELEBIRR ACCOUNT USED */}
                   {transaction.accountName && transaction.accountNumber && (
                     <div className="info-row">
                       <span className="label">Tele Birr Account:</span>
@@ -261,7 +261,10 @@ const AdminTransactions = () => {
               <div className="screenshot-info">
                 <p><strong>User:</strong> {transactions.find(t => t.screenshot === selectedImage)?.user?.username}</p>
                 <p><strong>Amount:</strong> ETB {transactions.find(t => t.screenshot === selectedImage)?.amount}</p>
-                <p><strong>Account:</strong> {transactions.find(t => t.screenshot === selectedImage)?.accountName} ({transactions.find(t => t.screenshot === selectedImage)?.accountNumber})</p>
+                {/* ✅ Show account in modal too */}
+                {transactions.find(t => t.screenshot === selectedImage)?.accountName && (
+                  <p><strong>Account:</strong> {transactions.find(t => t.screenshot === selectedImage)?.accountName} ({transactions.find(t => t.screenshot === selectedImage)?.accountNumber})</p>
+                )}
               </div>
               <img 
                 src={`${API_URL}/uploads/${selectedImage}`} 
