@@ -6,7 +6,6 @@ import './Deposit.css';
 // Import logos (make sure these files exist in your assets folder)
 import telebirrLogo from '../assets/telebirr-logo.png';
 import cbebirrLogo from '../assets/cbebirr-logo.jpg';
-import cbeLogo from '../assets/cbe-logo.jpg';
 
 const Deposit = () => {
   const navigate = useNavigate();
@@ -26,10 +25,9 @@ const Deposit = () => {
   const [selectedBank, setSelectedBank] = useState(null);
   const [showBankDetails, setShowBankDetails] = useState(false);
 
-  // ✅ API URL from environment variable
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-  // Bank account details with logos - TeleBirr FIRST (Recommended)
+  // Bank account details – only Tele Birr and CBE Birr
   const bankDetails = [
     {
       id: 1,
@@ -44,17 +42,6 @@ const Deposit = () => {
     },
     {
       id: 2,
-      bank: 'Commercial Bank of Ethiopia',
-      logo: cbeLogo,
-      accountName: 'Daniel',
-      accountNumber: '1000476842658',
-      branch: 'Bole Branch',
-      color: '#1a5c3a',
-      bgColor: '#e8f5e9',
-      recommended: false
-    },
-    {
-      id: 3,
       bank: 'CBE Birr',
       logo: cbebirrLogo,
       accountName: 'Daniel yirga',
@@ -76,7 +63,6 @@ const Deposit = () => {
     fetchRecentDeposits();
   }, [navigate]);
 
-  // ✅ FIXED: Use API_URL
   const fetchRecentDeposits = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -118,7 +104,6 @@ const Deposit = () => {
     setShowBankDetails(true);
   };
 
-  // ✅ FIXED: Use API_URL
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -341,7 +326,6 @@ const Deposit = () => {
                   required
                 >
                   <option value="TELE_BIRR">📱 Tele Birr (Recommended)</option>
-                  <option value="BANK_TRANSFER">🏦 CBE Transfer</option>
                   <option value="MOBILE_MONEY">📱 CBE Birr</option>
                 </select>
               </div>
