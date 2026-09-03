@@ -32,6 +32,15 @@ const transactionSchema = new mongoose.Schema({
   notes: {
     type: String
   },
+  // ✅ NEW: Store the account used for payment
+  accountName: {
+    type: String,
+    default: ''
+  },
+  accountNumber: {
+    type: String,
+    default: ''
+  },
   status: {
     type: String,
     enum: ['pending', 'approved', 'rejected'],

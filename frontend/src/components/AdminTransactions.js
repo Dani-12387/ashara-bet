@@ -9,14 +9,12 @@ const AdminTransactions = () => {
   const [filter, setFilter] = useState('pending');
   const [processingId, setProcessingId] = useState(null);
 
-  // ✅ API URL from environment variable
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
   useEffect(() => {
     fetchTransactions();
   }, [filter]);
 
-  // ✅ FIXED: Use API_URL
   const fetchTransactions = async () => {
     try {
       setLoading(true);
@@ -36,12 +34,10 @@ const AdminTransactions = () => {
     }
   };
 
-  // ✅ FIXED: Use API_URL
   const handleApprove = async (transactionId) => {
     if (!window.confirm('Are you sure you want to approve this deposit? User balance will be updated.')) {
       return;
     }
-
     setProcessingId(transactionId);
     try {
       const token = localStorage.getItem('token');
@@ -50,7 +46,6 @@ const AdminTransactions = () => {
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
       if (response.data.success) {
         alert('✅ Deposit approved! User balance updated.');
         fetchTransactions();
@@ -63,11 +58,9 @@ const AdminTransactions = () => {
     }
   };
 
-  // ✅ FIXED: Use API_URL
   const handleReject = async (transactionId) => {
     const reason = prompt('Please enter reason for rejection:');
     if (!reason) return;
-
     setProcessingId(transactionId);
     try {
       const token = localStorage.getItem('token');
@@ -76,7 +69,6 @@ const AdminTransactions = () => {
         { reason },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
       if (response.data.success) {
         alert('❌ Deposit rejected');
         fetchTransactions();
@@ -169,7 +161,7 @@ const AdminTransactions = () => {
               </div>
               
               <div className="card-body">
-                {/* Contact Information Section */}
+                {/* Contact Information */}
                 <div className="contact-section">
                   <h4>📞 User Contact</h4>
                   <div className="info-row">
@@ -182,7 +174,7 @@ const AdminTransactions = () => {
                   </div>
                 </div>
 
-                {/* Transaction Details Section */}
+                {/* Transaction Details */}
                 <div className="transaction-details">
                   <h4>💳 Transaction Details</h4>
                   <div className="info-row">
@@ -193,6 +185,15 @@ const AdminTransactions = () => {
                     <span className="label">Method:</span>
                     <span className="value">{transaction.paymentMethod}</span>
                   </div>
+                  {/* ✅ Show the Telebirr account used */}
+                  {transaction.accountName && transaction.accountNumber && (
+                    <div className="info-row">
+                      <span className="label">Tele Birr Account:</span>
+                      <span className="value telebirr-account">
+                        {transaction.accountName} ({transaction.accountNumber})
+                      </span>
+                    </div>
+                  )}
                   <div className="info-row">
                     <span className="label">Reference:</span>
                     <span className="value">{transaction.transactionReference || 'N/A'}</span>
@@ -260,6 +261,7 @@ const AdminTransactions = () => {
               <div className="screenshot-info">
                 <p><strong>User:</strong> {transactions.find(t => t.screenshot === selectedImage)?.user?.username}</p>
                 <p><strong>Amount:</strong> ETB {transactions.find(t => t.screenshot === selectedImage)?.amount}</p>
+                <p><strong>Account:</strong> {transactions.find(t => t.screenshot === selectedImage)?.accountName} ({transactions.find(t => t.screenshot === selectedImage)?.accountNumber})</p>
               </div>
               <img 
                 src={`${API_URL}/uploads/${selectedImage}`} 

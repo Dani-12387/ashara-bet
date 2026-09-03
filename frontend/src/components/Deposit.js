@@ -14,7 +14,8 @@ const Deposit = () => {
     amount: '',
     paymentMethod: 'TELE_BIRR',
     transactionReference: '',
-    notes: ''
+    notes: '',
+    selectedAccount: '' // ✅ store account name + number
   });
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -38,7 +39,7 @@ const Deposit = () => {
       branch: 'Mobile Money',
       color: '#e65100',
       bgColor: '#fff3e0',
-      recommended: true,  // ⭐ Recommended
+      recommended: true,
       paymentMethod: 'TELE_BIRR'
     },
     {
@@ -50,7 +51,7 @@ const Deposit = () => {
       branch: 'Mobile Money',
       color: '#2e7d32',
       bgColor: '#e8f5e9',
-      recommended: true,  // ⭐ Recommended
+      recommended: true,
       paymentMethod: 'TELE_BIRR'
     },
     {
@@ -62,7 +63,7 @@ const Deposit = () => {
       branch: 'Mobile Money',
       color: '#6a1b9a',
       bgColor: '#f3e5f5',
-      recommended: true,  // ⭐ Recommended
+      recommended: true,
       paymentMethod: 'TELE_BIRR'
     },
     {
@@ -74,7 +75,7 @@ const Deposit = () => {
       branch: 'Mobile Money',
       color: '#c62828',
       bgColor: '#ffebee',
-      recommended: true,  // ⭐ Recommended
+      recommended: true,
       paymentMethod: 'TELE_BIRR'
     },
     {
@@ -139,7 +140,13 @@ const Deposit = () => {
 
   const handleSelectBank = (bank) => {
     setSelectedBank(bank);
-    setFormData(prev => ({ ...prev, paymentMethod: bank.paymentMethod }));
+    // Store the account info so it can be sent to backend
+    const accountInfo = `${bank.accountName} (${bank.accountNumber})`;
+    setFormData(prev => ({
+      ...prev,
+      paymentMethod: bank.paymentMethod,
+      selectedAccount: accountInfo
+    }));
     setShowBankDetails(true);
   };
 
@@ -169,6 +176,9 @@ const Deposit = () => {
       formDataToSend.append('transactionReference', formData.transactionReference);
       formDataToSend.append('notes', formData.notes);
       formDataToSend.append('screenshot', selectedFile);
+      // ✅ Send account name and number
+      formDataToSend.append('accountName', selectedBank?.accountName || '');
+      formDataToSend.append('accountNumber', selectedBank?.accountNumber || '');
 
       const response = await axios.post(`${API_URL}/api/deposits/create`, formDataToSend, {
         headers: {
@@ -183,7 +193,8 @@ const Deposit = () => {
           amount: '',
           paymentMethod: 'TELE_BIRR',
           transactionReference: '',
-          notes: ''
+          notes: '',
+          selectedAccount: ''
         });
         setSelectedFile(null);
         setPreviewUrl(null);
