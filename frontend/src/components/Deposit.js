@@ -12,7 +12,7 @@ const Deposit = () => {
   const [user, setUser] = useState(null);
   const [formData, setFormData] = useState({
     amount: '',
-    paymentMethod: 'TELE_BIRR', // default
+    paymentMethod: 'TELE_BIRR',
     transactionReference: '',
     notes: ''
   });
@@ -27,7 +27,7 @@ const Deposit = () => {
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-  // All payment methods – 4 Tele Birr + 1 CBE Birr
+  // All payment methods – 4 Tele Birr (all recommended) + 1 CBE Birr
   const bankDetails = [
     {
       id: 1,
@@ -38,7 +38,7 @@ const Deposit = () => {
       branch: 'Mobile Money',
       color: '#e65100',
       bgColor: '#fff3e0',
-      recommended: true,
+      recommended: true,  // ⭐ Recommended
       paymentMethod: 'TELE_BIRR'
     },
     {
@@ -50,7 +50,7 @@ const Deposit = () => {
       branch: 'Mobile Money',
       color: '#2e7d32',
       bgColor: '#e8f5e9',
-      recommended: false,
+      recommended: true,  // ⭐ Recommended
       paymentMethod: 'TELE_BIRR'
     },
     {
@@ -62,7 +62,7 @@ const Deposit = () => {
       branch: 'Mobile Money',
       color: '#6a1b9a',
       bgColor: '#f3e5f5',
-      recommended: false,
+      recommended: true,  // ⭐ Recommended
       paymentMethod: 'TELE_BIRR'
     },
     {
@@ -74,7 +74,7 @@ const Deposit = () => {
       branch: 'Mobile Money',
       color: '#c62828',
       bgColor: '#ffebee',
-      recommended: false,
+      recommended: true,  // ⭐ Recommended
       paymentMethod: 'TELE_BIRR'
     },
     {
@@ -139,7 +139,6 @@ const Deposit = () => {
 
   const handleSelectBank = (bank) => {
     setSelectedBank(bank);
-    // Set payment method based on selected bank
     setFormData(prev => ({ ...prev, paymentMethod: bank.paymentMethod }));
     setShowBankDetails(true);
   };
@@ -366,7 +365,7 @@ const Deposit = () => {
                   onChange={handleInputChange}
                   required
                 >
-                  <option value="TELE_BIRR">📱 Tele Birr</option>
+                  <option value="TELE_BIRR">📱 Tele Birr (Recommended)</option>
                   <option value="MOBILE_MONEY">📱 Mobile Money (CBE Birr)</option>
                 </select>
               </div>
