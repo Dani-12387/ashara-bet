@@ -27,7 +27,7 @@ const Deposit = () => {
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-  // Bank account details – only Tele Birr and CBE Birr
+  // Bank account details – includes Tele Birr, CBE Birr, and three new mobile money accounts
   const bankDetails = [
     {
       id: 1,
@@ -49,6 +49,40 @@ const Deposit = () => {
       branch: 'Head Office',
       color: '#0d47a1',
       bgColor: '#e3f2fd',
+      recommended: false
+    },
+    // ✅ NEW: Mobile Money accounts
+    {
+      id: 3,
+      bank: 'Mobile Money - Abebe',
+      logo: cbebirrLogo, // use same logo or a generic one
+      accountName: 'Abebe',
+      accountNumber: '0911111111',
+      branch: 'Mobile Money',
+      color: '#2e7d32',
+      bgColor: '#e8f5e9',
+      recommended: false
+    },
+    {
+      id: 4,
+      bank: 'Mobile Money - Selam',
+      logo: cbebirrLogo,
+      accountName: 'Selam',
+      accountNumber: '0934343434',
+      branch: 'Mobile Money',
+      color: '#6a1b9a',
+      bgColor: '#f3e5f5',
+      recommended: false
+    },
+    {
+      id: 5,
+      bank: 'Mobile Money - Ali',
+      logo: cbebirrLogo,
+      accountName: 'Ali',
+      accountNumber: '0978899087',
+      branch: 'Mobile Money',
+      color: '#c62828',
+      bgColor: '#ffebee',
       recommended: false
     }
   ];
@@ -236,6 +270,7 @@ const Deposit = () => {
                   <img src={bank.logo} alt={bank.bank} className="bank-logo-img" />
                 </div>
                 <h4>{bank.bank}</h4>
+                <p className="account-number-short">{bank.accountNumber}</p>
                 {selectedBank?.id === bank.id && (
                   <span className="selected-check">✓ Selected</span>
                 )}
@@ -326,7 +361,7 @@ const Deposit = () => {
                   required
                 >
                   <option value="TELE_BIRR">📱 Tele Birr (Recommended)</option>
-                  <option value="MOBILE_MONEY">📱 CBE Birr</option>
+                  <option value="MOBILE_MONEY">📱 Mobile Money</option>
                 </select>
               </div>
             </div>
