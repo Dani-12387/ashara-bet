@@ -40,10 +40,17 @@ const upload = multer({
   }
 });
 
-// Create deposit request
+// Create deposit request – now saves accountName and accountNumber
 router.post('/create', protect, upload.single('screenshot'), async (req, res) => {
   try {
-    const { amount, paymentMethod, transactionReference, notes } = req.body;
+    const { 
+      amount, 
+      paymentMethod, 
+      transactionReference, 
+      notes,
+      accountName,      // ✅ NEW
+      accountNumber     // ✅ NEW
+    } = req.body;
 
     if (!amount || amount < 10) {
       return res.status(400).json({ message: 'Minimum deposit amount is ETB 10' });
@@ -61,6 +68,9 @@ router.post('/create', protect, upload.single('screenshot'), async (req, res) =>
       transactionReference,
       screenshot: req.file.filename,
       notes,
+      // ✅ Save the account details
+      accountName: accountName || '',
+      accountNumber: accountNumber || '',
       status: 'pending'
     });
 
