@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './Deposit.css';
 
-// Import logos (make sure these files exist in your assets folder)
+// Import logos
 import telebirrLogo from '../assets/telebirr-logo.png';
 import cbebirrLogo from '../assets/cbebirr-logo.jpg';
 
@@ -12,7 +12,7 @@ const Deposit = () => {
   const [user, setUser] = useState(null);
   const [formData, setFormData] = useState({
     amount: '',
-    paymentMethod: 'TELE_BIRR',
+    paymentMethod: 'TELE_BIRR', // default
     transactionReference: '',
     notes: ''
   });
@@ -27,63 +27,67 @@ const Deposit = () => {
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-  // Bank account details – includes Tele Birr, CBE Birr, and three new mobile money accounts
+  // All payment methods – 4 Tele Birr + 1 CBE Birr
   const bankDetails = [
     {
       id: 1,
-      bank: 'Tele Birr',
+      bank: 'Tele Birr – Abate',
       logo: telebirrLogo,
       accountName: 'Abate',
       accountNumber: '0943419247',
       branch: 'Mobile Money',
       color: '#e65100',
       bgColor: '#fff3e0',
-      recommended: true
+      recommended: true,
+      paymentMethod: 'TELE_BIRR'
     },
     {
       id: 2,
-      bank: 'CBE Birr',
+      bank: 'Tele Birr – Abebe',
+      logo: telebirrLogo,
+      accountName: 'Abebe',
+      accountNumber: '0911111111',
+      branch: 'Mobile Money',
+      color: '#2e7d32',
+      bgColor: '#e8f5e9',
+      recommended: false,
+      paymentMethod: 'TELE_BIRR'
+    },
+    {
+      id: 3,
+      bank: 'Tele Birr – Selam',
+      logo: telebirrLogo,
+      accountName: 'Selam',
+      accountNumber: '0934343434',
+      branch: 'Mobile Money',
+      color: '#6a1b9a',
+      bgColor: '#f3e5f5',
+      recommended: false,
+      paymentMethod: 'TELE_BIRR'
+    },
+    {
+      id: 4,
+      bank: 'Tele Birr – Ali',
+      logo: telebirrLogo,
+      accountName: 'Ali',
+      accountNumber: '0978899087',
+      branch: 'Mobile Money',
+      color: '#c62828',
+      bgColor: '#ffebee',
+      recommended: false,
+      paymentMethod: 'TELE_BIRR'
+    },
+    {
+      id: 5,
+      bank: 'CBE Birr – Daniel',
       logo: cbebirrLogo,
       accountName: 'Daniel yirga',
       accountNumber: '0939271009',
       branch: 'Head Office',
       color: '#0d47a1',
       bgColor: '#e3f2fd',
-      recommended: false
-    },
-    // ✅ NEW: Mobile Money accounts
-    {
-      id: 3,
-      bank: 'Mobile Money - Abebe',
-      logo: cbebirrLogo, // use same logo or a generic one
-      accountName: 'Abebe',
-      accountNumber: '0911111111',
-      branch: 'Mobile Money',
-      color: '#2e7d32',
-      bgColor: '#e8f5e9',
-      recommended: false
-    },
-    {
-      id: 4,
-      bank: 'Mobile Money - Selam',
-      logo: cbebirrLogo,
-      accountName: 'Selam',
-      accountNumber: '0934343434',
-      branch: 'Mobile Money',
-      color: '#6a1b9a',
-      bgColor: '#f3e5f5',
-      recommended: false
-    },
-    {
-      id: 5,
-      bank: 'Mobile Money - Ali',
-      logo: cbebirrLogo,
-      accountName: 'Ali',
-      accountNumber: '0978899087',
-      branch: 'Mobile Money',
-      color: '#c62828',
-      bgColor: '#ffebee',
-      recommended: false
+      recommended: false,
+      paymentMethod: 'MOBILE_MONEY'
     }
   ];
 
@@ -135,6 +139,8 @@ const Deposit = () => {
 
   const handleSelectBank = (bank) => {
     setSelectedBank(bank);
+    // Set payment method based on selected bank
+    setFormData(prev => ({ ...prev, paymentMethod: bank.paymentMethod }));
     setShowBankDetails(true);
   };
 
@@ -244,7 +250,7 @@ const Deposit = () => {
       )}
 
       <div className="deposit-content">
-        {/* Step 1: Select Bank */}
+        {/* Step 1: Select Payment Method */}
         <div className="step-section">
           <div className="step-header">
             <span className="step-number">1</span>
@@ -279,12 +285,12 @@ const Deposit = () => {
           </div>
         </div>
 
-        {/* Step 2: Bank Details */}
+        {/* Step 2: Account Details */}
         {showBankDetails && selectedBank && (
           <div className="step-section bank-details-section">
             <div className="step-header">
               <span className="step-number">2</span>
-              <h3>Bank Account Details</h3>
+              <h3>Account Details</h3>
             </div>
             <div className="bank-details-card" style={{ borderColor: selectedBank.color }}>
               <div className="bank-details-header">
@@ -353,15 +359,15 @@ const Deposit = () => {
               </div>
 
               <div className="form-group">
-                <label>Payment Method *</label>
+                <label>Payment Method</label>
                 <select
                   name="paymentMethod"
                   value={formData.paymentMethod}
                   onChange={handleInputChange}
                   required
                 >
-                  <option value="TELE_BIRR">📱 Tele Birr (Recommended)</option>
-                  <option value="MOBILE_MONEY">📱 Mobile Money</option>
+                  <option value="TELE_BIRR">📱 Tele Birr</option>
+                  <option value="MOBILE_MONEY">📱 Mobile Money (CBE Birr)</option>
                 </select>
               </div>
             </div>
