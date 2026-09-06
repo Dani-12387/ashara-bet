@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './Deposit.css';
 
-// Import logos
-import telebirrLogo from '../assets/telebirr-logo.png';
-import cbebirrLogo from '../assets/cbebirr-logo.jpg';
+// ✅ Logos are now loaded from the public folder using absolute paths (no imports needed!)
+const telebirrLogo = '/assets/telebirr-logo.png';
+const cbebirrLogo = '/assets/cbebirr-logo.jpg';
 
 const Deposit = () => {
   const navigate = useNavigate();

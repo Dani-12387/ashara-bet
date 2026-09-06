@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './Withdraw.css';
 
-// Import logos (same as deposit page)
-import telebirrLogo from '../assets/telebirr-logo.png';
-import cbebirrLogo from '../assets/cbebirr-logo.jpg';
-import cbeLogo from '../assets/cbe-logo.jpg';
+// ✅ Logos are now loaded from the public folder using absolute paths (no imports needed!)
+const telebirrLogo = '/assets/telebirr-logo.png';
+const cbebirrLogo = '/assets/cbebirr-logo.jpg';
+const cbeLogo = '/assets/cbe-logo.jpg';
 
 const Withdraw = () => {
   const navigate = useNavigate();
