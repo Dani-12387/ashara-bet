@@ -38,18 +38,17 @@ const HomePage = () => {
 
   // ===== CAROUSEL STATE (10 images, 2 per slide = 5 slides) =====
   const [currentSlide, setCurrentSlide] = useState(0);
-  const bannerImages = [
-    { src: bannerLiveBetting, alt: 'Live Betting' },
-    { src: bannerCashback, alt: 'Cashback 1' },
-    { src: bannerSponsors, alt: 'Sponsors 1' },
-    { src: bannerPromo, alt: 'Promotion 1' },
-    { src: femalePromotor, alt: 'Female Promoter' },
-    { src: famousFive, alt: 'Famous Five Players' },
-    { src: bannerSponsorsSec, alt: 'Sponsors Sec' },
-    { src: bannerCashback, alt: 'Cashback 2' },        // duplicate
-    { src: bannerSponsors, alt: 'Sponsors 2' },        // duplicate
-    { src: bannerPromo, alt: 'Promotion 2' },          // duplicate
-  ];
+  // ===== PROMOTIONAL BANNERS =====
+const bannerImages = [
+    { src: '/assets/banner-live-betting.jpeg', alt: 'Live Betting' },
+    { src: '/assets/banner-cashback.jpeg', alt: 'Cashback 1' },
+    { src: '/assets/banner-sponsors.jpeg', alt: 'Sponsors 1' },
+    { src: '/assets/promo-image.jpeg', alt: 'Promotion 1' },
+    { src: '/assets/Female_promotor.JPEG', alt: 'Female Promoter' },
+    { src: '/assets/Famous_five_players.JPEG', alt: 'Famous Five Players' },
+    { src: '/assets/banner-sponsors-sec.jpg', alt: 'Sponsors Sec' },
+    // ... duplicates below
+];
   const slidesPerView = 2;
   const totalSlides = Math.ceil(bannerImages.length / slidesPerView);
 
