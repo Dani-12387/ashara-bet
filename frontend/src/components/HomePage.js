@@ -3,15 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './HomePage.css';
 
-// ===== PROMOTIONAL BANNERS (10 IMAGES – exact filenames from your folder) =====
-import bannerLiveBetting from '../assets/banner-live-betting.jpeg';
-import bannerCashback from '../assets/banner-cashback.jpeg';
-import bannerSponsors from '../assets/banner-sponsors.jpeg';
-// ✅ CHANGE THESE TO LOWERCASE:
-import bannerPromo from '../assets/promo-image.jpeg';
-import femalePromotor from '../assets/Female_promotor.jpeg';
-import famousFive from '../assets/Famous_five_players.jpeg';
-import bannerSponsorsSec from '../assets/banner-sponsors-sec.jpeg';
+
 
 const HomePage = () => {
   const navigate = useNavigate();
