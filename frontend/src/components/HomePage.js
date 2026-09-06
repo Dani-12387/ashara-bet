@@ -36,15 +36,16 @@ const bannerImages = [
     { src: '/assets/banner-cashback.jpeg', alt: 'Cashback 1' },
     { src: '/assets/banner-sponsors.jpeg', alt: 'Sponsors 1' },
     { src: '/assets/promo-image.jpeg', alt: 'Promotion 1' },
+    { src: '/assets/gem1.jpg', alt: 'Gemini' },
     { src: '/assets/Female_promotor.JPEG', alt: 'Female Promoter' },
     { src: '/assets/Famous_five_players.JPEG', alt: 'Famous Five Players' },
     { src: '/assets/banner-sponsors-sec.jpg', alt: 'Sponsors Sec' },
-  { src: '/assets/gemini.jpg', alt: 'Gemini' }, // Added
+  { src: '/assets/gem1.jpg', alt: 'Gemini' },
     // Rest of the duplicates for the carousel...
     { src: '/assets/banner-cashback.jpeg', alt: 'Cashback 2' },
     { src: '/assets/banner-sponsors.jpeg', alt: 'Sponsors 2' },
     { src: '/assets/promo-image.jpeg', alt: 'Promotion 2' },
-    { src: '/assets/gemini.jpg', alt: 'Gemini' }, // Added
+    { src: '/assets/gem1.jpg', alt: 'Gemini' },
 ];
   const slidesPerView = 2;
   const totalSlides = Math.ceil(bannerImages.length / slidesPerView);
