@@ -7,10 +7,11 @@ import './HomePage.css';
 import bannerLiveBetting from '../assets/banner-live-betting.jpeg';
 import bannerCashback from '../assets/banner-cashback.jpeg';
 import bannerSponsors from '../assets/banner-sponsors.jpeg';
-import bannerPromo from '../assets/promo-image.JPEG';
-import femalePromotor from '../assets/Female_promotor.JPEG';
-import famousFive from '../assets/Famous_five_players.JPEG';
-import bannerSponsorsSec from '../assets/banner-sponsors-sec.JPEG';
+// ✅ CHANGE THESE TO LOWERCASE:
+import bannerPromo from '../assets/promo-image.jpeg';
+import femalePromotor from '../assets/Female_promotor.jpeg';
+import famousFive from '../assets/Famous_five_players.jpeg';
+import bannerSponsorsSec from '../assets/banner-sponsors-sec.jpeg';
 
 const HomePage = () => {
   const navigate = useNavigate();
