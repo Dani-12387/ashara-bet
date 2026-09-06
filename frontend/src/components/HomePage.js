@@ -39,7 +39,12 @@ const bannerImages = [
     { src: '/assets/Female_promotor.JPEG', alt: 'Female Promoter' },
     { src: '/assets/Famous_five_players.JPEG', alt: 'Famous Five Players' },
     { src: '/assets/banner-sponsors-sec.jpg', alt: 'Sponsors Sec' },
-    // ... duplicates below
+    { src: '/assets/Gemini_Generated_Image_111.jpeg', alt: 'Gemini Generated' }, // Added
+    // Rest of the duplicates for the carousel...
+    { src: '/assets/banner-cashback.jpeg', alt: 'Cashback 2' },
+    { src: '/assets/banner-sponsors.jpeg', alt: 'Sponsors 2' },
+    { src: '/assets/promo-image.jpeg', alt: 'Promotion 2' },
+    { src: '/assets/Gemini_Generated_Image_111.jpeg', alt: 'Gemini Generated' },
 ];
   const slidesPerView = 2;
   const totalSlides = Math.ceil(bannerImages.length / slidesPerView);
