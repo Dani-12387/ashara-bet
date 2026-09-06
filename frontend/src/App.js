@@ -16,12 +16,8 @@ import MatchesManagement from './components/MatchesManagement';
 import AdminBets from './components/AdminBets';
 import BetHistory from './components/BetHistory';
 import AviatorManagement from './components/AviatorManagement';
-// ✅ Use the existing working Aviator component
 import Aviator from './components/Aviator';
-// ✅ Import the new page wrapper
 import AviatorPage from './pages/Aviator/AviatorPage';
-// ✅ Import the JPG logo
-import logo from './ashara-logo.jpg'; 
 import './App.css';
 
 const ProtectedRoute = ({ children }) => {
@@ -50,32 +46,6 @@ const AdminRoute = ({ children }) => {
 function App() {
   return (
     <BrowserRouter>
-      {/* ✅ Global Header with AsharaBet Logo */}
-      <div style={{ 
-        width: '100%', 
-        backgroundColor: '#0d2b22', // Dark green matching the logo
-        padding: '10px 20px', 
-        boxSizing: 'border-box',
-        position: 'sticky',
-        top: 0,
-        zIndex: 1000,
-        display: 'flex',
-        alignItems: 'center',
-        boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
-      }}>
-        <img 
-          src={logo} 
-          alt="AsharaBet Logo" 
-          style={{ 
-            height: '50px', 
-            width: 'auto', 
-            borderRadius: '50%', 
-            cursor: 'pointer' 
-          }} 
-          onClick={() => window.location.href = '/'} // Clicking logo takes you home
-        />
-      </div>
-
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<HomePage />} />
@@ -84,14 +54,13 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         
-        {/* ✅ Aviator - Using the new page with existing component */}
+        {/* Aviator Routes */}
         <Route path="/aviator" element={
           <ProtectedRoute>
             <AviatorPage />
           </ProtectedRoute>
         } />
         
-        {/* ✅ Old Aviator - Available at /aviator-old for testing */}
         <Route path="/aviator-old" element={
           <ProtectedRoute>
             <Aviator />
