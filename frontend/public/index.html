@@ -21,11 +21,29 @@
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://ashara-bet-frontend.onrender.com" />
     
-   
+    <!-- Favicon -->
+    <link rel="icon" href="%PUBLIC_URL%/logo192.png" />
+    
+    <!-- ✅ CSS to keep logo floating WITHOUT affecting layout -->
+    <style>
+      .ashara-fixed-logo {
+        position: absolute; /* Removes it from layout flow so it doesn't push the app down */
+        top: 10px;
+        left: 20px;
+        width: 120px; /* Adjust size */
+        height: auto;
+        z-index: 9999; /* Keeps it on top */
+        pointer-events: none; /* Allows clicks to pass through to the buttons below */
+      }
+    </style>
     
     <title>AsharaBet.com </title>
   </head>
   <body>
+    
+    <!-- ✅ The absolute positioned logo -->
+    <img src="%PUBLIC_URL%/logo192.png" class="ashara-fixed-logo" alt="AsharaBet Logo" />
+    
     <noscript>You need to enable JavaScript to run AsharaBet.com.</noscript>
     <div id="root"></div>
   </body>
