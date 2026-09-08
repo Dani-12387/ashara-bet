@@ -92,7 +92,8 @@ const AviatorPage = () => {
             Balance: <span className="amount">{balance.toFixed(2)} ETB</span>
           </div>
           <button className="header-btn deposit" onClick={() => navigate('/deposit')}>Deposit</button>
-          <button className="header-btn profile" onClick={() => navigate('/my-account')}>👤</button>
+          {/* ✅ Fixed route to match App.js */}
+          <button className="header-btn profile" onClick={() => navigate('/MyAccount')}>👤</button>
         </div>
       </header>
 
@@ -120,7 +121,7 @@ const AviatorPage = () => {
           roundState={roundState}
           betState={bet1State}
           onPlaceBet={(stake) => placeBet(1, stake)}
-          onCashOut={() => cashOut(1)}          // ✅ Manual cashout
+          onCashOut={() => cashOut(1)}          // ✅ Independent Manual cashout for Slot 1
           onCancelBet={() => cancelBet(1)}
           onStakeChange={(stake) => setBetStake(1, stake)}
           onAutoCashOutChange={(enabled, value) => setAutoCashOut(1, enabled, value)}
@@ -131,7 +132,7 @@ const AviatorPage = () => {
           roundState={roundState}
           betState={bet2State}
           onPlaceBet={(stake) => placeBet(2, stake)}
-          onCashOut={() => cashOut(2)}          // ✅ Manual cashout
+          onCashOut={() => cashOut(2)}          // ✅ Independent Manual cashout for Slot 2
           onCancelBet={() => cancelBet(2)}
           onStakeChange={(stake) => setBetStake(2, stake)}
           onAutoCashOutChange={(enabled, value) => setAutoCashOut(2, enabled, value)}

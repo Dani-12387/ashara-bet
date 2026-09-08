@@ -675,21 +675,26 @@ exports.placeBet = async (req, res) => {
   }
 };
 
+// ✅ FIXED: INDEPENDENT CASH OUT BY SLOT
 exports.cashOut = async (req, res) => {
   try {
     const userId = req.user.id;
+    const { betSlot } = req.body; 
+    const targetSlot = parseInt(betSlot) || 1;
+
     if (gameState.status !== 'active') {
       return res.status(400).json({ success: false, message: 'Game not active' });
     }
-    const index = activeBets.findIndex(b => b.userId === userId && b.status === 'active');
-    if (index === -1) return res.status(404).json({ success: false, message: 'No active bet' });
+
+    // Find ONLY the active bet for this user AND this specific slot
+    const index = activeBets.findIndex(b => b.userId === userId && b.status === 'active' && b.betSlot === targetSlot);
+    if (index === -1) return res.status(404).json({ success: false, message: `No active bet in slot ${targetSlot}` });
 
     const bet = activeBets[index];
     const multiplier = gameState.multiplier;
     const winAmount = bet.amount * multiplier;
     const profit = winAmount - bet.amount;
 
-    // Use atomic update for manual cash-out too
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       { $inc: { 'wallet.balance': winAmount } },
@@ -698,7 +703,6 @@ exports.cashOut = async (req, res) => {
 
     if (!updatedUser) return res.status(404).json({ success: false, message: 'User not found' });
 
-    // Emit wallet update
     if (global.io) {
       global.io.emit('wallet:updated', {
         userId: userId,
@@ -718,10 +722,11 @@ exports.cashOut = async (req, res) => {
 
     res.json({
       success: true,
-      message: `Cashed out at ${multiplier.toFixed(2)}x`,
+      message: `Cashed out slot ${targetSlot} at ${multiplier.toFixed(2)}x`,
       winAmount,
       profit,
       multiplier,
+      betSlot: targetSlot,
       newBalance: updatedUser.wallet.balance
     });
   } catch (error) {
@@ -730,11 +735,15 @@ exports.cashOut = async (req, res) => {
   }
 };
 
+// ✅ FIXED: INDEPENDENT CANCEL PENDING BET BY SLOT
 exports.cancelPendingBet = async (req, res) => {
   try {
     const userId = req.user.id;
-    const index = pendingBets.findIndex(b => b.userId === userId && b.status === 'pending');
-    if (index === -1) return res.status(404).json({ success: false, message: 'No pending bet' });
+    const { betSlot } = req.body; 
+    const targetSlot = parseInt(betSlot) || 1;
+
+    const index = pendingBets.findIndex(b => b.userId === userId && b.status === 'pending' && b.betSlot === targetSlot);
+    if (index === -1) return res.status(404).json({ success: false, message: `No pending bet in slot ${targetSlot}` });
 
     const bet = pendingBets[index];
     const user = await User.findById(userId);

@@ -1,5 +1,6 @@
 // frontend/src/hooks/useAviatorGame.js
 // Fixed: use refs for bet IDs to avoid stale closures in socket listener
+// FIXED: cashOut and cancelBet now properly pass betSlot to API
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import aviatorApi from '../services/aviatorApi';
@@ -476,7 +477,7 @@ export const useAviatorGame = () => {
     }
   }, [roundState, balance, bet1, bet2]);
 
-  // ========== CASH OUT ==========
+  // ========== CASH OUT (INDEPENDENT - Fixed) ==========
   const cashOut = useCallback(async (betSlot) => {
     try {
       setError(null);
@@ -495,7 +496,10 @@ export const useAviatorGame = () => {
         setError('No active bet found');
         return { success: false, message: 'No active bet found' };
       }
-      const response = await aviatorApi.cashOut();
+      
+      // ✅ FIXED: Pass betSlot to API
+      const response = await aviatorApi.cashOut(betSlot);
+      
       if (!response || !response.success) {
         const errorMsg = response?.error?.message || response?.message || 'Failed to cash out';
         setError(errorMsg);
@@ -526,7 +530,7 @@ export const useAviatorGame = () => {
     }
   }, [roundState, bet1, bet2]);
 
-  // ========== CANCEL PENDING BET ==========
+  // ========== CANCEL PENDING BET (INDEPENDENT - Fixed) ==========
   const cancelBet = useCallback(async (betSlot) => {
     try {
       setError(null);
@@ -536,7 +540,10 @@ export const useAviatorGame = () => {
         setError('No pending bet to cancel');
         return { success: false, message: 'No pending bet to cancel' };
       }
-      const response = await aviatorApi.cancelPendingBet();
+      
+      // ✅ FIXED: Pass betSlot to API
+      const response = await aviatorApi.cancelPendingBet(betSlot);
+      
       if (!response || !response.success) {
         const errorMsg = response?.error?.message || response?.message || 'Failed to cancel bet';
         setError(errorMsg);

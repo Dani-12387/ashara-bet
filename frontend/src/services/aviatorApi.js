@@ -140,13 +140,13 @@ const aviatorApi = {
     }
   },
 
-  // ==================== CASH OUT ====================
-  cashOut: async () => {
+  // ==================== CASH OUT (WITH betSlot) ====================
+  cashOut: async (betSlot = 1) => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
         `${API_URL}/api/aviator/cashout`,
-        {},
+        { betSlot }, // ✅ FIXED: Now sends the specific slot!
         { headers: { Authorization: `Bearer ${token}` } }
       );
       return response.data;
@@ -162,13 +162,13 @@ const aviatorApi = {
     }
   },
 
-  // ==================== CANCEL PENDING BET ====================
-  cancelPendingBet: async () => {
+  // ==================== CANCEL PENDING BET (WITH betSlot) ====================
+  cancelPendingBet: async (betSlot = 1) => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
         `${API_URL}/api/aviator/cancel-pending`,
-        {},
+        { betSlot }, // ✅ FIXED: Now sends the specific slot!
         { headers: { Authorization: `Bearer ${token}` } }
       );
       return response.data;
