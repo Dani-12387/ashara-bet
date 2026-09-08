@@ -758,7 +758,7 @@ const bannerImages = [
 
   // Handle Telegram join
   const handleJoinTelegram = () => {
-    window.open('https://t.me/wetatochm', '_blank');
+    window.open('https://t.me/asharbet', '_blank');
     localStorage.setItem('hasJoinedTelegram', 'true');
     setShowTelegramPopup(false);
   };
