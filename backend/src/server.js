@@ -32,17 +32,23 @@ app.get('/health', (req, res) => {
 });
 
 // ===== MIDDLEWARE =====
+// ✅ FIXED: Added asharabet.com and www.asharabet.com to the list
 app.use(cors({
   origin: [
     'http://localhost:3000',
     'http://localhost:5000',
     'https://ashara-bet-frontend.onrender.com',
-    'https://ashara-bet-backend.onrender.com'
+    'https://ashara-bet-backend.onrender.com',
+    'https://asharabet.com',
+    'https://www.asharabet.com'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// ✅ CRITICAL FIX: Added this line to allow Preflight requests (Required for Login)
+app.options('*', cors());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -273,11 +279,14 @@ connectDB();
 const server = http.createServer(app);
 
 // ===== SOCKET.IO SETUP =====
+// ✅ FIXED: Added asharabet.com and www.asharabet.com to Socket.IO CORS
 const io = socketIo(server, {
   cors: {
     origin: [
       'http://localhost:3000',
-      'https://ashara-bet-frontend.onrender.com'
+      'https://ashara-bet-frontend.onrender.com',
+      'https://asharabet.com',
+      'https://www.asharabet.com'
     ],
     credentials: true,
     methods: ['GET', 'POST']
