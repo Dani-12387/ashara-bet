@@ -1,6 +1,7 @@
 // frontend/src/hooks/useAviatorGame.js
 // Fixed: use refs for bet IDs to avoid stale closures in socket listener
 // FIXED: cashOut and cancelBet now properly pass betSlot to API
+// FIXED: Balance ONLY updates for the correct user, not all users
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import aviatorApi from '../services/aviatorApi';
@@ -52,6 +53,18 @@ function updateLocalStorageBalance(balance) {
       localStorage.setItem('user', JSON.stringify(user));
     }
   } catch (e) {}
+}
+
+// Helper to get current logged-in user ID
+function getCurrentUserId() {
+  try {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      const user = JSON.parse(userData);
+      return user.id || user._id || null;
+    }
+  } catch (e) {}
+  return null;
 }
 
 // ---------- Status Normalization ----------
@@ -305,11 +318,18 @@ export const useAviatorGame = () => {
 
     socket.on('cashout:success', (data) => {
       const payload = data.data || data;
-      const newBalance = payload.balance ?? payload.newBalance;
-      if (typeof newBalance === 'number') {
-        setBalance(newBalance);
-        updateLocalStorageBalance(newBalance);
+      
+      // ✅ CRITICAL FIX: Only update balance if this event belongs to the current user
+      const eventUserId = payload.userId || payload._id;
+      const currentUserId = getCurrentUserId();
+      if (currentUserId && eventUserId === currentUserId) {
+        const newBalance = payload.balance ?? payload.newBalance;
+        if (typeof newBalance === 'number') {
+          setBalance(newBalance);
+          updateLocalStorageBalance(newBalance);
+        }
       }
+
       fetchMyBets();
       if (data.betId === bet1IdRef.current) {
         setBet1(prev => ({ ...prev, status: 'cashed', cashoutMultiplier: data.multiplier ?? 0, autoCashOutEnabled: false }));
@@ -348,13 +368,20 @@ export const useAviatorGame = () => {
       fetchMyBets();
     });
 
+    // ✅ CRITICAL FIX: ONLY update balance for the actual user who cashed out
     socket.on('wallet:updated', (data) => {
       const payload = data.data || data;
+      const eventUserId = payload.userId || payload._id;
+      const currentUserId = getCurrentUserId();
       const newBalance = payload.balance ?? payload.newBalance;
-      if (typeof newBalance === 'number') {
-        console.log('💳 Wallet updated:', newBalance);
-        setBalance(newBalance);
-        updateLocalStorageBalance(newBalance);
+
+      // Only update if the wallet update is for ME
+      if (currentUserId && eventUserId === currentUserId) {
+        if (typeof newBalance === 'number') {
+          console.log('💳 My wallet updated:', newBalance);
+          setBalance(newBalance);
+          updateLocalStorageBalance(newBalance);
+        }
       }
     });
 
