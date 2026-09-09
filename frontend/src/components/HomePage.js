@@ -3,8 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './HomePage.css';
 
-
-
 const HomePage = () => {
   const navigate = useNavigate();
   const [matches, setMatches] = useState([]);
@@ -31,7 +29,7 @@ const HomePage = () => {
   // ===== CAROUSEL STATE (10 images, 2 per slide = 5 slides) =====
   const [currentSlide, setCurrentSlide] = useState(0);
   // ===== PROMOTIONAL BANNERS =====
-const bannerImages = [
+  const bannerImages = [
     { src: '/assets/banner-live-betting.jpeg', alt: 'Live Betting' },
     { src: '/assets/banner-cashback.jpeg', alt: 'Cashback 1' },
     { src: '/assets/banner-sponsors.jpeg', alt: 'Sponsors 1' },
@@ -40,13 +38,13 @@ const bannerImages = [
     { src: '/assets/Female_promotor.JPEG', alt: 'Female Promoter' },
     { src: '/assets/Famous_five_players.JPEG', alt: 'Famous Five Players' },
     { src: '/assets/banner-sponsors-sec.jpg', alt: 'Sponsors Sec' },
-  { src: '/assets/gem1.jpg', alt: 'Gemini' },
+    { src: '/assets/gem1.jpg', alt: 'Gemini' },
     // Rest of the duplicates for the carousel...
     { src: '/assets/banner-cashback.jpeg', alt: 'Cashback 2' },
     { src: '/assets/banner-sponsors.jpeg', alt: 'Sponsors 2' },
     { src: '/assets/promo-image.jpeg', alt: 'Promotion 2' },
     { src: '/assets/gem1.jpg', alt: 'Gemini' },
-];
+  ];
   const slidesPerView = 2;
   const totalSlides = Math.ceil(bannerImages.length / slidesPerView);
 
@@ -532,24 +530,10 @@ const bannerImages = [
       matchesData = sortMatchesByDate(upcomingMatches);
       setMatches(matchesData);
       
-      const dayGroups = groupMatchesByDay(matchesData);
+      // ✅ FIX: Remove hardcoded day groups. Use ONE single list sorted by kickoff time.
+      // This ensures Sunday of this week appears BEFORE Monday of next week if Sunday is sooner.
+      setGroupedMatches([{ day: 'All Upcoming Matches', matches: matchesData }]);
       
-      const groupedByDay = Object.keys(dayGroups).map(day => ({
-        day: day,
-        matches: sortMatchesByDate(dayGroups[day])
-      }));
-      
-      const dayOrder = ['Today', 'Tomorrow', 'In 2 Days'];
-      groupedByDay.sort((a, b) => {
-        const aIndex = dayOrder.indexOf(a.day);
-        const bIndex = dayOrder.indexOf(b.day);
-        if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
-        if (aIndex !== -1) return -1;
-        if (bIndex !== -1) return 1;
-        return a.day.localeCompare(b.day);
-      });
-      
-      setGroupedMatches(groupedByDay);
       setLeagues(response.data.filters?.leagues || []);
       
       const live = matchesData.filter(m => m.status === 'LIVE' || m.status === 'live');
