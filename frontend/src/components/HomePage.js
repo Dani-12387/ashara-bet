@@ -539,7 +539,6 @@ const HomePage = () => {
       }));
       
       // ✅ FIX: Sort the day groups by their earliest match time (NOT a hardcoded list)
-      // This way, "Saturday, Sep 12" (2 days away) comes BEFORE "Friday, Sep 18" (9 days away)
       groupedByDay.sort((a, b) => {
         const earliestA = new Date(a.matches[0]?.date || 0).getTime();
         const earliestB = new Date(b.matches[0]?.date || 0).getTime();
@@ -950,6 +949,30 @@ const HomePage = () => {
             </div>
           </div>
 
+          {/* ===== LEAGUE FILTER - PLACED BETWEEN PROMOTION AND MATCHES ===== */}
+          <div className="league-filter-section">
+            <div className="league-filter-header">
+              <h4>🏆 FILTER BY LEAGUE</h4>
+            </div>
+            <div className="league-filter-scroll">
+              <button 
+                className={`league-filter-btn ${selectedLeague === '' ? 'active' : ''}`}
+                onClick={() => setSelectedLeague('')}
+              >
+                All
+              </button>
+              {leagues.map((league) => (
+                <button 
+                  key={league} 
+                  className={`league-filter-btn ${selectedLeague === league ? 'active' : ''}`}
+                  onClick={() => setSelectedLeague(league)}
+                >
+                  {league}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="matches-pro">
             {loading ? (
               <div className="loading-pro">
@@ -1085,7 +1108,11 @@ const HomePage = () => {
             ) : (
               <div className="empty-pro">
                 <div className="empty-icon-pro">⚽</div>
-                <h3>No Upcoming Matches Available</h3>
+                {selectedLeague ? (
+                  <h3>No matches found for {selectedLeague}</h3>
+                ) : (
+                  <h3>No Upcoming Matches Available</h3>
+                )}
                 <p>Check back later for upcoming matches</p>
               </div>
             )}

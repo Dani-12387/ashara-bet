@@ -2739,3 +2739,48 @@
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(255, 111, 0, 0.3);
 }
+
+
+/* League Filter Section */
+.league-filter-section {
+  margin: 20px 0;
+  padding: 10px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.league-filter-header h4 {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  color: #333;
+}
+
+.league-filter-scroll {
+  display: flex;
+  overflow-x: auto;
+  gap: 8px;
+  padding-bottom: 5px;
+}
+
+.league-filter-btn {
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  padding: 8px 15px;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.league-filter-btn:hover {
+  background: #e0e0e0;
+}
+
+.league-filter-btn.active {
+  background: #2e7d32;
+  color: #fff;
+  border-color: #2e7d32;
+  font-weight: bold;
+}
