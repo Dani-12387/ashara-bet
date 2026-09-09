@@ -530,10 +530,23 @@ const HomePage = () => {
       matchesData = sortMatchesByDate(upcomingMatches);
       setMatches(matchesData);
       
-      // ✅ FIX: Remove hardcoded day groups. Use ONE single list sorted by kickoff time.
-      // This ensures Sunday of this week appears BEFORE Monday of next week if Sunday is sooner.
-      setGroupedMatches([{ day: 'All Upcoming Matches', matches: matchesData }]);
+      // ✅ KEEP THE DAY GROUPS
+      const dayGroups = groupMatchesByDay(matchesData);
       
+      const groupedByDay = Object.keys(dayGroups).map(day => ({
+        day: day,
+        matches: sortMatchesByDate(dayGroups[day])
+      }));
+      
+      // ✅ FIX: Sort the day groups by their earliest match time (NOT a hardcoded list)
+      // This way, "Saturday, Sep 12" (2 days away) comes BEFORE "Friday, Sep 18" (9 days away)
+      groupedByDay.sort((a, b) => {
+        const earliestA = new Date(a.matches[0]?.date || 0).getTime();
+        const earliestB = new Date(b.matches[0]?.date || 0).getTime();
+        return earliestA - earliestB;
+      });
+      
+      setGroupedMatches(groupedByDay);
       setLeagues(response.data.filters?.leagues || []);
       
       const live = matchesData.filter(m => m.status === 'LIVE' || m.status === 'live');
