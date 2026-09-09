@@ -545,7 +545,40 @@ const HomePage = () => {
       
       // ✅ FIX: Only update the leagues list if we are viewing "All"
       if (!selectedLeague) {
-        setLeagues(response.data.filters?.leagues || []);
+        const fetchedLeagues = response.data.filters?.leagues || [];
+        
+        // ✅ Define your exact preferred order
+        const preferredLeagueOrder = [
+          'Premier League',
+          'LaLiga',
+          'Serie A',
+          'Bundesliga',
+          'Ligue 1',
+          'UEFA Champions League',
+          'UEFA Europa League',
+          'UEFA Conference League',
+          'Eredivisie',
+          'Liga Portugal',
+          'Belgian Pro League',
+          'Super League'
+        ];
+
+        // ✅ Sort the leagues based on that order
+        const sortedLeagues = [...fetchedLeagues].sort((a, b) => {
+          const indexA = preferredLeagueOrder.indexOf(a);
+          const indexB = preferredLeagueOrder.indexOf(b);
+
+          // If both are in the list, sort by their position in the list
+          if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+          // If only A is in the list, A comes first
+          if (indexA !== -1) return -1;
+          // If only B is in the list, B comes first
+          if (indexB !== -1) return 1;
+          // If neither, sort alphabetically
+          return a.localeCompare(b);
+        });
+
+        setLeagues(sortedLeagues);
       }
       
       const live = matchesData.filter(m => m.status === 'LIVE' || m.status === 'live');
@@ -954,7 +987,8 @@ const HomePage = () => {
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
               <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#333' }}>🏆 FILTER BY LEAGUE</span>
             </div>
-            <div style={{ display: 'flex', overflowX: 'auto', gap: '6px', paddingBottom: '4px', whiteSpace: 'nowrap' }}>
+            {/* ✅ CHANGED: flexWrap allows all leagues to be visible on multiple lines */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', paddingBottom: '4px' }}>
               <button 
                 onClick={() => setSelectedLeague('')}
                 style={{
