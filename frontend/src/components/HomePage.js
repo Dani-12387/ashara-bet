@@ -518,12 +518,8 @@ const HomePage = () => {
       
       // Filter: Remove matches that have already started
       const upcomingMatches = matchesData.filter(match => {
-        if (match.status === 'LIVE' || match.status === 'live') {
-          return true;
-        }
-        if (match.status === 'FINISHED' || match.status === 'finished') {
-          return false;
-        }
+        if (match.status === 'LIVE' || match.status === 'live') return true;
+        if (match.status === 'FINISHED' || match.status === 'finished') return false;
         return !hasMatchStarted(match.date);
       });
       
@@ -538,7 +534,7 @@ const HomePage = () => {
         matches: sortMatchesByDate(dayGroups[day])
       }));
       
-      // ✅ FIX: Sort the day groups by their earliest match time (NOT a hardcoded list)
+      // Sort the day groups by their earliest match time
       groupedByDay.sort((a, b) => {
         const earliestA = new Date(a.matches[0]?.date || 0).getTime();
         const earliestB = new Date(b.matches[0]?.date || 0).getTime();
@@ -546,7 +542,11 @@ const HomePage = () => {
       });
       
       setGroupedMatches(groupedByDay);
-      setLeagues(response.data.filters?.leagues || []);
+      
+      // ✅ FIX: Only update the leagues list if we are viewing "All"
+      if (!selectedLeague) {
+        setLeagues(response.data.filters?.leagues || []);
+      }
       
       const live = matchesData.filter(m => m.status === 'LIVE' || m.status === 'live');
       setLiveMatches(live);
@@ -949,23 +949,31 @@ const HomePage = () => {
             </div>
           </div>
 
-          {/* ===== LEAGUE FILTER - PLACED BETWEEN PROMOTION AND MATCHES ===== */}
-          <div className="league-filter-section">
-            <div className="league-filter-header">
-              <h4>🏆 FILTER BY LEAGUE</h4>
+          {/* ===== COMPACT LEAGUE FILTER - BETWEEN PROMOTIONS AND MATCHES ===== */}
+          <div style={{ margin: '15px 0', padding: '8px', background: '#fff', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#333' }}>🏆 FILTER BY LEAGUE</span>
             </div>
-            <div className="league-filter-scroll">
+            <div style={{ display: 'flex', overflowX: 'auto', gap: '6px', paddingBottom: '4px', whiteSpace: 'nowrap' }}>
               <button 
-                className={`league-filter-btn ${selectedLeague === '' ? 'active' : ''}`}
                 onClick={() => setSelectedLeague('')}
+                style={{
+                  background: selectedLeague === '' ? '#2e7d32' : '#f0f0f0',
+                  color: selectedLeague === '' ? '#fff' : '#333',
+                  border: 'none', borderRadius: '15px', padding: '5px 12px', fontSize: '12px', cursor: 'pointer'
+                }}
               >
                 All
               </button>
               {leagues.map((league) => (
                 <button 
                   key={league} 
-                  className={`league-filter-btn ${selectedLeague === league ? 'active' : ''}`}
                   onClick={() => setSelectedLeague(league)}
+                  style={{
+                    background: selectedLeague === league ? '#2e7d32' : '#f0f0f0',
+                    color: selectedLeague === league ? '#fff' : '#333',
+                    border: 'none', borderRadius: '15px', padding: '5px 12px', fontSize: '12px', cursor: 'pointer'
+                  }}
                 >
                   {league}
                 </button>
