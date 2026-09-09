@@ -60,6 +60,23 @@ const HomePage = () => {
 
   const comingSoonSports = ['FAST_KENO'];
 
+  // ✅ MASTER LIST OF ALL LEAGUES (Always Visible)
+  const MASTER_LEAGUES = [
+    'Premier League',
+    'LaLiga',
+    'Serie A',
+    'Bundesliga',
+    'Ligue 1',
+    'UEFA Champions League',
+    'UEFA Europa League',
+    'UEFA Conference League',
+    'Eredivisie',
+    'Liga Portugal',
+    'Belgian Pro League',
+    'Super League',
+    'Superettan'
+  ];
+
   // ✅ All markets mapping (FULL - 82+ entries)
   const allMarkets = {
     result: { label: 'Result', icon: '🏆' },
@@ -987,14 +1004,14 @@ const HomePage = () => {
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
               <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#333' }}>🏆 FILTER BY LEAGUE</span>
             </div>
-            {/* ✅ CHANGED: flexWrap allows all leagues to be visible on multiple lines */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', paddingBottom: '4px' }}>
+            {/* ✅ UPDATED: Single row horizontal scroll for ALL leagues */}
+            <div style={{ display: 'flex', overflowX: 'auto', gap: '6px', paddingBottom: '4px', whiteSpace: 'nowrap', WebkitOverflowScrolling: 'touch' }}>
               <button 
                 onClick={() => setSelectedLeague('')}
                 style={{
                   background: selectedLeague === '' ? '#2e7d32' : '#f0f0f0',
                   color: selectedLeague === '' ? '#fff' : '#333',
-                  border: 'none', borderRadius: '15px', padding: '5px 12px', fontSize: '12px', cursor: 'pointer'
+                  border: 'none', borderRadius: '15px', padding: '5px 12px', fontSize: '12px', cursor: 'pointer', flexShrink: 0
                 }}
               >
                 All
@@ -1006,7 +1023,7 @@ const HomePage = () => {
                   style={{
                     background: selectedLeague === league ? '#2e7d32' : '#f0f0f0',
                     color: selectedLeague === league ? '#fff' : '#333',
-                    border: 'none', borderRadius: '15px', padding: '5px 12px', fontSize: '12px', cursor: 'pointer'
+                    border: 'none', borderRadius: '15px', padding: '5px 12px', fontSize: '12px', cursor: 'pointer', flexShrink: 0
                   }}
                 >
                   {league}
