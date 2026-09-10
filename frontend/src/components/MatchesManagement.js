@@ -39,9 +39,10 @@ const MatchesManagement = () => {
     return Math.round(value * 100) / 100;
   };
 
-  const getOdds = (probability, margin = 0.95) => {
-    if (probability <= 0 || probability > 1 || isNaN(probability)) return 101.00;
-    const rawOdds = (1 / probability) * margin;
+  const getRealisticOdds = (probability, margin = 0.92) => {
+    if (probability <= 0.001 || probability >= 0.999 || isNaN(probability)) return 101.00;
+    const adjustedProb = Math.min(Math.max(probability, 0.01), 0.99);
+    const rawOdds = (1 / adjustedProb) * margin;
     return clampOdds(rawOdds);
   };
 
@@ -67,933 +68,6 @@ const MatchesManagement = () => {
   };
 
   // ============================================
-  // GENERATE ALL 82 MARKETS
-  // ============================================
-  const generateAllMarkets = (homeOdds, drawOdds, awayOdds) => {
-    const h = parseFloat(homeOdds) || 2.0;
-    const d = parseFloat(drawOdds) || 3.5;
-    const a = parseFloat(awayOdds) || 2.5;
-
-    if (h <= 0 || d <= 0 || a <= 0) {
-      return generateDefaultMarkets();
-    }
-
-    const totalProb = (1 / h + 1 / d + 1 / a);
-    const homeProb = (1 / h) / totalProb;
-    const drawProb = (1 / d) / totalProb;
-    const awayProb = (1 / a) / totalProb;
-
-    const leagueAvgGoals = 2.8;
-    const totalExpectedGoals = (homeProb + awayProb) * leagueAvgGoals;
-    const homeExpectedGoals = totalExpectedGoals * (homeProb / (homeProb + awayProb));
-    const awayExpectedGoals = totalExpectedGoals - homeExpectedGoals;
-    const totalGoalsDist = homeExpectedGoals + awayExpectedGoals;
-
-    const halfExpectedGoals = totalExpectedGoals * 0.55;
-    const halfHomeGoals = homeExpectedGoals * 0.55;
-    const halfAwayGoals = awayExpectedGoals * 0.55;
-    const halfTotalGoals = halfHomeGoals + halfAwayGoals;
-
-    const secondHalfHomeGoals = homeExpectedGoals * 0.45;
-    const secondHalfAwayGoals = awayExpectedGoals * 0.45;
-    const secondHalfTotalGoals = secondHalfHomeGoals + secondHalfAwayGoals;
-
-    const bttsYes = (1 - poisson(homeExpectedGoals, 0)) * (1 - poisson(awayExpectedGoals, 0));
-    const bttsNo = 1 - bttsYes;
-
-    const homeCleanSheetProb = poisson(awayExpectedGoals, 0);
-    const awayCleanSheetProb = poisson(homeExpectedGoals, 0);
-
-    const ou = (threshold) => {
-      const under = cumulativePoisson(totalGoalsDist, threshold);
-      const over = 1 - under;
-      return { over: getOdds(over), under: getOdds(under) };
-    };
-
-    const ouHalf = (threshold) => {
-      const under = cumulativePoisson(halfTotalGoals, threshold);
-      const over = 1 - under;
-      return { over: getOdds(over), under: getOdds(under) };
-    };
-
-    const ouSecondHalf = (threshold) => {
-      const under = cumulativePoisson(secondHalfTotalGoals, threshold);
-      const over = 1 - under;
-      return { over: getOdds(over), under: getOdds(under) };
-    };
-
-    const correctScoreProbs = {};
-    const scoreLines = ['0-0', '1-0', '2-0', '2-1', '3-0', '3-1', '3-2', '1-1', '2-2', '0-1', '0-2', '1-2', '0-3'];
-    scoreLines.forEach(score => {
-      const [hg, ag] = score.split('-').map(Number);
-      correctScoreProbs[score] = poisson(homeExpectedGoals, hg) * poisson(awayExpectedGoals, ag);
-    });
-
-    const halfCorrectScoreProbs = {};
-    scoreLines.forEach(score => {
-      const [hg, ag] = score.split('-').map(Number);
-      halfCorrectScoreProbs[score] = poisson(halfHomeGoals, hg) * poisson(halfAwayGoals, ag);
-    });
-
-    const secondHalfCorrectScoreProbs = {};
-    scoreLines.forEach(score => {
-      const [hg, ag] = score.split('-').map(Number);
-      secondHalfCorrectScoreProbs[score] = poisson(secondHalfHomeGoals, hg) * poisson(secondHalfAwayGoals, ag);
-    });
-
-    const anyOtherHome = 1 - cumulativePoisson(homeExpectedGoals, 3) * cumulativePoisson(awayExpectedGoals, 3);
-    const anyOtherAway = 1 - cumulativePoisson(homeExpectedGoals, 3) * cumulativePoisson(awayExpectedGoals, 3);
-    const anyOtherDraw = 1 - (correctScoreProbs['0-0'] + correctScoreProbs['1-1'] + correctScoreProbs['2-2']);
-
-    return {
-      // ===== 1. MAIN MATCH RESULT =====
-      result: {
-        'Home': clampOdds(h),
-        'Draw': clampOdds(d),
-        'Away': clampOdds(a)
-      },
-
-      // ===== 2. BOTH TEAMS TO SCORE (BTTS) =====
-      btts: {
-        'Yes': getOdds(bttsYes),
-        'No': getOdds(bttsNo)
-      },
-
-      // ===== 3. DOUBLE CHANCE =====
-      doubleChance: {
-        '1X': getOdds(homeProb + drawProb),
-        '12': getOdds(homeProb + awayProb),
-        'X2': getOdds(drawProb + awayProb)
-      },
-
-      // ===== 4. OVER / UNDER GOALS =====
-      totalGoals: {
-        'Over 0.5': ou(0).over,
-        'Under 0.5': ou(0).under,
-        'Over 1.5': ou(1).over,
-        'Under 1.5': ou(1).under,
-        'Over 2.5': ou(2).over,
-        'Under 2.5': ou(2).under,
-        'Over 3.5': ou(3).over,
-        'Under 3.5': ou(3).under,
-        'Over 4.5': ou(4).over,
-        'Under 4.5': ou(4).under
-      },
-
-      // ===== 5. CORRECT SCORE =====
-      correctScore: {
-        '0-0': getOdds(correctScoreProbs['0-0']),
-        '1-0': getOdds(correctScoreProbs['1-0']),
-        '2-0': getOdds(correctScoreProbs['2-0']),
-        '2-1': getOdds(correctScoreProbs['2-1']),
-        '3-0': getOdds(correctScoreProbs['3-0']),
-        '3-1': getOdds(correctScoreProbs['3-1']),
-        '3-2': getOdds(correctScoreProbs['3-2']),
-        '1-1': getOdds(correctScoreProbs['1-1']),
-        '2-2': getOdds(correctScoreProbs['2-2']),
-        '0-1': getOdds(correctScoreProbs['0-1']),
-        '0-2': getOdds(correctScoreProbs['0-2']),
-        '1-2': getOdds(correctScoreProbs['1-2']),
-        '0-3': getOdds(correctScoreProbs['0-3']),
-        'Any Other Home Win': getOdds(anyOtherHome),
-        'Any Other Away Win': getOdds(anyOtherAway),
-        'Any Other Draw': getOdds(anyOtherDraw)
-      },
-
-      // ===== 6. FIRST HALF RESULT =====
-      firstHalfResult: {
-        'Home': getOdds(homeProb * (1 + (1 - homeProb) * 0.3)),
-        'Draw': getOdds(drawProb * (1 + (1 - drawProb) * 0.2)),
-        'Away': getOdds(awayProb * (1 + (1 - awayProb) * 0.3))
-      },
-
-      // ===== 7. HALF TIME / FULL TIME =====
-      halfTimeFullTime: {
-        'Home/Home': getOdds(homeProb * homeProb * 1.2),
-        'Home/Draw': getOdds(homeProb * drawProb * 3.5),
-        'Home/Away': getOdds(homeProb * awayProb * 8),
-        'Draw/Home': getOdds(drawProb * homeProb * 1.6),
-        'Draw/Draw': getOdds(drawProb * drawProb * 1.3),
-        'Draw/Away': getOdds(drawProb * awayProb * 2.0),
-        'Away/Home': getOdds(awayProb * homeProb * 7),
-        'Away/Draw': getOdds(awayProb * drawProb * 3.5),
-        'Away/Away': getOdds(awayProb * awayProb * 1.2)
-      },
-
-      // ===== 8. FIRST HALF CORRECT SCORE =====
-      firstHalfCorrectScore: {
-        '0-0': getOdds(halfCorrectScoreProbs['0-0']),
-        '1-0': getOdds(halfCorrectScoreProbs['1-0']),
-        '2-0': getOdds(halfCorrectScoreProbs['2-0']),
-        '2-1': getOdds(halfCorrectScoreProbs['2-1']),
-        '3-0': getOdds(halfCorrectScoreProbs['3-0']),
-        '3-1': getOdds(halfCorrectScoreProbs['3-1']),
-        '3-2': getOdds(halfCorrectScoreProbs['3-2']),
-        '1-1': getOdds(halfCorrectScoreProbs['1-1']),
-        '2-2': getOdds(halfCorrectScoreProbs['2-2']),
-        '0-1': getOdds(halfCorrectScoreProbs['0-1']),
-        '0-2': getOdds(halfCorrectScoreProbs['0-2']),
-        '1-2': getOdds(halfCorrectScoreProbs['1-2']),
-        '0-3': getOdds(halfCorrectScoreProbs['0-3'])
-      },
-
-      // ===== 9. DRAW NO BET =====
-      drawNoBet: {
-        'Home': getOdds(homeProb / (homeProb + awayProb)),
-        'Away': getOdds(awayProb / (homeProb + awayProb))
-      },
-
-      // ===== 10. ODD / EVEN =====
-      oddEven: { 'Odd': 1.91, 'Even': 1.91 },
-      firstHalfOddEven: { 'Odd': 1.91, 'Even': 1.91 },
-      secondHalfOddEven: { 'Odd': 1.91, 'Even': 1.91 },
-      homeOddEven: { 'Odd': 1.91, 'Even': 1.91 },
-      awayOddEven: { 'Odd': 1.91, 'Even': 1.91 },
-
-      // ===== 11. FIRST HALF BTTS =====
-      firstHalfBtts: {
-        'Yes': getOdds((1 - poisson(halfHomeGoals, 0)) * (1 - poisson(halfAwayGoals, 0))),
-        'No': getOdds(1 - ((1 - poisson(halfHomeGoals, 0)) * (1 - poisson(halfAwayGoals, 0))))
-      },
-
-      // ===== 12. FIRST HALF OVER/UNDER =====
-      firstHalfTotalGoals: {
-        'Over 0.5': ouHalf(0).over,
-        'Under 0.5': ouHalf(0).under,
-        'Over 1.5': ouHalf(1).over,
-        'Under 1.5': ouHalf(1).under,
-        'Over 2.5': ouHalf(2).over,
-        'Under 2.5': ouHalf(2).under,
-        'Over 3.5': ouHalf(3).over,
-        'Under 3.5': ouHalf(3).under,
-        'Over 4.5': ouHalf(4).over,
-        'Under 4.5': ouHalf(4).under
-      },
-
-      // ===== 13. EXACT GOALS =====
-      exactGoals: {
-        '0 Goals': getOdds(poisson(totalGoalsDist, 0)),
-        '1 Goal': getOdds(poisson(totalGoalsDist, 1)),
-        '2 Goals': getOdds(poisson(totalGoalsDist, 2)),
-        '3 Goals': getOdds(poisson(totalGoalsDist, 3)),
-        '4 Goals': getOdds(poisson(totalGoalsDist, 4)),
-        '5+ Goals': getOdds(1 - cumulativePoisson(totalGoalsDist, 4))
-      },
-
-      // ===== 14. 3 WAY & OVER/UNDER =====
-      threeWayOverUnder: {
-        'Home & Over 2.5': getOdds(homeProb * (1 - cumulativePoisson(totalGoalsDist, 2))),
-        'Home & Under 2.5': getOdds(homeProb * cumulativePoisson(totalGoalsDist, 2)),
-        'Draw & Over 2.5': getOdds(drawProb * (1 - cumulativePoisson(totalGoalsDist, 2))),
-        'Draw & Under 2.5': getOdds(drawProb * cumulativePoisson(totalGoalsDist, 2)),
-        'Away & Over 2.5': getOdds(awayProb * (1 - cumulativePoisson(totalGoalsDist, 2))),
-        'Away & Under 2.5': getOdds(awayProb * cumulativePoisson(totalGoalsDist, 2))
-      },
-
-      // ===== 15. 3 WAY & BTTS =====
-      threeWayBtts: {
-        'Home & Yes': getOdds(homeProb * bttsYes),
-        'Home & No': getOdds(homeProb * bttsNo),
-        'Draw & Yes': getOdds(drawProb * bttsYes),
-        'Draw & No': getOdds(drawProb * bttsNo),
-        'Away & Yes': getOdds(awayProb * bttsYes),
-        'Away & No': getOdds(awayProb * bttsNo)
-      },
-
-      // ===== 16. HANDICAP MARKETS =====
-      firstHalfHandicap: {
-        'Home -1': getOdds(homeProb * 1.4),
-        'Away +1': getOdds(1 - homeProb * 1.4)
-      },
-      secondHalfHandicap: {
-        'Home -1': getOdds(homeProb * 1.4),
-        'Away +1': getOdds(1 - homeProb * 1.4)
-      },
-      handicap: {
-        'Home -1': getOdds(homeProb * 1.2),
-        'Home -2': getOdds(homeProb * 0.8),
-        'Away +1': getOdds(1 - homeProb * 1.2),
-        'Away +2': getOdds(1 - homeProb * 0.8)
-      },
-
-      // ===== 17. CLEAN SHEET =====
-      homeCleanSheet: {
-        'Yes': getOdds(homeCleanSheetProb),
-        'No': getOdds(1 - homeCleanSheetProb)
-      },
-      awayCleanSheet: {
-        'Yes': getOdds(awayCleanSheetProb),
-        'No': getOdds(1 - awayCleanSheetProb)
-      },
-      firstHalfHomeCleanSheet: {
-        'Yes': getOdds(poisson(halfAwayGoals, 0)),
-        'No': getOdds(1 - poisson(halfAwayGoals, 0))
-      },
-      firstHalfAwayCleanSheet: {
-        'Yes': getOdds(poisson(halfHomeGoals, 0)),
-        'No': getOdds(1 - poisson(halfHomeGoals, 0))
-      },
-      secondHalfHomeCleanSheet: {
-        'Yes': getOdds(poisson(secondHalfAwayGoals, 0)),
-        'No': getOdds(1 - poisson(secondHalfAwayGoals, 0))
-      },
-      secondHalfAwayCleanSheet: {
-        'Yes': getOdds(poisson(secondHalfHomeGoals, 0)),
-        'No': getOdds(1 - poisson(secondHalfHomeGoals, 0))
-      },
-
-      // ===== 18. HOME/AWAY OVER/UNDER =====
-      homeOverUnder: {
-        'Over 0.5': getOdds(1 - poisson(homeExpectedGoals, 0)),
-        'Under 0.5': getOdds(poisson(homeExpectedGoals, 0)),
-        'Over 1.5': getOdds(1 - cumulativePoisson(homeExpectedGoals, 1)),
-        'Under 1.5': getOdds(cumulativePoisson(homeExpectedGoals, 1)),
-        'Over 2.5': getOdds(1 - cumulativePoisson(homeExpectedGoals, 2)),
-        'Under 2.5': getOdds(cumulativePoisson(homeExpectedGoals, 2))
-      },
-      firstHalfHomeOverUnder: {
-        'Over 0.5': getOdds(1 - poisson(halfHomeGoals, 0)),
-        'Under 0.5': getOdds(poisson(halfHomeGoals, 0)),
-        'Over 1.5': getOdds(1 - cumulativePoisson(halfHomeGoals, 1)),
-        'Under 1.5': getOdds(cumulativePoisson(halfHomeGoals, 1))
-      },
-      secondHalfHomeOverUnder: {
-        'Over 0.5': getOdds(1 - poisson(secondHalfHomeGoals, 0)),
-        'Under 0.5': getOdds(poisson(secondHalfHomeGoals, 0)),
-        'Over 1.5': getOdds(1 - cumulativePoisson(secondHalfHomeGoals, 1)),
-        'Under 1.5': getOdds(cumulativePoisson(secondHalfHomeGoals, 1))
-      },
-      awayTotal: {
-        'Over 0.5': getOdds(1 - poisson(awayExpectedGoals, 0)),
-        'Under 0.5': getOdds(poisson(awayExpectedGoals, 0)),
-        'Over 1.5': getOdds(1 - cumulativePoisson(awayExpectedGoals, 1)),
-        'Under 1.5': getOdds(cumulativePoisson(awayExpectedGoals, 1))
-      },
-      firstHalfAwayOverUnder: {
-        'Over 0.5': getOdds(1 - poisson(halfAwayGoals, 0)),
-        'Under 0.5': getOdds(poisson(halfAwayGoals, 0)),
-        'Over 1.5': getOdds(1 - cumulativePoisson(halfAwayGoals, 1)),
-        'Under 1.5': getOdds(cumulativePoisson(halfAwayGoals, 1))
-      },
-      secondHalfAwayOverUnder: {
-        'Over 0.5': getOdds(1 - poisson(secondHalfAwayGoals, 0)),
-        'Under 0.5': getOdds(poisson(secondHalfAwayGoals, 0)),
-        'Over 1.5': getOdds(1 - cumulativePoisson(secondHalfAwayGoals, 1)),
-        'Under 1.5': getOdds(cumulativePoisson(secondHalfAwayGoals, 1))
-      },
-
-      // ===== 19. HOME/AWAY EXACT GOALS =====
-      homeExactGoals: {
-        '0 Goals': getOdds(poisson(homeExpectedGoals, 0)),
-        '1 Goal': getOdds(poisson(homeExpectedGoals, 1)),
-        '2 Goals': getOdds(poisson(homeExpectedGoals, 2)),
-        '3 Goals': getOdds(poisson(homeExpectedGoals, 3)),
-        '4 Goals': getOdds(poisson(homeExpectedGoals, 4))
-      },
-      awayExactGoals: {
-        '0 Goals': getOdds(poisson(awayExpectedGoals, 0)),
-        '1 Goal': getOdds(poisson(awayExpectedGoals, 1)),
-        '2 Goals': getOdds(poisson(awayExpectedGoals, 2)),
-        '3 Goals': getOdds(poisson(awayExpectedGoals, 3)),
-        '4 Goals': getOdds(poisson(awayExpectedGoals, 4))
-      },
-
-      // ===== 20. GOAL RANGE =====
-      goalRange: {
-        '0 Goals': getOdds(poisson(totalGoalsDist, 0)),
-        '1 Goal': getOdds(poisson(totalGoalsDist, 1)),
-        '2 Goals': getOdds(poisson(totalGoalsDist, 2)),
-        '3 Goals': getOdds(poisson(totalGoalsDist, 3)),
-        '4 Goals': getOdds(poisson(totalGoalsDist, 4)),
-        '5+ Goals': getOdds(1 - cumulativePoisson(totalGoalsDist, 4))
-      },
-
-      // ===== 21. DOUBLE CHANCE VARIATIONS =====
-      doubleChanceFirstHalfBtts: {
-        '1X & Yes': getOdds((homeProb + drawProb) * (1 - poisson(halfHomeGoals, 0)) * (1 - poisson(halfAwayGoals, 0))),
-        '1X & No': getOdds((homeProb + drawProb) * (1 - ((1 - poisson(halfHomeGoals, 0)) * (1 - poisson(halfAwayGoals, 0))))),
-        '12 & Yes': getOdds((homeProb + awayProb) * (1 - poisson(halfHomeGoals, 0)) * (1 - poisson(halfAwayGoals, 0))),
-        '12 & No': getOdds((homeProb + awayProb) * (1 - ((1 - poisson(halfHomeGoals, 0)) * (1 - poisson(halfAwayGoals, 0))))),
-        'X2 & Yes': getOdds((drawProb + awayProb) * (1 - poisson(halfHomeGoals, 0)) * (1 - poisson(halfAwayGoals, 0))),
-        'X2 & No': getOdds((drawProb + awayProb) * (1 - ((1 - poisson(halfHomeGoals, 0)) * (1 - poisson(halfAwayGoals, 0)))))
-      },
-      doubleChanceSecondHalfBtts: {
-        '1X & Yes': getOdds((homeProb + drawProb) * (1 - poisson(secondHalfHomeGoals, 0)) * (1 - poisson(secondHalfAwayGoals, 0))),
-        '1X & No': getOdds((homeProb + drawProb) * (1 - ((1 - poisson(secondHalfHomeGoals, 0)) * (1 - poisson(secondHalfAwayGoals, 0))))),
-        '12 & Yes': getOdds((homeProb + awayProb) * (1 - poisson(secondHalfHomeGoals, 0)) * (1 - poisson(secondHalfAwayGoals, 0))),
-        '12 & No': getOdds((homeProb + awayProb) * (1 - ((1 - poisson(secondHalfHomeGoals, 0)) * (1 - poisson(secondHalfAwayGoals, 0))))),
-        'X2 & Yes': getOdds((drawProb + awayProb) * (1 - poisson(secondHalfHomeGoals, 0)) * (1 - poisson(secondHalfAwayGoals, 0))),
-        'X2 & No': getOdds((drawProb + awayProb) * (1 - ((1 - poisson(secondHalfHomeGoals, 0)) * (1 - poisson(secondHalfAwayGoals, 0)))))
-      },
-      doubleChanceBtts: {
-        '1X & Yes': getOdds((homeProb + drawProb) * bttsYes),
-        '1X & No': getOdds((homeProb + drawProb) * bttsNo),
-        '12 & Yes': getOdds((homeProb + awayProb) * bttsYes),
-        '12 & No': getOdds((homeProb + awayProb) * bttsNo),
-        'X2 & Yes': getOdds((drawProb + awayProb) * bttsYes),
-        'X2 & No': getOdds((drawProb + awayProb) * bttsNo)
-      },
-      doubleChanceOverUnder: {
-        '1X & Over 2.5': getOdds((homeProb + drawProb) * (1 - cumulativePoisson(totalGoalsDist, 2))),
-        '1X & Under 2.5': getOdds((homeProb + drawProb) * cumulativePoisson(totalGoalsDist, 2)),
-        '12 & Over 2.5': getOdds((homeProb + awayProb) * (1 - cumulativePoisson(totalGoalsDist, 2))),
-        '12 & Under 2.5': getOdds((homeProb + awayProb) * cumulativePoisson(totalGoalsDist, 2)),
-        'X2 & Over 2.5': getOdds((drawProb + awayProb) * (1 - cumulativePoisson(totalGoalsDist, 2))),
-        'X2 & Under 2.5': getOdds((drawProb + awayProb) * cumulativePoisson(totalGoalsDist, 2))
-      },
-
-      // ===== 22. HT/FT VARIATIONS =====
-      htFtFirstHalfOverUnder: {
-        'Home/Home & Over 1.5': getOdds(homeProb * homeProb * 1.2 * (1 - cumulativePoisson(halfTotalGoals, 1))),
-        'Home/Home & Under 1.5': getOdds(homeProb * homeProb * 1.2 * cumulativePoisson(halfTotalGoals, 1)),
-        'Draw/Home & Over 1.5': getOdds(drawProb * homeProb * 1.6 * (1 - cumulativePoisson(halfTotalGoals, 1))),
-        'Draw/Home & Under 1.5': getOdds(drawProb * homeProb * 1.6 * cumulativePoisson(halfTotalGoals, 1)),
-        'Away/Away & Over 1.5': getOdds(awayProb * awayProb * 1.2 * (1 - cumulativePoisson(halfTotalGoals, 1))),
-        'Away/Away & Under 1.5': getOdds(awayProb * awayProb * 1.2 * cumulativePoisson(halfTotalGoals, 1))
-      },
-      htFtExactGoals: {
-        'Home/Home & 1 Goal': getOdds(homeProb * homeProb * 1.2 * poisson(totalGoalsDist, 1)),
-        'Home/Home & 2 Goals': getOdds(homeProb * homeProb * 1.2 * poisson(totalGoalsDist, 2)),
-        'Draw/Home & 1 Goal': getOdds(drawProb * homeProb * 1.6 * poisson(totalGoalsDist, 1)),
-        'Draw/Home & 2 Goals': getOdds(drawProb * homeProb * 1.6 * poisson(totalGoalsDist, 2)),
-        'Away/Away & 1 Goal': getOdds(awayProb * awayProb * 1.2 * poisson(totalGoalsDist, 1)),
-        'Away/Away & 2 Goals': getOdds(awayProb * awayProb * 1.2 * poisson(totalGoalsDist, 2))
-      },
-      htFtOverUnder: {
-        'Home/Home & Over 2.5': getOdds(homeProb * homeProb * 1.2 * (1 - cumulativePoisson(totalGoalsDist, 2))),
-        'Home/Home & Under 2.5': getOdds(homeProb * homeProb * 1.2 * cumulativePoisson(totalGoalsDist, 2)),
-        'Draw/Home & Over 2.5': getOdds(drawProb * homeProb * 1.6 * (1 - cumulativePoisson(totalGoalsDist, 2))),
-        'Draw/Home & Under 2.5': getOdds(drawProb * homeProb * 1.6 * cumulativePoisson(totalGoalsDist, 2)),
-        'Away/Away & Over 2.5': getOdds(awayProb * awayProb * 1.2 * (1 - cumulativePoisson(totalGoalsDist, 2))),
-        'Away/Away & Under 2.5': getOdds(awayProb * awayProb * 1.2 * cumulativePoisson(totalGoalsDist, 2))
-      },
-      htFtCorrectScore: {
-        'Home/Home 1-0': getOdds(homeProb * homeProb * 1.2 * correctScoreProbs['1-0']),
-        'Home/Home 2-0': getOdds(homeProb * homeProb * 1.2 * correctScoreProbs['2-0']),
-        'Home/Home 2-1': getOdds(homeProb * homeProb * 1.2 * correctScoreProbs['2-1']),
-        'Draw/Home 1-0': getOdds(drawProb * homeProb * 1.6 * correctScoreProbs['1-0']),
-        'Draw/Home 2-0': getOdds(drawProb * homeProb * 1.6 * correctScoreProbs['2-0']),
-        'Away/Away 0-1': getOdds(awayProb * awayProb * 1.2 * correctScoreProbs['0-1']),
-        'Away/Away 0-2': getOdds(awayProb * awayProb * 1.2 * correctScoreProbs['0-2'])
-      },
-
-      // ===== 23. FIRST HALF DOUBLE CHANCE =====
-      firstHalfDoubleChance: {
-        '1X': getOdds(homeProb + drawProb),
-        '12': getOdds(homeProb + awayProb),
-        'X2': getOdds(drawProb + awayProb)
-      },
-
-      // ===== 24. SECOND HALF DOUBLE CHANCE =====
-      secondHalfDoubleChance: {
-        '1X': getOdds(homeProb + drawProb),
-        '12': getOdds(homeProb + awayProb),
-        'X2': getOdds(drawProb + awayProb)
-      },
-
-      // ===== 25. LAST GOAL =====
-      lastGoal: {
-        'Home': getOdds(homeProb * 1.5),
-        'Away': getOdds(awayProb * 1.5),
-        'No Goal': 1.05
-      },
-
-      // ===== 26. WHICH TEAM TO SCORE =====
-      whichTeamToScore: {
-        'Home Only': getOdds(homeProb * (1 - awayProb)),
-        'Away Only': getOdds(awayProb * (1 - homeProb)),
-        'Both': getOdds(homeProb * awayProb * 1.5),
-        'Neither': getOdds((1 - homeProb) * (1 - awayProb))
-      },
-
-      // ===== 27. 1 GOAL VARIATIONS =====
-      oneGoal: {
-        '0 Goals': getOdds(poisson(totalGoalsDist, 0)),
-        '1 Goal': getOdds(poisson(totalGoalsDist, 1)),
-        '2+ Goals': getOdds(1 - cumulativePoisson(totalGoalsDist, 1))
-      },
-      oneGoalAnd1x2: {
-        'Home & 1 Goal': getOdds(homeProb * poisson(totalGoalsDist, 1)),
-        'Draw & 1 Goal': getOdds(drawProb * poisson(totalGoalsDist, 1)),
-        'Away & 1 Goal': getOdds(awayProb * poisson(totalGoalsDist, 1))
-      },
-      firstHalfOneGoal: {
-        '0 Goals': getOdds(poisson(halfTotalGoals, 0)),
-        '1 Goal': getOdds(poisson(halfTotalGoals, 1)),
-        '2+ Goals': getOdds(1 - cumulativePoisson(halfTotalGoals, 1))
-      },
-      secondHalfOneGoal: {
-        '0 Goals': getOdds(poisson(secondHalfTotalGoals, 0)),
-        '1 Goal': getOdds(poisson(secondHalfTotalGoals, 1)),
-        '2+ Goals': getOdds(1 - cumulativePoisson(secondHalfTotalGoals, 1))
-      },
-
-      // ===== 28. TEAM MARKETS =====
-      homeNoBet: {
-        'Yes': getOdds(homeProb / (homeProb + awayProb)),
-        'No': getOdds(awayProb / (homeProb + awayProb))
-      },
-      awayNoBet: {
-        'Yes': getOdds(awayProb / (homeProb + awayProb)),
-        'No': getOdds(homeProb / (homeProb + awayProb))
-      },
-      homeWinBothHalves: {
-        'Yes': getOdds(homeProb * homeProb * 1.2),
-        'No': getOdds(1 - homeProb * homeProb * 1.2)
-      },
-      homeScoreBothHalves: {
-        'Yes': getOdds((1 - poisson(halfHomeGoals, 0)) * (1 - poisson(secondHalfHomeGoals, 0))),
-        'No': getOdds(1 - ((1 - poisson(halfHomeGoals, 0)) * (1 - poisson(secondHalfHomeGoals, 0))))
-      },
-      awayScoreBothHalves: {
-        'Yes': getOdds((1 - poisson(halfAwayGoals, 0)) * (1 - poisson(secondHalfAwayGoals, 0))),
-        'No': getOdds(1 - ((1 - poisson(halfAwayGoals, 0)) * (1 - poisson(secondHalfAwayGoals, 0))))
-      },
-      homeWinEitherHalf: {
-        'Yes': getOdds(homeProb * 1.2),
-        'No': getOdds(1 - homeProb * 1.2)
-      },
-      awayWinEitherHalf: {
-        'Yes': getOdds(awayProb * 1.2),
-        'No': getOdds(1 - awayProb * 1.2)
-      },
-
-      // ===== 29. HIGHEST SCORING HALF =====
-      highestScoringHalf: {
-        '1st Half': 2.00,
-        '2nd Half': 2.00,
-        'Both Equal': 3.00
-      },
-      homeHighestScoringHalf: {
-        '1st Half': 2.50,
-        '2nd Half': 2.50,
-        'Both Equal': 3.50
-      },
-      awayHighestScoringHalf: {
-        '1st Half': 2.50,
-        '2nd Half': 2.50,
-        'Both Equal': 3.50
-      },
-
-      // ===== 30. FIRST HALF 1X2 VARIATIONS =====
-      firstHalf1x2Btts: {
-        'Home & Yes': getOdds(homeProb * (1 - poisson(halfHomeGoals, 0)) * (1 - poisson(halfAwayGoals, 0))),
-        'Home & No': getOdds(homeProb * (1 - ((1 - poisson(halfHomeGoals, 0)) * (1 - poisson(halfAwayGoals, 0))))),
-        'Draw & Yes': getOdds(drawProb * (1 - poisson(halfHomeGoals, 0)) * (1 - poisson(halfAwayGoals, 0))),
-        'Draw & No': getOdds(drawProb * (1 - ((1 - poisson(halfHomeGoals, 0)) * (1 - poisson(halfAwayGoals, 0))))),
-        'Away & Yes': getOdds(awayProb * (1 - poisson(halfHomeGoals, 0)) * (1 - poisson(halfAwayGoals, 0))),
-        'Away & No': getOdds(awayProb * (1 - ((1 - poisson(halfHomeGoals, 0)) * (1 - poisson(halfAwayGoals, 0)))))
-      },
-      firstHalf1x2OverUnder: {
-        'Home & Over 1.5': getOdds(homeProb * (1 - cumulativePoisson(halfTotalGoals, 1))),
-        'Home & Under 1.5': getOdds(homeProb * cumulativePoisson(halfTotalGoals, 1)),
-        'Draw & Over 1.5': getOdds(drawProb * (1 - cumulativePoisson(halfTotalGoals, 1))),
-        'Draw & Under 1.5': getOdds(drawProb * cumulativePoisson(halfTotalGoals, 1)),
-        'Away & Over 1.5': getOdds(awayProb * (1 - cumulativePoisson(halfTotalGoals, 1))),
-        'Away & Under 1.5': getOdds(awayProb * cumulativePoisson(halfTotalGoals, 1))
-      },
-
-      // ===== 31. SECOND HALF MARKETS =====
-      secondHalfResult: {
-        'Home': getOdds(homeProb * 1.2),
-        'Draw': getOdds(drawProb * 0.9),
-        'Away': getOdds(awayProb * 1.2)
-      },
-      secondHalfBtts: {
-        'Yes': getOdds((1 - poisson(secondHalfHomeGoals, 0)) * (1 - poisson(secondHalfAwayGoals, 0))),
-        'No': getOdds(1 - ((1 - poisson(secondHalfHomeGoals, 0)) * (1 - poisson(secondHalfAwayGoals, 0))))
-      },
-      secondHalf3WayBtts: {
-        'Home & Yes': getOdds(homeProb * (1 - poisson(secondHalfHomeGoals, 0)) * (1 - poisson(secondHalfAwayGoals, 0))),
-        'Home & No': getOdds(homeProb * (1 - ((1 - poisson(secondHalfHomeGoals, 0)) * (1 - poisson(secondHalfAwayGoals, 0))))),
-        'Draw & Yes': getOdds(drawProb * (1 - poisson(secondHalfHomeGoals, 0)) * (1 - poisson(secondHalfAwayGoals, 0))),
-        'Draw & No': getOdds(drawProb * (1 - ((1 - poisson(secondHalfHomeGoals, 0)) * (1 - poisson(secondHalfAwayGoals, 0))))),
-        'Away & Yes': getOdds(awayProb * (1 - poisson(secondHalfHomeGoals, 0)) * (1 - poisson(secondHalfAwayGoals, 0))),
-        'Away & No': getOdds(awayProb * (1 - ((1 - poisson(secondHalfHomeGoals, 0)) * (1 - poisson(secondHalfAwayGoals, 0)))))
-      },
-      secondHalf3WayOverUnder: {
-        'Home & Over 1.5': getOdds(homeProb * (1 - cumulativePoisson(secondHalfTotalGoals, 1))),
-        'Home & Under 1.5': getOdds(homeProb * cumulativePoisson(secondHalfTotalGoals, 1)),
-        'Draw & Over 1.5': getOdds(drawProb * (1 - cumulativePoisson(secondHalfTotalGoals, 1))),
-        'Draw & Under 1.5': getOdds(drawProb * cumulativePoisson(secondHalfTotalGoals, 1)),
-        'Away & Over 1.5': getOdds(awayProb * (1 - cumulativePoisson(secondHalfTotalGoals, 1))),
-        'Away & Under 1.5': getOdds(awayProb * cumulativePoisson(secondHalfTotalGoals, 1))
-      },
-
-      // ===== 32. SECOND HALF CORRECT SCORE =====
-      secondHalfCorrectScore: {
-        '0-0': getOdds(secondHalfCorrectScoreProbs['0-0']),
-        '1-0': getOdds(secondHalfCorrectScoreProbs['1-0']),
-        '2-0': getOdds(secondHalfCorrectScoreProbs['2-0']),
-        '2-1': getOdds(secondHalfCorrectScoreProbs['2-1']),
-        '1-1': getOdds(secondHalfCorrectScoreProbs['1-1']),
-        '0-1': getOdds(secondHalfCorrectScoreProbs['0-1']),
-        '0-2': getOdds(secondHalfCorrectScoreProbs['0-2']),
-        '1-2': getOdds(secondHalfCorrectScoreProbs['1-2'])
-      },
-
-      // ===== 33. SECOND HALF DOUBLE CHANCE VARIATIONS =====
-      secondHalfDoubleChanceBtts: {
-        '1X & Yes': getOdds((homeProb + drawProb) * (1 - poisson(secondHalfHomeGoals, 0)) * (1 - poisson(secondHalfAwayGoals, 0))),
-        '1X & No': getOdds((homeProb + drawProb) * (1 - ((1 - poisson(secondHalfHomeGoals, 0)) * (1 - poisson(secondHalfAwayGoals, 0))))),
-        '12 & Yes': getOdds((homeProb + awayProb) * (1 - poisson(secondHalfHomeGoals, 0)) * (1 - poisson(secondHalfAwayGoals, 0))),
-        '12 & No': getOdds((homeProb + awayProb) * (1 - ((1 - poisson(secondHalfHomeGoals, 0)) * (1 - poisson(secondHalfAwayGoals, 0))))),
-        'X2 & Yes': getOdds((drawProb + awayProb) * (1 - poisson(secondHalfHomeGoals, 0)) * (1 - poisson(secondHalfAwayGoals, 0))),
-        'X2 & No': getOdds((drawProb + awayProb) * (1 - ((1 - poisson(secondHalfHomeGoals, 0)) * (1 - poisson(secondHalfAwayGoals, 0)))))
-      },
-
-      // ===== 34. SECOND HALF DRAW NO BET =====
-      secondHalfDrawNoBet: {
-        'Home': getOdds(homeProb / (homeProb + awayProb)),
-        'Away': getOdds(awayProb / (homeProb + awayProb))
-      },
-
-      // ===== 35. SECOND HALF EXACT GOALS =====
-      secondHalfExactGoals: {
-        '0 Goals': getOdds(poisson(secondHalfTotalGoals, 0)),
-        '1 Goal': getOdds(poisson(secondHalfTotalGoals, 1)),
-        '2 Goals': getOdds(poisson(secondHalfTotalGoals, 2)),
-        '3 Goals': getOdds(poisson(secondHalfTotalGoals, 3)),
-        '4 Goals': getOdds(poisson(secondHalfTotalGoals, 4))
-      },
-
-      // ===== 36. SECOND HALF OVER/UNDER =====
-      secondHalfOverUnder: {
-        'Over 0.5': ouSecondHalf(0).over,
-        'Under 0.5': ouSecondHalf(0).under,
-        'Over 1.5': ouSecondHalf(1).over,
-        'Under 1.5': ouSecondHalf(1).under,
-        'Over 2.5': ouSecondHalf(2).over,
-        'Under 2.5': ouSecondHalf(2).under
-      },
-
-      // ===== 37. BOTH HALVES =====
-      bothHalvesBtts: {
-        'Yes': getOdds((1 - poisson(halfHomeGoals, 0)) * (1 - poisson(halfAwayGoals, 0)) * (1 - poisson(secondHalfHomeGoals, 0)) * (1 - poisson(secondHalfAwayGoals, 0))),
-        'No': getOdds(1 - ((1 - poisson(halfHomeGoals, 0)) * (1 - poisson(halfAwayGoals, 0)) * (1 - poisson(secondHalfHomeGoals, 0)) * (1 - poisson(secondHalfAwayGoals, 0))))
-      },
-      bothHalvesOver1_5: {
-        'Yes': getOdds((1 - cumulativePoisson(halfTotalGoals, 1)) * (1 - cumulativePoisson(secondHalfTotalGoals, 1))),
-        'No': getOdds(1 - ((1 - cumulativePoisson(halfTotalGoals, 1)) * (1 - cumulativePoisson(secondHalfTotalGoals, 1))))
-      },
-      bothHalvesUnder1_5: {
-        'Yes': getOdds(cumulativePoisson(halfTotalGoals, 1) * cumulativePoisson(secondHalfTotalGoals, 1)),
-        'No': getOdds(1 - (cumulativePoisson(halfTotalGoals, 1) * cumulativePoisson(secondHalfTotalGoals, 1)))
-      },
-
-      // ===== 38. 10 MINUTE 3 WAY =====
-      tenMinute3Way: {
-        'Home': 4.00,
-        'Draw': 2.50,
-        'Away': 5.00
-      },
-
-      // ===== 39. OVER/UNDER BTTS =====
-      overUnderBtts: {
-        'Over 2.5 & Yes': getOdds((1 - cumulativePoisson(totalGoalsDist, 2)) * bttsYes),
-        'Over 2.5 & No': getOdds((1 - cumulativePoisson(totalGoalsDist, 2)) * bttsNo),
-        'Under 2.5 & Yes': getOdds(cumulativePoisson(totalGoalsDist, 2) * bttsYes),
-        'Under 2.5 & No': getOdds(cumulativePoisson(totalGoalsDist, 2) * bttsNo)
-      },
-
-      // ===== 40. CORNERS =====
-      corners: {
-        'Over 8.5': 1.85,
-        'Under 8.5': 1.95,
-        'Home Most': 1.95,
-        'Away Most': 2.05,
-        'First Corner - Home': 1.90,
-        'First Corner - Away': 2.10,
-        'Last Corner - Home': 1.95,
-        'Last Corner - Away': 1.95
-      },
-
-      // ===== 41. CARDS =====
-      cards: {
-        'Over 2.5 Yellow': 1.70,
-        'Under 2.5 Yellow': 2.10,
-        'Red Card - Yes': 3.00,
-        'Red Card - No': 1.30
-      },
-
-      // ===== 42. PENALTY =====
-      penalty: {
-        'Penalty Awarded': 2.50,
-        'No Penalty': 1.50
-      },
-
-      // ===== 43. PLAYER MARKETS =====
-      playerMarkets: {
-        'Anytime Goalscorer': 2.50,
-        'First Goalscorer': 5.00,
-        'Last Goalscorer': 5.50,
-        'Player to Receive Card': 3.00,
-        'Player to Assist': 3.50
-      },
-
-      // ===== 44. SPECIALS =====
-      specials: {
-        'Clean Sheet - Home': getOdds(poisson(awayExpectedGoals, 0)),
-        'Clean Sheet - Away': getOdds(poisson(homeExpectedGoals, 0)),
-        'Win to Nil - Home': getOdds(homeProb * poisson(awayExpectedGoals, 0)),
-        'Win to Nil - Away': getOdds(awayProb * poisson(homeExpectedGoals, 0)),
-        'Both Halves Over 1.5': getOdds((1 - cumulativePoisson(halfTotalGoals, 1)) * (1 - cumulativePoisson(secondHalfTotalGoals, 1))),
-        'Highest Scoring Half - 1st': 2.00,
-        'Highest Scoring Half - 2nd': 2.00,
-        'Odd Total Goals': 1.90,
-        'Even Total Goals': 1.90
-      }
-    };
-  };
-
-  // ============================================
-  // DEFAULT MARKETS (Fallback)
-  // ============================================
-  const generateDefaultMarkets = () => {
-    return {
-      result: { 'Home': 2.00, 'Draw': 3.50, 'Away': 2.50 },
-      btts: { 'Yes': 1.95, 'No': 1.85 },
-      doubleChance: { '1X': 1.30, '12': 1.15, 'X2': 1.45 },
-      totalGoals: {
-        'Over 0.5': 1.05, 'Under 0.5': 10.00,
-        'Over 1.5': 1.15, 'Under 1.5': 5.25,
-        'Over 2.5': 1.85, 'Under 2.5': 1.95,
-        'Over 3.5': 2.50, 'Under 3.5': 1.50,
-        'Over 4.5': 4.00, 'Under 4.5': 1.20
-      },
-      correctScore: {
-        '0-0': 8.00, '1-0': 6.00, '2-0': 8.50, '2-1': 9.00,
-        '3-0': 15.00, '3-1': 18.00, '3-2': 25.00, '1-1': 7.00,
-        '2-2': 12.00, '0-1': 6.50, '0-2': 9.00, '1-2': 10.00,
-        '0-3': 20.00, 'Any Other Home Win': 30.00,
-        'Any Other Away Win': 35.00, 'Any Other Draw': 40.00
-      },
-      firstHalfResult: { 'Home': 2.50, 'Draw': 2.00, 'Away': 3.00 },
-      halfTimeFullTime: {
-        'Home/Home': 2.50, 'Home/Draw': 15.00, 'Home/Away': 30.00,
-        'Draw/Home': 5.00, 'Draw/Draw': 4.50, 'Draw/Away': 6.00,
-        'Away/Home': 25.00, 'Away/Draw': 12.00, 'Away/Away': 3.50
-      },
-      firstHalfCorrectScore: {
-        '0-0': 4.00, '1-0': 3.50, '2-0': 5.00, '2-1': 6.00,
-        '3-0': 8.00, '3-1': 10.00, '3-2': 15.00, '1-1': 4.50,
-        '2-2': 8.00, '0-1': 4.00, '0-2': 5.50, '1-2': 6.50,
-        '0-3': 12.00
-      },
-      drawNoBet: { 'Home': 1.50, 'Away': 2.50 },
-      oddEven: { 'Odd': 1.90, 'Even': 1.90 },
-      firstHalfOddEven: { 'Odd': 1.90, 'Even': 1.90 },
-      secondHalfOddEven: { 'Odd': 1.90, 'Even': 1.90 },
-      homeOddEven: { 'Odd': 1.90, 'Even': 1.90 },
-      awayOddEven: { 'Odd': 1.90, 'Even': 1.90 },
-      firstHalfBtts: { 'Yes': 2.50, 'No': 1.50 },
-      firstHalfTotalGoals: {
-        'Over 0.5': 1.15, 'Under 0.5': 5.50,
-        'Over 1.5': 1.50, 'Under 1.5': 2.50,
-        'Over 2.5': 3.00, 'Under 2.5': 1.30,
-        'Over 3.5': 5.00, 'Under 3.5': 1.10,
-        'Over 4.5': 8.00, 'Under 4.5': 1.05
-      },
-      exactGoals: {
-        '0 Goals': 8.00, '1 Goal': 4.50, '2 Goals': 3.50,
-        '3 Goals': 4.00, '4 Goals': 7.00, '5+ Goals': 12.00
-      },
-      threeWayOverUnder: {
-        'Home & Over 2.5': 3.50, 'Home & Under 2.5': 4.00,
-        'Draw & Over 2.5': 6.00, 'Draw & Under 2.5': 5.00,
-        'Away & Over 2.5': 4.50, 'Away & Under 2.5': 5.50
-      },
-      threeWayBtts: {
-        'Home & Yes': 4.00, 'Home & No': 5.00,
-        'Draw & Yes': 6.00, 'Draw & No': 7.00,
-        'Away & Yes': 4.50, 'Away & No': 5.50
-      },
-      firstHalfHandicap: { 'Home -1': 3.00, 'Away +1': 1.50 },
-      secondHalfHandicap: { 'Home -1': 3.00, 'Away +1': 1.50 },
-      handicap: { 'Home -1': 1.50, 'Home -2': 2.50, 'Away +1': 2.00, 'Away +2': 1.80 },
-      homeCleanSheet: { 'Yes': 2.00, 'No': 1.70 },
-      awayCleanSheet: { 'Yes': 2.50, 'No': 1.50 },
-      firstHalfHomeCleanSheet: { 'Yes': 2.50, 'No': 1.50 },
-      firstHalfAwayCleanSheet: { 'Yes': 3.00, 'No': 1.30 },
-      secondHalfHomeCleanSheet: { 'Yes': 2.50, 'No': 1.50 },
-      secondHalfAwayCleanSheet: { 'Yes': 3.00, 'No': 1.30 },
-      homeOverUnder: {
-        'Over 0.5': 1.50, 'Under 0.5': 2.50,
-        'Over 1.5': 2.50, 'Under 1.5': 1.50,
-        'Over 2.5': 4.50, 'Under 2.5': 1.20
-      },
-      firstHalfHomeOverUnder: {
-        'Over 0.5': 1.80, 'Under 0.5': 2.00,
-        'Over 1.5': 3.00, 'Under 1.5': 1.30
-      },
-      secondHalfHomeOverUnder: {
-        'Over 0.5': 1.80, 'Under 0.5': 2.00,
-        'Over 1.5': 3.00, 'Under 1.5': 1.30
-      },
-      awayTotal: {
-        'Over 0.5': 1.80, 'Under 0.5': 2.00,
-        'Over 1.5': 3.50, 'Under 1.5': 1.30
-      },
-      firstHalfAwayOverUnder: {
-        'Over 0.5': 2.00, 'Under 0.5': 1.80,
-        'Over 1.5': 3.50, 'Under 1.5': 1.30
-      },
-      secondHalfAwayOverUnder: {
-        'Over 0.5': 2.00, 'Under 0.5': 1.80,
-        'Over 1.5': 3.50, 'Under 1.5': 1.30
-      },
-      homeExactGoals: {
-        '0 Goals': 3.00, '1 Goal': 2.50, '2 Goals': 4.00,
-        '3 Goals': 6.00, '4 Goals': 10.00
-      },
-      awayExactGoals: {
-        '0 Goals': 2.50, '1 Goal': 2.00, '2 Goals': 4.50,
-        '3 Goals': 8.00, '4 Goals': 14.00
-      },
-      goalRange: {
-        '0 Goals': 8.00, '1 Goal': 4.50, '2 Goals': 3.50,
-        '3 Goals': 4.00, '4 Goals': 7.00, '5+ Goals': 12.00
-      },
-      doubleChanceFirstHalfBtts: {
-        '1X & Yes': 4.00, '1X & No': 5.00,
-        '12 & Yes': 4.50, '12 & No': 5.50,
-        'X2 & Yes': 5.00, 'X2 & No': 6.00
-      },
-      doubleChanceSecondHalfBtts: {
-        '1X & Yes': 4.00, '1X & No': 5.00,
-        '12 & Yes': 4.50, '12 & No': 5.50,
-        'X2 & Yes': 5.00, 'X2 & No': 6.00
-      },
-      doubleChanceBtts: {
-        '1X & Yes': 3.50, '1X & No': 4.50,
-        '12 & Yes': 4.00, '12 & No': 5.00,
-        'X2 & Yes': 4.50, 'X2 & No': 5.50
-      },
-      doubleChanceOverUnder: {
-        '1X & Over 2.5': 4.00, '1X & Under 2.5': 3.50,
-        '12 & Over 2.5': 4.50, '12 & Under 2.5': 4.00,
-        'X2 & Over 2.5': 5.00, 'X2 & Under 2.5': 4.50
-      },
-      htFtFirstHalfOverUnder: {
-        'Home/Home & Over 1.5': 6.00, 'Home/Home & Under 1.5': 7.00,
-        'Draw/Home & Over 1.5': 8.00, 'Draw/Home & Under 1.5': 9.00,
-        'Away/Away & Over 1.5': 7.00, 'Away/Away & Under 1.5': 8.00
-      },
-      htFtExactGoals: {
-        'Home/Home & 1 Goal': 5.00, 'Home/Home & 2 Goals': 7.00,
-        'Draw/Home & 1 Goal': 6.00, 'Draw/Home & 2 Goals': 8.00,
-        'Away/Away & 1 Goal': 6.00, 'Away/Away & 2 Goals': 8.00
-      },
-      htFtOverUnder: {
-        'Home/Home & Over 2.5': 5.50, 'Home/Home & Under 2.5': 6.50,
-        'Draw/Home & Over 2.5': 7.00, 'Draw/Home & Under 2.5': 8.00,
-        'Away/Away & Over 2.5': 6.00, 'Away/Away & Under 2.5': 7.00
-      },
-      htFtCorrectScore: {
-        'Home/Home 1-0': 8.00, 'Home/Home 2-0': 12.00, 'Home/Home 2-1': 14.00,
-        'Draw/Home 1-0': 10.00, 'Draw/Home 2-0': 15.00,
-        'Away/Away 0-1': 9.00, 'Away/Away 0-2': 13.00
-      },
-      firstHalfDoubleChance: { '1X': 1.50, '12': 1.80, 'X2': 2.00 },
-      secondHalfDoubleChance: { '1X': 1.50, '12': 1.80, 'X2': 2.00 },
-      lastGoal: { 'Home': 1.90, 'Away': 1.90, 'No Goal': 10.00 },
-      whichTeamToScore: {
-        'Home Only': 3.00, 'Away Only': 3.50,
-        'Both': 2.00, 'Neither': 8.00
-      },
-      oneGoal: { '0 Goals': 8.00, '1 Goal': 4.50, '2+ Goals': 2.50 },
-      oneGoalAnd1x2: {
-        'Home & 1 Goal': 6.00, 'Draw & 1 Goal': 8.00, 'Away & 1 Goal': 7.00
-      },
-      firstHalfOneGoal: { '0 Goals': 3.00, '1 Goal': 2.50, '2+ Goals': 3.50 },
-      secondHalfOneGoal: { '0 Goals': 3.50, '1 Goal': 2.50, '2+ Goals': 3.00 },
-      homeNoBet: { 'Yes': 1.80, 'No': 2.00 },
-      awayNoBet: { 'Yes': 2.00, 'No': 1.80 },
-      homeWinBothHalves: { 'Yes': 4.00, 'No': 1.20 },
-      homeScoreBothHalves: { 'Yes': 3.00, 'No': 1.30 },
-      awayScoreBothHalves: { 'Yes': 3.50, 'No': 1.20 },
-      homeWinEitherHalf: { 'Yes': 2.00, 'No': 1.80 },
-      awayWinEitherHalf: { 'Yes': 2.20, 'No': 1.70 },
-      highestScoringHalf: { '1st Half': 2.00, '2nd Half': 2.00, 'Both Equal': 3.00 },
-      homeHighestScoringHalf: { '1st Half': 2.50, '2nd Half': 2.50, 'Both Equal': 3.50 },
-      awayHighestScoringHalf: { '1st Half': 2.50, '2nd Half': 2.50, 'Both Equal': 3.50 },
-      firstHalf1x2Btts: {
-        'Home & Yes': 5.00, 'Home & No': 6.00,
-        'Draw & Yes': 7.00, 'Draw & No': 8.00,
-        'Away & Yes': 5.50, 'Away & No': 6.50
-      },
-      firstHalf1x2OverUnder: {
-        'Home & Over 1.5': 4.50, 'Home & Under 1.5': 5.50,
-        'Draw & Over 1.5': 6.00, 'Draw & Under 1.5': 5.00,
-        'Away & Over 1.5': 5.00, 'Away & Under 1.5': 6.00
-      },
-      secondHalfResult: { 'Home': 2.50, 'Draw': 2.00, 'Away': 3.00 },
-      secondHalfBtts: { 'Yes': 2.50, 'No': 1.50 },
-      secondHalf3WayBtts: {
-        'Home & Yes': 4.50, 'Home & No': 5.50,
-        'Draw & Yes': 6.00, 'Draw & No': 7.00,
-        'Away & Yes': 5.00, 'Away & No': 6.00
-      },
-      secondHalf3WayOverUnder: {
-        'Home & Over 1.5': 4.00, 'Home & Under 1.5': 5.00,
-        'Draw & Over 1.5': 6.00, 'Draw & Under 1.5': 5.50,
-        'Away & Over 1.5': 4.50, 'Away & Under 1.5': 5.50
-      },
-      secondHalfCorrectScore: {
-        '0-0': 5.00, '1-0': 4.50, '2-0': 6.00, '2-1': 7.00,
-        '1-1': 5.50, '0-1': 5.00, '0-2': 7.00, '1-2': 8.00
-      },
-      secondHalfDoubleChanceBtts: {
-        '1X & Yes': 4.00, '1X & No': 5.00,
-        '12 & Yes': 4.50, '12 & No': 5.50,
-        'X2 & Yes': 5.00, 'X2 & No': 6.00
-      },
-      secondHalfDrawNoBet: { 'Home': 1.80, 'Away': 2.20 },
-      secondHalfExactGoals: {
-        '0 Goals': 3.50, '1 Goal': 2.50, '2 Goals': 4.50,
-        '3 Goals': 8.00, '4 Goals': 14.00
-      },
-      secondHalfOverUnder: {
-        'Over 0.5': 1.50, 'Under 0.5': 2.50,
-        'Over 1.5': 2.50, 'Under 1.5': 1.50,
-        'Over 2.5': 4.50, 'Under 2.5': 1.20
-      },
-      bothHalvesBtts: { 'Yes': 3.00, 'No': 1.30 },
-      bothHalvesOver1_5: { 'Yes': 3.50, 'No': 1.30 },
-      bothHalvesUnder1_5: { 'Yes': 1.30, 'No': 3.50 },
-      tenMinute3Way: { 'Home': 4.00, 'Draw': 2.50, 'Away': 5.00 },
-      overUnderBtts: {
-        'Over 2.5 & Yes': 3.50, 'Over 2.5 & No': 4.50,
-        'Under 2.5 & Yes': 4.00, 'Under 2.5 & No': 3.00
-      },
-      corners: {
-        'Over 8.5': 1.80, 'Under 8.5': 2.00,
-        'Home Most': 2.00, 'Away Most': 2.20,
-        'First Corner - Home': 1.90, 'First Corner - Away': 2.10,
-        'Last Corner - Home': 2.00, 'Last Corner - Away': 2.00
-      },
-      cards: {
-        'Over 2.5 Yellow': 1.70, 'Under 2.5 Yellow': 2.10,
-        'Red Card - Yes': 3.00, 'Red Card - No': 1.30
-      },
-      penalty: { 'Penalty Awarded': 2.50, 'No Penalty': 1.50 },
-      playerMarkets: {
-        'Anytime Goalscorer': 2.50, 'First Goalscorer': 5.00,
-        'Last Goalscorer': 5.50, 'Player to Receive Card': 3.00,
-        'Player to Assist': 3.50
-      },
-      specials: {
-        'Clean Sheet - Home': 2.00, 'Clean Sheet - Away': 2.50,
-        'Win to Nil - Home': 3.00, 'Win to Nil - Away': 4.00,
-        'Both Halves Over 1.5': 6.00,
-        'Highest Scoring Half - 1st': 2.00,
-        'Highest Scoring Half - 2nd': 2.20,
-        'Odd Total Goals': 1.90, 'Even Total Goals': 1.90
-      }
-    };
-  };
-
-  // ============================================
   // ALL CLUBS BY LEAGUE
   // ============================================
   const clubsByLeague = {
@@ -1002,15 +76,32 @@ const MatchesManagement = () => {
       'Chelsea', 'Crystal Palace', 'Everton', 'Fulham', 'Ipswich Town',
       'Liverpool', 'Manchester City', 'Manchester United', 'Newcastle United',
       'Nottingham Forest', 'Sunderland', 'Tottenham Hotspur', 'Coventry City',
-      'Hull City', 'Leicester City'
+      'Hull City', 'Leeds United'
     ],
     'Championship': [
-      'Blackburn Rovers', 'Bristol City', 'Burnley', 'Cardiff City', 'Derby County',
-      'Huddersfield Town', 'Leeds United', 'Luton Town', 'Middlesbrough', 'Millwall',
-      'Norwich City', 'Oxford United', 'Plymouth Argyle', 'Portsmouth', 'Preston North End',
-      'Queens Park Rangers', 'Sheffield United', 'Sheffield Wednesday', 'Stoke City',
-      'Swansea City', 'Watford', 'West Bromwich Albion', 'Wigan Athletic', 'Wrexham'
-    ],
+  'Birmingham City',
+  'Blackburn Rovers',
+  'Bolton Wanderers',
+  'Bristol City',
+  'Burnley',
+  'Cardiff City','Charlton Athletic','Derby County',
+  'Lincoln City',
+  'Middlesbrough',
+  'Millwall',
+  'Norwich City',
+  'Portsmouth',
+  'Preston North End',
+  'Queens Park Rangers',
+  'Sheffield United',
+  'Southampton',
+  'Stoke City',
+  'Swansea City',
+  'Watford',
+  'West Bromwich Albion',
+  'West Ham United',
+  'Wolverhampton Wanderers',
+  'Wrexham'
+],
     'FA Cup': [
       'Arsenal', 'Aston Villa', 'Bournemouth', 'Brentford', 'Brighton',
       'Chelsea', 'Crystal Palace', 'Everton', 'Fulham', 'Liverpool',
@@ -1416,6 +507,896 @@ const MatchesManagement = () => {
   const getTeamsForLeague = (league) => {
     if (!league) return [];
     return clubsByLeague[league] || [];
+  };
+
+  // ============================================
+  // GENERATE ALL 82 MARKETS - FIXED REALISTIC ODDS
+  // ============================================
+  const generateAllMarkets = (homeOdds, drawOdds, awayOdds) => {
+    const h = parseFloat(homeOdds) || 2.0;
+    const d = parseFloat(drawOdds) || 3.5;
+    const a = parseFloat(awayOdds) || 2.5;
+
+    if (h <= 0 || d <= 0 || a <= 0) {
+      return generateDefaultMarkets();
+    }
+
+    // Calculate probabilities (remove bookmaker margin)
+    const totalProb = (1 / h + 1 / d + 1 / a);
+    const homeProb = (1 / h) / totalProb;
+    const drawProb = (1 / d) / totalProb;
+    const awayProb = (1 / a) / totalProb;
+
+    // ============================================
+    // REALISTIC BTTS - Fixes the 7.07 / 1.10 issue
+    // ============================================
+    // For 1.21/6.00/16.00:
+    // homeProb ≈ 0.78, awayProb ≈ 0.06
+    // BTTS should be ~45-55% in real matches
+    const baseBtts = 0.45 + (homeProb * awayProb * 0.3);
+    const bttsProb = Math.min(Math.max(baseBtts, 0.32), 0.62);
+    const bttsYes = bttsProb;
+    const bttsNo = 1 - bttsProb;
+
+    // Expected goals (realistic)
+    const expectedGoals = 2.6 + (homeProb + awayProb) * 0.4;
+    const homeExpectedGoals = expectedGoals * (homeProb / (homeProb + awayProb + 0.01));
+    const awayExpectedGoals = expectedGoals - homeExpectedGoals;
+    const totalGoalsDist = homeExpectedGoals + awayExpectedGoals;
+
+    // Half time goals
+    const halfHomeGoals = homeExpectedGoals * 0.55;
+    const halfAwayGoals = awayExpectedGoals * 0.55;
+    const halfTotalGoals = halfHomeGoals + halfAwayGoals;
+
+    // Second half goals
+    const secondHalfHomeGoals = homeExpectedGoals * 0.45;
+    const secondHalfAwayGoals = awayExpectedGoals * 0.45;
+    const secondHalfTotalGoals = secondHalfHomeGoals + secondHalfAwayGoals;
+
+    // Clean sheet probabilities
+    const homeCleanSheetProb = poisson(awayExpectedGoals, 0);
+    const awayCleanSheetProb = poisson(homeExpectedGoals, 0);
+
+    // Over/Under helper
+    const overUnder = (threshold) => {
+      const under = cumulativePoisson(totalGoalsDist, threshold);
+      const over = 1 - under;
+      return { over: getRealisticOdds(over), under: getRealisticOdds(under) };
+    };
+
+    const overUnderHalf = (threshold) => {
+      const under = cumulativePoisson(halfTotalGoals, threshold);
+      const over = 1 - under;
+      return { over: getRealisticOdds(over), under: getRealisticOdds(under) };
+    };
+
+    const overUnderSecondHalf = (threshold) => {
+      const under = cumulativePoisson(secondHalfTotalGoals, threshold);
+      const over = 1 - under;
+      return { over: getRealisticOdds(over), under: getRealisticOdds(under) };
+    };
+
+    // Correct score probabilities
+    const scoreLines = ['0-0', '1-0', '2-0', '2-1', '3-0', '3-1', '3-2', '1-1', '2-2', '0-1', '0-2', '1-2', '0-3'];
+    const correctScoreProbs = {};
+    scoreLines.forEach(score => {
+      const [hg, ag] = score.split('-').map(Number);
+      correctScoreProbs[score] = poisson(homeExpectedGoals, hg) * poisson(awayExpectedGoals, ag);
+    });
+
+    const halfCorrectScoreProbs = {};
+    scoreLines.forEach(score => {
+      const [hg, ag] = score.split('-').map(Number);
+      halfCorrectScoreProbs[score] = poisson(halfHomeGoals, hg) * poisson(halfAwayGoals, ag);
+    });
+
+    const secondHalfCorrectScoreProbs = {};
+    scoreLines.forEach(score => {
+      const [hg, ag] = score.split('-').map(Number);
+      secondHalfCorrectScoreProbs[score] = poisson(secondHalfHomeGoals, hg) * poisson(secondHalfAwayGoals, ag);
+    });
+
+    // ============================================
+    // RETURN ALL 82 MARKETS
+    // ============================================
+    return {
+      result: { 'Home': clampOdds(h), 'Draw': clampOdds(d), 'Away': clampOdds(a) },
+      
+      btts: { 
+        'Yes': getRealisticOdds(bttsYes), 
+        'No': getRealisticOdds(bttsNo) 
+      },
+      
+      doubleChance: {
+        '1X': getRealisticOdds(homeProb + drawProb),
+        '12': getRealisticOdds(homeProb + awayProb),
+        'X2': getRealisticOdds(drawProb + awayProb)
+      },
+      
+      totalGoals: {
+        'Over 0.5': overUnder(0).over,
+        'Under 0.5': overUnder(0).under,
+        'Over 1.5': overUnder(1).over,
+        'Under 1.5': overUnder(1).under,
+        'Over 2.5': overUnder(2).over,
+        'Under 2.5': overUnder(2).under,
+        'Over 3.5': overUnder(3).over,
+        'Under 3.5': overUnder(3).under,
+        'Over 4.5': overUnder(4).over,
+        'Under 4.5': overUnder(4).under
+      },
+      
+      correctScore: {
+        '0-0': getRealisticOdds(correctScoreProbs['0-0']),
+        '1-0': getRealisticOdds(correctScoreProbs['1-0']),
+        '2-0': getRealisticOdds(correctScoreProbs['2-0']),
+        '2-1': getRealisticOdds(correctScoreProbs['2-1']),
+        '3-0': getRealisticOdds(correctScoreProbs['3-0']),
+        '3-1': getRealisticOdds(correctScoreProbs['3-1']),
+        '3-2': getRealisticOdds(correctScoreProbs['3-2']),
+        '1-1': getRealisticOdds(correctScoreProbs['1-1']),
+        '2-2': getRealisticOdds(correctScoreProbs['2-2']),
+        '0-1': getRealisticOdds(correctScoreProbs['0-1']),
+        '0-2': getRealisticOdds(correctScoreProbs['0-2']),
+        '1-2': getRealisticOdds(correctScoreProbs['1-2']),
+        '0-3': getRealisticOdds(correctScoreProbs['0-3']),
+        'Any Other Home Win': getRealisticOdds(1 - cumulativePoisson(homeExpectedGoals, 3) * cumulativePoisson(awayExpectedGoals, 3)),
+        'Any Other Away Win': getRealisticOdds(1 - cumulativePoisson(homeExpectedGoals, 3) * cumulativePoisson(awayExpectedGoals, 3)),
+        'Any Other Draw': getRealisticOdds(1 - (correctScoreProbs['0-0'] + correctScoreProbs['1-1'] + correctScoreProbs['2-2']))
+      },
+      
+      firstHalfResult: {
+        'Home': getRealisticOdds(homeProb * 1.15 + 0.05),
+        'Draw': getRealisticOdds(drawProb * 1.05 + 0.05),
+        'Away': getRealisticOdds(awayProb * 1.15 + 0.05)
+      },
+      
+      halfTimeFullTime: {
+        'Home/Home': getRealisticOdds(homeProb * homeProb * 1.1),
+        'Home/Draw': getRealisticOdds(homeProb * drawProb * 3.5),
+        'Home/Away': getRealisticOdds(homeProb * awayProb * 8),
+        'Draw/Home': getRealisticOdds(drawProb * homeProb * 1.5),
+        'Draw/Draw': getRealisticOdds(drawProb * drawProb * 1.2),
+        'Draw/Away': getRealisticOdds(drawProb * awayProb * 1.8),
+        'Away/Home': getRealisticOdds(awayProb * homeProb * 7),
+        'Away/Draw': getRealisticOdds(awayProb * drawProb * 3.5),
+        'Away/Away': getRealisticOdds(awayProb * awayProb * 1.1)
+      },
+      
+      firstHalfCorrectScore: {
+        '0-0': getRealisticOdds(halfCorrectScoreProbs['0-0']),
+        '1-0': getRealisticOdds(halfCorrectScoreProbs['1-0']),
+        '2-0': getRealisticOdds(halfCorrectScoreProbs['2-0']),
+        '2-1': getRealisticOdds(halfCorrectScoreProbs['2-1']),
+        '3-0': getRealisticOdds(halfCorrectScoreProbs['3-0']),
+        '3-1': getRealisticOdds(halfCorrectScoreProbs['3-1']),
+        '3-2': getRealisticOdds(halfCorrectScoreProbs['3-2']),
+        '1-1': getRealisticOdds(halfCorrectScoreProbs['1-1']),
+        '2-2': getRealisticOdds(halfCorrectScoreProbs['2-2']),
+        '0-1': getRealisticOdds(halfCorrectScoreProbs['0-1']),
+        '0-2': getRealisticOdds(halfCorrectScoreProbs['0-2']),
+        '1-2': getRealisticOdds(halfCorrectScoreProbs['1-2']),
+        '0-3': getRealisticOdds(halfCorrectScoreProbs['0-3'])
+      },
+      
+      drawNoBet: {
+        'Home': getRealisticOdds(homeProb / (homeProb + awayProb)),
+        'Away': getRealisticOdds(awayProb / (homeProb + awayProb))
+      },
+      
+      oddEven: { 'Odd': 1.91, 'Even': 1.91 },
+      firstHalfOddEven: { 'Odd': 1.91, 'Even': 1.91 },
+      secondHalfOddEven: { 'Odd': 1.91, 'Even': 1.91 },
+      homeOddEven: { 'Odd': 1.91, 'Even': 1.91 },
+      awayOddEven: { 'Odd': 1.91, 'Even': 1.91 },
+      
+      firstHalfBtts: {
+        'Yes': getRealisticOdds(0.35 + homeProb * awayProb * 0.25),
+        'No': getRealisticOdds(1 - (0.35 + homeProb * awayProb * 0.25))
+      },
+      
+      firstHalfTotalGoals: {
+        'Over 0.5': overUnderHalf(0).over,
+        'Under 0.5': overUnderHalf(0).under,
+        'Over 1.5': overUnderHalf(1).over,
+        'Under 1.5': overUnderHalf(1).under,
+        'Over 2.5': overUnderHalf(2).over,
+        'Under 2.5': overUnderHalf(2).under,
+        'Over 3.5': overUnderHalf(3).over,
+        'Under 3.5': overUnderHalf(3).under,
+        'Over 4.5': overUnderHalf(4).over,
+        'Under 4.5': overUnderHalf(4).under
+      },
+      
+      exactGoals: {
+        '0 Goals': getRealisticOdds(poisson(totalGoalsDist, 0)),
+        '1 Goal': getRealisticOdds(poisson(totalGoalsDist, 1)),
+        '2 Goals': getRealisticOdds(poisson(totalGoalsDist, 2)),
+        '3 Goals': getRealisticOdds(poisson(totalGoalsDist, 3)),
+        '4 Goals': getRealisticOdds(poisson(totalGoalsDist, 4)),
+        '5+ Goals': getRealisticOdds(1 - cumulativePoisson(totalGoalsDist, 4))
+      },
+      
+      threeWayOverUnder: {
+        'Home & Over 2.5': getRealisticOdds(homeProb * (1 - cumulativePoisson(totalGoalsDist, 2))),
+        'Home & Under 2.5': getRealisticOdds(homeProb * cumulativePoisson(totalGoalsDist, 2)),
+        'Draw & Over 2.5': getRealisticOdds(drawProb * (1 - cumulativePoisson(totalGoalsDist, 2))),
+        'Draw & Under 2.5': getRealisticOdds(drawProb * cumulativePoisson(totalGoalsDist, 2)),
+        'Away & Over 2.5': getRealisticOdds(awayProb * (1 - cumulativePoisson(totalGoalsDist, 2))),
+        'Away & Under 2.5': getRealisticOdds(awayProb * cumulativePoisson(totalGoalsDist, 2))
+      },
+      
+      threeWayBtts: {
+        'Home & Yes': getRealisticOdds(homeProb * bttsYes),
+        'Home & No': getRealisticOdds(homeProb * bttsNo),
+        'Draw & Yes': getRealisticOdds(drawProb * bttsYes),
+        'Draw & No': getRealisticOdds(drawProb * bttsNo),
+        'Away & Yes': getRealisticOdds(awayProb * bttsYes),
+        'Away & No': getRealisticOdds(awayProb * bttsNo)
+      },
+      
+      firstHalfHandicap: {
+        'Home -1': getRealisticOdds(homeProb * 1.3),
+        'Away +1': getRealisticOdds(1 - homeProb * 1.3)
+      },
+      secondHalfHandicap: {
+        'Home -1': getRealisticOdds(homeProb * 1.3),
+        'Away +1': getRealisticOdds(1 - homeProb * 1.3)
+      },
+      handicap: {
+        'Home -1': getRealisticOdds(homeProb * 1.1),
+        'Home -2': getRealisticOdds(homeProb * 0.8),
+        'Away +1': getRealisticOdds(1 - homeProb * 1.1),
+        'Away +2': getRealisticOdds(1 - homeProb * 0.8)
+      },
+      
+      homeCleanSheet: {
+        'Yes': getRealisticOdds(homeCleanSheetProb),
+        'No': getRealisticOdds(1 - homeCleanSheetProb)
+      },
+      awayCleanSheet: {
+        'Yes': getRealisticOdds(awayCleanSheetProb),
+        'No': getRealisticOdds(1 - awayCleanSheetProb)
+      },
+      firstHalfHomeCleanSheet: {
+        'Yes': getRealisticOdds(poisson(halfAwayGoals, 0)),
+        'No': getRealisticOdds(1 - poisson(halfAwayGoals, 0))
+      },
+      firstHalfAwayCleanSheet: {
+        'Yes': getRealisticOdds(poisson(halfHomeGoals, 0)),
+        'No': getRealisticOdds(1 - poisson(halfHomeGoals, 0))
+      },
+      secondHalfHomeCleanSheet: {
+        'Yes': getRealisticOdds(poisson(secondHalfAwayGoals, 0)),
+        'No': getRealisticOdds(1 - poisson(secondHalfAwayGoals, 0))
+      },
+      secondHalfAwayCleanSheet: {
+        'Yes': getRealisticOdds(poisson(secondHalfHomeGoals, 0)),
+        'No': getRealisticOdds(1 - poisson(secondHalfHomeGoals, 0))
+      },
+      
+      homeOverUnder: {
+        'Over 0.5': getRealisticOdds(1 - poisson(homeExpectedGoals, 0)),
+        'Under 0.5': getRealisticOdds(poisson(homeExpectedGoals, 0)),
+        'Over 1.5': getRealisticOdds(1 - cumulativePoisson(homeExpectedGoals, 1)),
+        'Under 1.5': getRealisticOdds(cumulativePoisson(homeExpectedGoals, 1)),
+        'Over 2.5': getRealisticOdds(1 - cumulativePoisson(homeExpectedGoals, 2)),
+        'Under 2.5': getRealisticOdds(cumulativePoisson(homeExpectedGoals, 2))
+      },
+      firstHalfHomeOverUnder: {
+        'Over 0.5': getRealisticOdds(1 - poisson(halfHomeGoals, 0)),
+        'Under 0.5': getRealisticOdds(poisson(halfHomeGoals, 0)),
+        'Over 1.5': getRealisticOdds(1 - cumulativePoisson(halfHomeGoals, 1)),
+        'Under 1.5': getRealisticOdds(cumulativePoisson(halfHomeGoals, 1))
+      },
+      secondHalfHomeOverUnder: {
+        'Over 0.5': getRealisticOdds(1 - poisson(secondHalfHomeGoals, 0)),
+        'Under 0.5': getRealisticOdds(poisson(secondHalfHomeGoals, 0)),
+        'Over 1.5': getRealisticOdds(1 - cumulativePoisson(secondHalfHomeGoals, 1)),
+        'Under 1.5': getRealisticOdds(cumulativePoisson(secondHalfHomeGoals, 1))
+      },
+      awayTotal: {
+        'Over 0.5': getRealisticOdds(1 - poisson(awayExpectedGoals, 0)),
+        'Under 0.5': getRealisticOdds(poisson(awayExpectedGoals, 0)),
+        'Over 1.5': getRealisticOdds(1 - cumulativePoisson(awayExpectedGoals, 1)),
+        'Under 1.5': getRealisticOdds(cumulativePoisson(awayExpectedGoals, 1))
+      },
+      firstHalfAwayOverUnder: {
+        'Over 0.5': getRealisticOdds(1 - poisson(halfAwayGoals, 0)),
+        'Under 0.5': getRealisticOdds(poisson(halfAwayGoals, 0)),
+        'Over 1.5': getRealisticOdds(1 - cumulativePoisson(halfAwayGoals, 1)),
+        'Under 1.5': getRealisticOdds(cumulativePoisson(halfAwayGoals, 1))
+      },
+      secondHalfAwayOverUnder: {
+        'Over 0.5': getRealisticOdds(1 - poisson(secondHalfAwayGoals, 0)),
+        'Under 0.5': getRealisticOdds(poisson(secondHalfAwayGoals, 0)),
+        'Over 1.5': getRealisticOdds(1 - cumulativePoisson(secondHalfAwayGoals, 1)),
+        'Under 1.5': getRealisticOdds(cumulativePoisson(secondHalfAwayGoals, 1))
+      },
+      
+      homeExactGoals: {
+        '0 Goals': getRealisticOdds(poisson(homeExpectedGoals, 0)),
+        '1 Goal': getRealisticOdds(poisson(homeExpectedGoals, 1)),
+        '2 Goals': getRealisticOdds(poisson(homeExpectedGoals, 2)),
+        '3 Goals': getRealisticOdds(poisson(homeExpectedGoals, 3)),
+        '4 Goals': getRealisticOdds(poisson(homeExpectedGoals, 4))
+      },
+      awayExactGoals: {
+        '0 Goals': getRealisticOdds(poisson(awayExpectedGoals, 0)),
+        '1 Goal': getRealisticOdds(poisson(awayExpectedGoals, 1)),
+        '2 Goals': getRealisticOdds(poisson(awayExpectedGoals, 2)),
+        '3 Goals': getRealisticOdds(poisson(awayExpectedGoals, 3)),
+        '4 Goals': getRealisticOdds(poisson(awayExpectedGoals, 4))
+      },
+      
+      goalRange: {
+        '0 Goals': getRealisticOdds(poisson(totalGoalsDist, 0)),
+        '1 Goal': getRealisticOdds(poisson(totalGoalsDist, 1)),
+        '2 Goals': getRealisticOdds(poisson(totalGoalsDist, 2)),
+        '3 Goals': getRealisticOdds(poisson(totalGoalsDist, 3)),
+        '4 Goals': getRealisticOdds(poisson(totalGoalsDist, 4)),
+        '5+ Goals': getRealisticOdds(1 - cumulativePoisson(totalGoalsDist, 4))
+      },
+      
+      doubleChanceFirstHalfBtts: {
+        '1X & Yes': getRealisticOdds((homeProb + drawProb) * 0.35),
+        '1X & No': getRealisticOdds((homeProb + drawProb) * 0.65),
+        '12 & Yes': getRealisticOdds((homeProb + awayProb) * 0.35),
+        '12 & No': getRealisticOdds((homeProb + awayProb) * 0.65),
+        'X2 & Yes': getRealisticOdds((drawProb + awayProb) * 0.35),
+        'X2 & No': getRealisticOdds((drawProb + awayProb) * 0.65)
+      },
+      doubleChanceSecondHalfBtts: {
+        '1X & Yes': getRealisticOdds((homeProb + drawProb) * 0.35),
+        '1X & No': getRealisticOdds((homeProb + drawProb) * 0.65),
+        '12 & Yes': getRealisticOdds((homeProb + awayProb) * 0.35),
+        '12 & No': getRealisticOdds((homeProb + awayProb) * 0.65),
+        'X2 & Yes': getRealisticOdds((drawProb + awayProb) * 0.35),
+        'X2 & No': getRealisticOdds((drawProb + awayProb) * 0.65)
+      },
+      doubleChanceBtts: {
+        '1X & Yes': getRealisticOdds((homeProb + drawProb) * bttsYes),
+        '1X & No': getRealisticOdds((homeProb + drawProb) * bttsNo),
+        '12 & Yes': getRealisticOdds((homeProb + awayProb) * bttsYes),
+        '12 & No': getRealisticOdds((homeProb + awayProb) * bttsNo),
+        'X2 & Yes': getRealisticOdds((drawProb + awayProb) * bttsYes),
+        'X2 & No': getRealisticOdds((drawProb + awayProb) * bttsNo)
+      },
+      doubleChanceOverUnder: {
+        '1X & Over 2.5': getRealisticOdds((homeProb + drawProb) * (1 - cumulativePoisson(totalGoalsDist, 2))),
+        '1X & Under 2.5': getRealisticOdds((homeProb + drawProb) * cumulativePoisson(totalGoalsDist, 2)),
+        '12 & Over 2.5': getRealisticOdds((homeProb + awayProb) * (1 - cumulativePoisson(totalGoalsDist, 2))),
+        '12 & Under 2.5': getRealisticOdds((homeProb + awayProb) * cumulativePoisson(totalGoalsDist, 2)),
+        'X2 & Over 2.5': getRealisticOdds((drawProb + awayProb) * (1 - cumulativePoisson(totalGoalsDist, 2))),
+        'X2 & Under 2.5': getRealisticOdds((drawProb + awayProb) * cumulativePoisson(totalGoalsDist, 2))
+      },
+      
+      htFtFirstHalfOverUnder: {
+        'Home/Home & Over 1.5': getRealisticOdds(homeProb * homeProb * 1.1 * 0.3),
+        'Home/Home & Under 1.5': getRealisticOdds(homeProb * homeProb * 1.1 * 0.7),
+        'Draw/Home & Over 1.5': getRealisticOdds(drawProb * homeProb * 1.5 * 0.3),
+        'Draw/Home & Under 1.5': getRealisticOdds(drawProb * homeProb * 1.5 * 0.7),
+        'Away/Away & Over 1.5': getRealisticOdds(awayProb * awayProb * 1.1 * 0.3),
+        'Away/Away & Under 1.5': getRealisticOdds(awayProb * awayProb * 1.1 * 0.7)
+      },
+      htFtExactGoals: {
+        'Home/Home & 1 Goal': getRealisticOdds(homeProb * homeProb * 1.1 * poisson(totalGoalsDist, 1)),
+        'Home/Home & 2 Goals': getRealisticOdds(homeProb * homeProb * 1.1 * poisson(totalGoalsDist, 2)),
+        'Draw/Home & 1 Goal': getRealisticOdds(drawProb * homeProb * 1.5 * poisson(totalGoalsDist, 1)),
+        'Draw/Home & 2 Goals': getRealisticOdds(drawProb * homeProb * 1.5 * poisson(totalGoalsDist, 2)),
+        'Away/Away & 1 Goal': getRealisticOdds(awayProb * awayProb * 1.1 * poisson(totalGoalsDist, 1)),
+        'Away/Away & 2 Goals': getRealisticOdds(awayProb * awayProb * 1.1 * poisson(totalGoalsDist, 2))
+      },
+      htFtOverUnder: {
+        'Home/Home & Over 2.5': getRealisticOdds(homeProb * homeProb * 1.1 * (1 - cumulativePoisson(totalGoalsDist, 2))),
+        'Home/Home & Under 2.5': getRealisticOdds(homeProb * homeProb * 1.1 * cumulativePoisson(totalGoalsDist, 2)),
+        'Draw/Home & Over 2.5': getRealisticOdds(drawProb * homeProb * 1.5 * (1 - cumulativePoisson(totalGoalsDist, 2))),
+        'Draw/Home & Under 2.5': getRealisticOdds(drawProb * homeProb * 1.5 * cumulativePoisson(totalGoalsDist, 2)),
+        'Away/Away & Over 2.5': getRealisticOdds(awayProb * awayProb * 1.1 * (1 - cumulativePoisson(totalGoalsDist, 2))),
+        'Away/Away & Under 2.5': getRealisticOdds(awayProb * awayProb * 1.1 * cumulativePoisson(totalGoalsDist, 2))
+      },
+      htFtCorrectScore: {
+        'Home/Home 1-0': getRealisticOdds(homeProb * homeProb * 1.1 * correctScoreProbs['1-0']),
+        'Home/Home 2-0': getRealisticOdds(homeProb * homeProb * 1.1 * correctScoreProbs['2-0']),
+        'Home/Home 2-1': getRealisticOdds(homeProb * homeProb * 1.1 * correctScoreProbs['2-1']),
+        'Draw/Home 1-0': getRealisticOdds(drawProb * homeProb * 1.5 * correctScoreProbs['1-0']),
+        'Draw/Home 2-0': getRealisticOdds(drawProb * homeProb * 1.5 * correctScoreProbs['2-0']),
+        'Away/Away 0-1': getRealisticOdds(awayProb * awayProb * 1.1 * correctScoreProbs['0-1']),
+        'Away/Away 0-2': getRealisticOdds(awayProb * awayProb * 1.1 * correctScoreProbs['0-2'])
+      },
+      
+      firstHalfDoubleChance: {
+        '1X': getRealisticOdds(homeProb + drawProb),
+        '12': getRealisticOdds(homeProb + awayProb),
+        'X2': getRealisticOdds(drawProb + awayProb)
+      },
+      secondHalfDoubleChance: {
+        '1X': getRealisticOdds(homeProb + drawProb),
+        '12': getRealisticOdds(homeProb + awayProb),
+        'X2': getRealisticOdds(drawProb + awayProb)
+      },
+      
+      lastGoal: {
+        'Home': getRealisticOdds(homeProb * 1.3 + 0.1),
+        'Away': getRealisticOdds(awayProb * 1.3 + 0.1),
+        'No Goal': 1.05
+      },
+      
+      whichTeamToScore: {
+        'Home Only': getRealisticOdds(homeProb * (1 - awayProb)),
+        'Away Only': getRealisticOdds(awayProb * (1 - homeProb)),
+        'Both': getRealisticOdds(homeProb * awayProb * 1.5),
+        'Neither': getRealisticOdds((1 - homeProb) * (1 - awayProb))
+      },
+      
+      oneGoal: {
+        '0 Goals': getRealisticOdds(poisson(totalGoalsDist, 0)),
+        '1 Goal': getRealisticOdds(poisson(totalGoalsDist, 1)),
+        '2+ Goals': getRealisticOdds(1 - cumulativePoisson(totalGoalsDist, 1))
+      },
+      oneGoalAnd1x2: {
+        'Home & 1 Goal': getRealisticOdds(homeProb * poisson(totalGoalsDist, 1)),
+        'Draw & 1 Goal': getRealisticOdds(drawProb * poisson(totalGoalsDist, 1)),
+        'Away & 1 Goal': getRealisticOdds(awayProb * poisson(totalGoalsDist, 1))
+      },
+      firstHalfOneGoal: {
+        '0 Goals': getRealisticOdds(poisson(halfTotalGoals, 0)),
+        '1 Goal': getRealisticOdds(poisson(halfTotalGoals, 1)),
+        '2+ Goals': getRealisticOdds(1 - cumulativePoisson(halfTotalGoals, 1))
+      },
+      secondHalfOneGoal: {
+        '0 Goals': getRealisticOdds(poisson(secondHalfTotalGoals, 0)),
+        '1 Goal': getRealisticOdds(poisson(secondHalfTotalGoals, 1)),
+        '2+ Goals': getRealisticOdds(1 - cumulativePoisson(secondHalfTotalGoals, 1))
+      },
+      
+      homeNoBet: {
+        'Yes': getRealisticOdds(homeProb / (homeProb + awayProb)),
+        'No': getRealisticOdds(awayProb / (homeProb + awayProb))
+      },
+      awayNoBet: {
+        'Yes': getRealisticOdds(awayProb / (homeProb + awayProb)),
+        'No': getRealisticOdds(homeProb / (homeProb + awayProb))
+      },
+      homeWinBothHalves: {
+        'Yes': getRealisticOdds(homeProb * homeProb * 1.1),
+        'No': getRealisticOdds(1 - homeProb * homeProb * 1.1)
+      },
+      homeScoreBothHalves: {
+        'Yes': getRealisticOdds((1 - poisson(halfHomeGoals, 0)) * (1 - poisson(secondHalfHomeGoals, 0))),
+        'No': getRealisticOdds(1 - ((1 - poisson(halfHomeGoals, 0)) * (1 - poisson(secondHalfHomeGoals, 0))))
+      },
+      awayScoreBothHalves: {
+        'Yes': getRealisticOdds((1 - poisson(halfAwayGoals, 0)) * (1 - poisson(secondHalfAwayGoals, 0))),
+        'No': getRealisticOdds(1 - ((1 - poisson(halfAwayGoals, 0)) * (1 - poisson(secondHalfAwayGoals, 0))))
+      },
+      homeWinEitherHalf: {
+        'Yes': getRealisticOdds(homeProb * 1.1),
+        'No': getRealisticOdds(1 - homeProb * 1.1)
+      },
+      awayWinEitherHalf: {
+        'Yes': getRealisticOdds(awayProb * 1.1),
+        'No': getRealisticOdds(1 - awayProb * 1.1)
+      },
+      
+      highestScoringHalf: {
+        '1st Half': 2.00,
+        '2nd Half': 2.00,
+        'Both Equal': 3.00
+      },
+      homeHighestScoringHalf: {
+        '1st Half': 2.50,
+        '2nd Half': 2.50,
+        'Both Equal': 3.50
+      },
+      awayHighestScoringHalf: {
+        '1st Half': 2.50,
+        '2nd Half': 2.50,
+        'Both Equal': 3.50
+      },
+      
+      firstHalf1x2Btts: {
+        'Home & Yes': getRealisticOdds(homeProb * (1 - poisson(halfHomeGoals, 0)) * (1 - poisson(halfAwayGoals, 0))),
+        'Home & No': getRealisticOdds(homeProb * (1 - ((1 - poisson(halfHomeGoals, 0)) * (1 - poisson(halfAwayGoals, 0))))),
+        'Draw & Yes': getRealisticOdds(drawProb * (1 - poisson(halfHomeGoals, 0)) * (1 - poisson(halfAwayGoals, 0))),
+        'Draw & No': getRealisticOdds(drawProb * (1 - ((1 - poisson(halfHomeGoals, 0)) * (1 - poisson(halfAwayGoals, 0))))),
+        'Away & Yes': getRealisticOdds(awayProb * (1 - poisson(halfHomeGoals, 0)) * (1 - poisson(halfAwayGoals, 0))),
+        'Away & No': getRealisticOdds(awayProb * (1 - ((1 - poisson(halfHomeGoals, 0)) * (1 - poisson(halfAwayGoals, 0)))))
+      },
+      firstHalf1x2OverUnder: {
+        'Home & Over 1.5': getRealisticOdds(homeProb * (1 - cumulativePoisson(halfTotalGoals, 1))),
+        'Home & Under 1.5': getRealisticOdds(homeProb * cumulativePoisson(halfTotalGoals, 1)),
+        'Draw & Over 1.5': getRealisticOdds(drawProb * (1 - cumulativePoisson(halfTotalGoals, 1))),
+        'Draw & Under 1.5': getRealisticOdds(drawProb * cumulativePoisson(halfTotalGoals, 1)),
+        'Away & Over 1.5': getRealisticOdds(awayProb * (1 - cumulativePoisson(halfTotalGoals, 1))),
+        'Away & Under 1.5': getRealisticOdds(awayProb * cumulativePoisson(halfTotalGoals, 1))
+      },
+      
+      secondHalfResult: {
+        'Home': getRealisticOdds(homeProb * 1.1),
+        'Draw': getRealisticOdds(drawProb * 0.9),
+        'Away': getRealisticOdds(awayProb * 1.1)
+      },
+      secondHalfBtts: {
+        'Yes': getRealisticOdds(0.35 + homeProb * awayProb * 0.25),
+        'No': getRealisticOdds(1 - (0.35 + homeProb * awayProb * 0.25))
+      },
+      secondHalf3WayBtts: {
+        'Home & Yes': getRealisticOdds(homeProb * (0.35 + homeProb * awayProb * 0.25)),
+        'Home & No': getRealisticOdds(homeProb * (1 - (0.35 + homeProb * awayProb * 0.25))),
+        'Draw & Yes': getRealisticOdds(drawProb * (0.35 + homeProb * awayProb * 0.25)),
+        'Draw & No': getRealisticOdds(drawProb * (1 - (0.35 + homeProb * awayProb * 0.25))),
+        'Away & Yes': getRealisticOdds(awayProb * (0.35 + homeProb * awayProb * 0.25)),
+        'Away & No': getRealisticOdds(awayProb * (1 - (0.35 + homeProb * awayProb * 0.25)))
+      },
+      secondHalf3WayOverUnder: {
+        'Home & Over 1.5': getRealisticOdds(homeProb * 0.4),
+        'Home & Under 1.5': getRealisticOdds(homeProb * 0.6),
+        'Draw & Over 1.5': getRealisticOdds(drawProb * 0.4),
+        'Draw & Under 1.5': getRealisticOdds(drawProb * 0.6),
+        'Away & Over 1.5': getRealisticOdds(awayProb * 0.4),
+        'Away & Under 1.5': getRealisticOdds(awayProb * 0.6)
+      },
+      
+      secondHalfCorrectScore: {
+        '0-0': getRealisticOdds(secondHalfCorrectScoreProbs['0-0']),
+        '1-0': getRealisticOdds(secondHalfCorrectScoreProbs['1-0']),
+        '2-0': getRealisticOdds(secondHalfCorrectScoreProbs['2-0']),
+        '2-1': getRealisticOdds(secondHalfCorrectScoreProbs['2-1']),
+        '1-1': getRealisticOdds(secondHalfCorrectScoreProbs['1-1']),
+        '0-1': getRealisticOdds(secondHalfCorrectScoreProbs['0-1']),
+        '0-2': getRealisticOdds(secondHalfCorrectScoreProbs['0-2']),
+        '1-2': getRealisticOdds(secondHalfCorrectScoreProbs['1-2'])
+      },
+      
+      secondHalfDoubleChanceBtts: {
+        '1X & Yes': getRealisticOdds((homeProb + drawProb) * 0.35),
+        '1X & No': getRealisticOdds((homeProb + drawProb) * 0.65),
+        '12 & Yes': getRealisticOdds((homeProb + awayProb) * 0.35),
+        '12 & No': getRealisticOdds((homeProb + awayProb) * 0.65),
+        'X2 & Yes': getRealisticOdds((drawProb + awayProb) * 0.35),
+        'X2 & No': getRealisticOdds((drawProb + awayProb) * 0.65)
+      },
+      
+      secondHalfDrawNoBet: {
+        'Home': getRealisticOdds(homeProb / (homeProb + awayProb)),
+        'Away': getRealisticOdds(awayProb / (homeProb + awayProb))
+      },
+      
+      secondHalfExactGoals: {
+        '0 Goals': getRealisticOdds(poisson(secondHalfTotalGoals, 0)),
+        '1 Goal': getRealisticOdds(poisson(secondHalfTotalGoals, 1)),
+        '2 Goals': getRealisticOdds(poisson(secondHalfTotalGoals, 2)),
+        '3 Goals': getRealisticOdds(poisson(secondHalfTotalGoals, 3)),
+        '4 Goals': getRealisticOdds(poisson(secondHalfTotalGoals, 4))
+      },
+      
+      secondHalfOverUnder: {
+        'Over 0.5': overUnderSecondHalf(0).over,
+        'Under 0.5': overUnderSecondHalf(0).under,
+        'Over 1.5': overUnderSecondHalf(1).over,
+        'Under 1.5': overUnderSecondHalf(1).under,
+        'Over 2.5': overUnderSecondHalf(2).over,
+        'Under 2.5': overUnderSecondHalf(2).under
+      },
+      
+      bothHalvesBtts: {
+        'Yes': getRealisticOdds((1 - poisson(halfHomeGoals, 0)) * (1 - poisson(halfAwayGoals, 0)) * (1 - poisson(secondHalfHomeGoals, 0)) * (1 - poisson(secondHalfAwayGoals, 0))),
+        'No': getRealisticOdds(1 - ((1 - poisson(halfHomeGoals, 0)) * (1 - poisson(halfAwayGoals, 0)) * (1 - poisson(secondHalfHomeGoals, 0)) * (1 - poisson(secondHalfAwayGoals, 0))))
+      },
+      bothHalvesOver1_5: {
+        'Yes': getRealisticOdds((1 - cumulativePoisson(halfTotalGoals, 1)) * (1 - cumulativePoisson(secondHalfTotalGoals, 1))),
+        'No': getRealisticOdds(1 - ((1 - cumulativePoisson(halfTotalGoals, 1)) * (1 - cumulativePoisson(secondHalfTotalGoals, 1))))
+      },
+      bothHalvesUnder1_5: {
+        'Yes': getRealisticOdds(cumulativePoisson(halfTotalGoals, 1) * cumulativePoisson(secondHalfTotalGoals, 1)),
+        'No': getRealisticOdds(1 - (cumulativePoisson(halfTotalGoals, 1) * cumulativePoisson(secondHalfTotalGoals, 1)))
+      },
+      
+      tenMinute3Way: {
+        'Home': 4.00,
+        'Draw': 2.50,
+        'Away': 5.00
+      },
+      
+      overUnderBtts: {
+        'Over 2.5 & Yes': getRealisticOdds((1 - cumulativePoisson(totalGoalsDist, 2)) * bttsYes),
+        'Over 2.5 & No': getRealisticOdds((1 - cumulativePoisson(totalGoalsDist, 2)) * bttsNo),
+        'Under 2.5 & Yes': getRealisticOdds(cumulativePoisson(totalGoalsDist, 2) * bttsYes),
+        'Under 2.5 & No': getRealisticOdds(cumulativePoisson(totalGoalsDist, 2) * bttsNo)
+      },
+      
+      corners: {
+        'Over 8.5': 1.85,
+        'Under 8.5': 1.95,
+        'Home Most': 1.95,
+        'Away Most': 2.05,
+        'First Corner - Home': 1.90,
+        'First Corner - Away': 2.10,
+        'Last Corner - Home': 1.95,
+        'Last Corner - Away': 1.95
+      },
+      
+      cards: {
+        'Over 2.5 Yellow': 1.70,
+        'Under 2.5 Yellow': 2.10,
+        'Red Card - Yes': 3.00,
+        'Red Card - No': 1.30
+      },
+      
+      penalty: {
+        'Penalty Awarded': 2.50,
+        'No Penalty': 1.50
+      },
+      
+      playerMarkets: {
+        'Anytime Goalscorer': 2.50,
+        'First Goalscorer': 5.00,
+        'Last Goalscorer': 5.50,
+        'Player to Receive Card': 3.00,
+        'Player to Assist': 3.50
+      },
+      
+      specials: {
+        'Clean Sheet - Home': getRealisticOdds(poisson(awayExpectedGoals, 0)),
+        'Clean Sheet - Away': getRealisticOdds(poisson(homeExpectedGoals, 0)),
+        'Win to Nil - Home': getRealisticOdds(homeProb * poisson(awayExpectedGoals, 0)),
+        'Win to Nil - Away': getRealisticOdds(awayProb * poisson(homeExpectedGoals, 0)),
+        'Both Halves Over 1.5': getRealisticOdds((1 - cumulativePoisson(halfTotalGoals, 1)) * (1 - cumulativePoisson(secondHalfTotalGoals, 1))),
+        'Highest Scoring Half - 1st': 2.00,
+        'Highest Scoring Half - 2nd': 2.00,
+        'Odd Total Goals': 1.90,
+        'Even Total Goals': 1.90
+      }
+    };
+  };
+
+  // ============================================
+  // DEFAULT MARKETS (Fallback)
+  // ============================================
+  const generateDefaultMarkets = () => {
+    return {
+      result: { 'Home': 2.00, 'Draw': 3.50, 'Away': 2.50 },
+      btts: { 'Yes': 1.95, 'No': 1.85 },
+      doubleChance: { '1X': 1.30, '12': 1.15, 'X2': 1.45 },
+      totalGoals: {
+        'Over 0.5': 1.05, 'Under 0.5': 10.00,
+        'Over 1.5': 1.15, 'Under 1.5': 5.25,
+        'Over 2.5': 1.85, 'Under 2.5': 1.95,
+        'Over 3.5': 2.50, 'Under 3.5': 1.50,
+        'Over 4.5': 4.00, 'Under 4.5': 1.20
+      },
+      correctScore: {
+        '0-0': 8.00, '1-0': 6.00, '2-0': 8.50, '2-1': 9.00,
+        '3-0': 15.00, '3-1': 18.00, '3-2': 25.00, '1-1': 7.00,
+        '2-2': 12.00, '0-1': 6.50, '0-2': 9.00, '1-2': 10.00,
+        '0-3': 20.00, 'Any Other Home Win': 30.00,
+        'Any Other Away Win': 35.00, 'Any Other Draw': 40.00
+      },
+      firstHalfResult: { 'Home': 2.50, 'Draw': 2.00, 'Away': 3.00 },
+      halfTimeFullTime: {
+        'Home/Home': 2.50, 'Home/Draw': 15.00, 'Home/Away': 30.00,
+        'Draw/Home': 5.00, 'Draw/Draw': 4.50, 'Draw/Away': 6.00,
+        'Away/Home': 25.00, 'Away/Draw': 12.00, 'Away/Away': 3.50
+      },
+      firstHalfCorrectScore: {
+        '0-0': 4.00, '1-0': 3.50, '2-0': 5.00, '2-1': 6.00,
+        '3-0': 8.00, '3-1': 10.00, '3-2': 15.00, '1-1': 4.50,
+        '2-2': 8.00, '0-1': 4.00, '0-2': 5.50, '1-2': 6.50,
+        '0-3': 12.00
+      },
+      drawNoBet: { 'Home': 1.50, 'Away': 2.50 },
+      oddEven: { 'Odd': 1.90, 'Even': 1.90 },
+      firstHalfOddEven: { 'Odd': 1.90, 'Even': 1.90 },
+      secondHalfOddEven: { 'Odd': 1.90, 'Even': 1.90 },
+      homeOddEven: { 'Odd': 1.90, 'Even': 1.90 },
+      awayOddEven: { 'Odd': 1.90, 'Even': 1.90 },
+      firstHalfBtts: { 'Yes': 2.50, 'No': 1.50 },
+      firstHalfTotalGoals: {
+        'Over 0.5': 1.15, 'Under 0.5': 5.50,
+        'Over 1.5': 1.50, 'Under 1.5': 2.50,
+        'Over 2.5': 3.00, 'Under 2.5': 1.30,
+        'Over 3.5': 5.00, 'Under 3.5': 1.10,
+        'Over 4.5': 8.00, 'Under 4.5': 1.05
+      },
+      exactGoals: {
+        '0 Goals': 8.00, '1 Goal': 4.50, '2 Goals': 3.50,
+        '3 Goals': 4.00, '4 Goals': 7.00, '5+ Goals': 12.00
+      },
+      threeWayOverUnder: {
+        'Home & Over 2.5': 3.50, 'Home & Under 2.5': 4.00,
+        'Draw & Over 2.5': 6.00, 'Draw & Under 2.5': 5.00,
+        'Away & Over 2.5': 4.50, 'Away & Under 2.5': 5.50
+      },
+      threeWayBtts: {
+        'Home & Yes': 4.00, 'Home & No': 5.00,
+        'Draw & Yes': 6.00, 'Draw & No': 7.00,
+        'Away & Yes': 4.50, 'Away & No': 5.50
+      },
+      firstHalfHandicap: { 'Home -1': 3.00, 'Away +1': 1.50 },
+      secondHalfHandicap: { 'Home -1': 3.00, 'Away +1': 1.50 },
+      handicap: { 'Home -1': 1.50, 'Home -2': 2.50, 'Away +1': 2.00, 'Away +2': 1.80 },
+      homeCleanSheet: { 'Yes': 2.00, 'No': 1.70 },
+      awayCleanSheet: { 'Yes': 2.50, 'No': 1.50 },
+      firstHalfHomeCleanSheet: { 'Yes': 2.50, 'No': 1.50 },
+      firstHalfAwayCleanSheet: { 'Yes': 3.00, 'No': 1.30 },
+      secondHalfHomeCleanSheet: { 'Yes': 2.50, 'No': 1.50 },
+      secondHalfAwayCleanSheet: { 'Yes': 3.00, 'No': 1.30 },
+      homeOverUnder: {
+        'Over 0.5': 1.50, 'Under 0.5': 2.50,
+        'Over 1.5': 2.50, 'Under 1.5': 1.50,
+        'Over 2.5': 4.50, 'Under 2.5': 1.20
+      },
+      firstHalfHomeOverUnder: {
+        'Over 0.5': 1.80, 'Under 0.5': 2.00,
+        'Over 1.5': 3.00, 'Under 1.5': 1.30
+      },
+      secondHalfHomeOverUnder: {
+        'Over 0.5': 1.80, 'Under 0.5': 2.00,
+        'Over 1.5': 3.00, 'Under 1.5': 1.30
+      },
+      awayTotal: {
+        'Over 0.5': 1.80, 'Under 0.5': 2.00,
+        'Over 1.5': 3.50, 'Under 1.5': 1.30
+      },
+      firstHalfAwayOverUnder: {
+        'Over 0.5': 2.00, 'Under 0.5': 1.80,
+        'Over 1.5': 3.50, 'Under 1.5': 1.30
+      },
+      secondHalfAwayOverUnder: {
+        'Over 0.5': 2.00, 'Under 0.5': 1.80,
+        'Over 1.5': 3.50, 'Under 1.5': 1.30
+      },
+      homeExactGoals: {
+        '0 Goals': 3.00, '1 Goal': 2.50, '2 Goals': 4.00,
+        '3 Goals': 6.00, '4 Goals': 10.00
+      },
+      awayExactGoals: {
+        '0 Goals': 2.50, '1 Goal': 2.00, '2 Goals': 4.50,
+        '3 Goals': 8.00, '4 Goals': 14.00
+      },
+      goalRange: {
+        '0 Goals': 8.00, '1 Goal': 4.50, '2 Goals': 3.50,
+        '3 Goals': 4.00, '4 Goals': 7.00, '5+ Goals': 12.00
+      },
+      doubleChanceFirstHalfBtts: {
+        '1X & Yes': 4.00, '1X & No': 5.00,
+        '12 & Yes': 4.50, '12 & No': 5.50,
+        'X2 & Yes': 5.00, 'X2 & No': 6.00
+      },
+      doubleChanceSecondHalfBtts: {
+        '1X & Yes': 4.00, '1X & No': 5.00,
+        '12 & Yes': 4.50, '12 & No': 5.50,
+        'X2 & Yes': 5.00, 'X2 & No': 6.00
+      },
+      doubleChanceBtts: {
+        '1X & Yes': 3.50, '1X & No': 4.50,
+        '12 & Yes': 4.00, '12 & No': 5.00,
+        'X2 & Yes': 4.50, 'X2 & No': 5.50
+      },
+      doubleChanceOverUnder: {
+        '1X & Over 2.5': 4.00, '1X & Under 2.5': 3.50,
+        '12 & Over 2.5': 4.50, '12 & Under 2.5': 4.00,
+        'X2 & Over 2.5': 5.00, 'X2 & Under 2.5': 4.50
+      },
+      htFtFirstHalfOverUnder: {
+        'Home/Home & Over 1.5': 6.00, 'Home/Home & Under 1.5': 7.00,
+        'Draw/Home & Over 1.5': 8.00, 'Draw/Home & Under 1.5': 9.00,
+        'Away/Away & Over 1.5': 7.00, 'Away/Away & Under 1.5': 8.00
+      },
+      htFtExactGoals: {
+        'Home/Home & 1 Goal': 5.00, 'Home/Home & 2 Goals': 7.00,
+        'Draw/Home & 1 Goal': 6.00, 'Draw/Home & 2 Goals': 8.00,
+        'Away/Away & 1 Goal': 6.00, 'Away/Away & 2 Goals': 8.00
+      },
+      htFtOverUnder: {
+        'Home/Home & Over 2.5': 5.50, 'Home/Home & Under 2.5': 6.50,
+        'Draw/Home & Over 2.5': 7.00, 'Draw/Home & Under 2.5': 8.00,
+        'Away/Away & Over 2.5': 6.00, 'Away/Away & Under 2.5': 7.00
+      },
+      htFtCorrectScore: {
+        'Home/Home 1-0': 8.00, 'Home/Home 2-0': 12.00, 'Home/Home 2-1': 14.00,
+        'Draw/Home 1-0': 10.00, 'Draw/Home 2-0': 15.00,
+        'Away/Away 0-1': 9.00, 'Away/Away 0-2': 13.00
+      },
+      firstHalfDoubleChance: { '1X': 1.50, '12': 1.80, 'X2': 2.00 },
+      secondHalfDoubleChance: { '1X': 1.50, '12': 1.80, 'X2': 2.00 },
+      lastGoal: { 'Home': 1.90, 'Away': 1.90, 'No Goal': 10.00 },
+      whichTeamToScore: {
+        'Home Only': 3.00, 'Away Only': 3.50,
+        'Both': 2.00, 'Neither': 8.00
+      },
+      oneGoal: { '0 Goals': 8.00, '1 Goal': 4.50, '2+ Goals': 2.50 },
+      oneGoalAnd1x2: {
+        'Home & 1 Goal': 6.00, 'Draw & 1 Goal': 8.00, 'Away & 1 Goal': 7.00
+      },
+      firstHalfOneGoal: { '0 Goals': 3.00, '1 Goal': 2.50, '2+ Goals': 3.50 },
+      secondHalfOneGoal: { '0 Goals': 3.50, '1 Goal': 2.50, '2+ Goals': 3.00 },
+      homeNoBet: { 'Yes': 1.80, 'No': 2.00 },
+      awayNoBet: { 'Yes': 2.00, 'No': 1.80 },
+      homeWinBothHalves: { 'Yes': 4.00, 'No': 1.20 },
+      homeScoreBothHalves: { 'Yes': 3.00, 'No': 1.30 },
+      awayScoreBothHalves: { 'Yes': 3.50, 'No': 1.20 },
+      homeWinEitherHalf: { 'Yes': 2.00, 'No': 1.80 },
+      awayWinEitherHalf: { 'Yes': 2.20, 'No': 1.70 },
+      highestScoringHalf: { '1st Half': 2.00, '2nd Half': 2.00, 'Both Equal': 3.00 },
+      homeHighestScoringHalf: { '1st Half': 2.50, '2nd Half': 2.50, 'Both Equal': 3.50 },
+      awayHighestScoringHalf: { '1st Half': 2.50, '2nd Half': 2.50, 'Both Equal': 3.50 },
+      firstHalf1x2Btts: {
+        'Home & Yes': 5.00, 'Home & No': 6.00,
+        'Draw & Yes': 7.00, 'Draw & No': 8.00,
+        'Away & Yes': 5.50, 'Away & No': 6.50
+      },
+      firstHalf1x2OverUnder: {
+        'Home & Over 1.5': 4.50, 'Home & Under 1.5': 5.50,
+        'Draw & Over 1.5': 6.00, 'Draw & Under 1.5': 5.00,
+        'Away & Over 1.5': 5.00, 'Away & Under 1.5': 6.00
+      },
+      secondHalfResult: { 'Home': 2.50, 'Draw': 2.00, 'Away': 3.00 },
+      secondHalfBtts: { 'Yes': 2.50, 'No': 1.50 },
+      secondHalf3WayBtts: {
+        'Home & Yes': 4.50, 'Home & No': 5.50,
+        'Draw & Yes': 6.00, 'Draw & No': 7.00,
+        'Away & Yes': 5.00, 'Away & No': 6.00
+      },
+      secondHalf3WayOverUnder: {
+        'Home & Over 1.5': 4.00, 'Home & Under 1.5': 5.00,
+        'Draw & Over 1.5': 6.00, 'Draw & Under 1.5': 5.50,
+        'Away & Over 1.5': 4.50, 'Away & Under 1.5': 5.50
+      },
+      secondHalfCorrectScore: {
+        '0-0': 5.00, '1-0': 4.50, '2-0': 6.00, '2-1': 7.00,
+        '1-1': 5.50, '0-1': 5.00, '0-2': 7.00, '1-2': 8.00
+      },
+      secondHalfDoubleChanceBtts: {
+        '1X & Yes': 4.00, '1X & No': 5.00,
+        '12 & Yes': 4.50, '12 & No': 5.50,
+        'X2 & Yes': 5.00, 'X2 & No': 6.00
+      },
+      secondHalfDrawNoBet: { 'Home': 1.80, 'Away': 2.20 },
+      secondHalfExactGoals: {
+        '0 Goals': 3.50, '1 Goal': 2.50, '2 Goals': 4.50,
+        '3 Goals': 8.00, '4 Goals': 14.00
+      },
+      secondHalfOverUnder: {
+        'Over 0.5': 1.50, 'Under 0.5': 2.50,
+        'Over 1.5': 2.50, 'Under 1.5': 1.50,
+        'Over 2.5': 4.50, 'Under 2.5': 1.20
+      },
+      bothHalvesBtts: { 'Yes': 3.00, 'No': 1.30 },
+      bothHalvesOver1_5: { 'Yes': 3.50, 'No': 1.30 },
+      bothHalvesUnder1_5: { 'Yes': 1.30, 'No': 3.50 },
+      tenMinute3Way: { 'Home': 4.00, 'Draw': 2.50, 'Away': 5.00 },
+      overUnderBtts: {
+        'Over 2.5 & Yes': 3.50, 'Over 2.5 & No': 4.50,
+        'Under 2.5 & Yes': 4.00, 'Under 2.5 & No': 3.00
+      },
+      corners: {
+        'Over 8.5': 1.80, 'Under 8.5': 2.00,
+        'Home Most': 2.00, 'Away Most': 2.20,
+        'First Corner - Home': 1.90, 'First Corner - Away': 2.10,
+        'Last Corner - Home': 2.00, 'Last Corner - Away': 2.00
+      },
+      cards: {
+        'Over 2.5 Yellow': 1.70, 'Under 2.5 Yellow': 2.10,
+        'Red Card - Yes': 3.00, 'Red Card - No': 1.30
+      },
+      penalty: { 'Penalty Awarded': 2.50, 'No Penalty': 1.50 },
+      playerMarkets: {
+        'Anytime Goalscorer': 2.50, 'First Goalscorer': 5.00,
+        'Last Goalscorer': 5.50, 'Player to Receive Card': 3.00,
+        'Player to Assist': 3.50
+      },
+      specials: {
+        'Clean Sheet - Home': 2.00, 'Clean Sheet - Away': 2.50,
+        'Win to Nil - Home': 3.00, 'Win to Nil - Away': 4.00,
+        'Both Halves Over 1.5': 6.00,
+        'Highest Scoring Half - 1st': 2.00,
+        'Highest Scoring Half - 2nd': 2.20,
+        'Odd Total Goals': 1.90, 'Even Total Goals': 1.90
+      }
+    };
   };
 
   // ============================================
