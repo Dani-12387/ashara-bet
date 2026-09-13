@@ -20,6 +20,11 @@ const CashierPage = () => {
   const [report, setReport] = useState(null);
   const [reportRange, setReportRange] = useState({ startDate: '', endDate: '' });
 
+  // ✅ Referral state
+  const [referral, setReferral] = useState(null);
+  const [referrals, setReferrals] = useState(null);
+  const [copied, setCopied] = useState(false);
+
   useEffect(() => {
     const userData = localStorage.getItem('user');
     if (!userData) return navigate('/login');
@@ -100,6 +105,44 @@ const CashierPage = () => {
     } finally { setLoading(false); }
   };
 
+  // === ✅ LOAD REFERRAL LINK ===
+  const loadReferralLink = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get(`${API_URL}/api/cashier/referral-link`, authHeaders());
+      if (res.data.success) setReferral(res.data.data);
+    } catch (err) {
+      showMessage(err.response?.data?.message || 'Failed to load referral link', true);
+    } finally { setLoading(false); }
+  };
+
+  // === ✅ LOAD REFERRED USERS ===
+  const loadReferrals = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get(`${API_URL}/api/cashier/my-referrals`, authHeaders());
+      if (res.data.success) setReferrals(res.data.data);
+    } catch (err) {
+      showMessage(err.response?.data?.message || 'Failed to load referrals', true);
+    } finally { setLoading(false); }
+  };
+
+  // === ✅ COPY REFERRAL LINK ===
+  const copyReferralLink = () => {
+    if (!referral) return;
+    navigator.clipboard.writeText(referral.referralLink).then(() => {
+      setCopied(true);
+      showMessage('✅ Referral link copied to clipboard!');
+      setTimeout(() => setCopied(false), 3000);
+    });
+  };
+
+  // Load referral data when those tabs are opened
+  useEffect(() => {
+    if (tab === 'invite' && !referral) loadReferralLink();
+    if (tab === 'referrals' && !referrals) loadReferrals();
+  }, [tab]);
+
   if (!user) return null;
 
   return (
@@ -118,6 +161,8 @@ const CashierPage = () => {
         <button className={tab === 'deposit' ? 'active' : ''} onClick={() => setTab('deposit')}>💵 Deposit</button>
         <button className={tab === 'withdraw' ? 'active' : ''} onClick={() => setTab('withdraw')}>💸 Withdraw</button>
         <button className={tab === 'addUser' ? 'active' : ''} onClick={() => setTab('addUser')}>➕ Add User</button>
+        <button className={tab === 'invite' ? 'active' : ''} onClick={() => setTab('invite')}>🔗 Invite</button>
+        <button className={tab === 'referrals' ? 'active' : ''} onClick={() => setTab('referrals')}>👥 My Referrals</button>
         <button className={tab === 'report' ? 'active' : ''} onClick={() => setTab('report')}>📊 Report</button>
       </div>
 
@@ -170,6 +215,160 @@ const CashierPage = () => {
           </form>
         )}
 
+        {/* ===== INVITE TAB ===== */}
+        {tab === 'invite' && (
+          <div className="cashier-invite">
+            <h2>🔗 Your Invitation Link</h2>
+            <p className="invite-subtitle">
+              Share this link. Anyone who registers with it becomes your referral.
+            </p>
+
+            {!referral && loading && <p>Loading your link...</p>}
+
+            {referral && (
+              <>
+                <div className="invite-box">
+                  <label>Referral Code</label>
+                  <div className="invite-code">{referral.referralCode}</div>
+                </div>
+
+                <div className="invite-box">
+                  <label>Referral Link</label>
+                  <div className="invite-link-row">
+                    <input
+                      type="text"
+                      value={referral.referralLink}
+                      readOnly
+                      onFocus={e => e.target.select()}
+                    />
+                    <button className="btn-copy" onClick={copyReferralLink}>
+                      {copied ? '✅ Copied' : '📋 Copy'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="invite-share-buttons">
+                  <a
+                    href={`https://wa.me/?text=${encodeURIComponent('Join AsharaBet and start winning! Use my link: ' + referral.referralLink)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-share whatsapp"
+                  >
+                    📱 Share on WhatsApp
+                  </a>
+                  <a
+                    href={`https://t.me/share/url?url=${encodeURIComponent(referral.referralLink)}&text=${encodeURIComponent('Join AsharaBet!')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-share telegram"
+                  >
+                    📢 Share on Telegram
+                  </a>
+                </div>
+
+                <div className="invite-stats">
+                  <button className="btn-refresh" onClick={loadReferralLink}>🔄 Refresh</button>
+                  <button className="btn-refresh" onClick={() => { setTab('referrals'); }}>
+                    👥 View Referrals
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ===== MY REFERRALS TAB ===== */}
+        {tab === 'referrals' && (
+          <div className="cashier-referrals">
+            <div className="referrals-header">
+              <h2>👥 Users Registered with Your Link</h2>
+              <button className="btn-refresh" onClick={loadReferrals} disabled={loading}>
+                🔄 Refresh
+              </button>
+            </div>
+
+            {loading && !referrals && <p>Loading referrals...</p>}
+
+            {referrals && (
+              <>
+                {/* Summary Cards */}
+                <div className="referral-summary">
+                  <div className="summary-card blue">
+                    <div className="summary-label">Total Referrals</div>
+                    <div className="summary-value">{referrals.referralCount}</div>
+                  </div>
+                  <div className="summary-card green">
+                    <div className="summary-label">Total Deposits</div>
+                    <div className="summary-value">ETB {referrals.grandTotalDeposits.toFixed(2)}</div>
+                  </div>
+                  <div className="summary-card red">
+                    <div className="summary-label">Total Withdrawals</div>
+                    <div className="summary-value">ETB {referrals.grandTotalWithdrawals.toFixed(2)}</div>
+                  </div>
+                  <div className="summary-card orange">
+                    <div className="summary-label">Total Balance</div>
+                    <div className="summary-value">ETB {referrals.grandTotalBalance.toFixed(2)}</div>
+                  </div>
+                </div>
+
+                {/* Users Table */}
+                {referrals.users.length === 0 ? (
+                  <div className="no-referrals">
+                    <p>No users have registered with your referral link yet.</p>
+                    <button onClick={() => setTab('invite')} className="btn-goto-invite">
+                      🔗 Get Your Invitation Link
+                    </button>
+                  </div>
+                ) : (
+                  <div className="referrals-table-wrapper">
+                    <table className="referrals-table">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Username</th>
+                          <th>Email</th>
+                          <th>Joined</th>
+                          <th>Balance</th>
+                          <th>Deposits</th>
+                          <th>Withdrawals</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {referrals.users.map((u, idx) => (
+                          <tr key={u._id}>
+                            <td>{idx + 1}</td>
+                            <td className="cell-username">{u.username}</td>
+                            <td className="cell-email">{u.email}</td>
+                            <td>{new Date(u.joinedAt).toLocaleDateString()}</td>
+                            <td className="cell-balance">
+                              ETB {u.balance.toFixed(2)}
+                            </td>
+                            <td className="cell-deposit">
+                              ETB {u.totalDeposits.toFixed(2)}
+                              <small> ({u.depositCount})</small>
+                            </td>
+                            <td className="cell-withdraw">
+                              ETB {u.totalWithdrawals.toFixed(2)}
+                              <small> ({u.withdrawalCount})</small>
+                            </td>
+                            <td>
+                              <span className={`status-badge status-${u.status}`}>
+                                {u.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ===== REPORT TAB ===== */}
         {tab === 'report' && (
           <div className="cashier-report">
             <h2>Generate Report</h2>

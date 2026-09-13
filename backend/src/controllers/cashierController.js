@@ -2,7 +2,6 @@
 const User = require('../models/User');
 const Deposit = require('../models/Deposit');
 const Withdrawal = require('../models/Withdrawal');
-const Transaction = require('../models/Transaction');
 const bcrypt = require('bcryptjs');
 
 // =====================================================
@@ -106,17 +105,52 @@ exports.cashierAddUser = async (req, res) => {
     const existingUser = await User.findOne({ $or: [{ email }, { username }] });
     if (existingUser) return res.status(400).json({ success: false, message: 'User already exists' });
 
+    // Auto-generate phone if not provided (required field, must be unique)
+    let finalPhone = phone && phone.trim() ? phone.trim() : `CASH-${Date.now()}`;
+
+    // Ensure the auto-generated phone is unique
+    if (!phone || !phone.trim()) {
+      const phoneCheck = await User.findOne({ phone: finalPhone });
+      if (phoneCheck) finalPhone = `CASH-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`;
+    }
+
     const salt = await bcrypt.genSalt(12);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // Generate unique referral code
+    let referralCode = 'REF' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    const refCheck = await User.findOne({ referralCode });
+    if (refCheck) {
+      referralCode = 'REF' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 4).toUpperCase();
+    }
+
     const newUser = await User.create({
-      username,
-      email,
-      phone: phone || '',
+      username: username.trim(),
+      email: email.toLowerCase().trim(),
+      phone: finalPhone,
       password: hashedPassword,
       role: 'user',
-      wallet: { balance: Number(initialBalance) || 0 }
+      status: 'active',
+      referralCode,
+      // ✅ Track that this cashier created this user
+      referredBy: req.user.id,
+      wallet: {
+        balance: Number(initialBalance) || 0,
+        bonusBalance: 0,
+        lockedBalance: 0,
+        welcomeBonusClaimed: true
+      }
     });
+
+    // ✅ Add this user to the cashier's referrals array so they appear in "My Referrals"
+    await User.findByIdAndUpdate(
+      req.user.id,
+      {
+        $push: { referrals: newUser._id },
+        $inc: { 'cashierInfo.totalUsersCreated': 1 },
+        $set: { 'cashierInfo.lastActivity': new Date() }
+      }
+    );
 
     return res.json({
       success: true,
@@ -125,7 +159,9 @@ exports.cashierAddUser = async (req, res) => {
         _id: newUser._id,
         username: newUser.username,
         email: newUser.email,
-        wallet: newUser.wallet
+        phone: newUser.phone,
+        wallet: newUser.wallet,
+        referralCode: newUser.referralCode
       }
     });
   } catch (error) {
@@ -209,6 +245,11 @@ exports.adminAssignCashier = async (req, res) => {
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
     user.role = 'cashier';
+    user.cashierInfo = {
+      ...user.cashierInfo,
+      assignedBy: req.user.id,
+      assignedAt: new Date()
+    };
     await user.save();
 
     return res.json({ success: true, message: `${user.username} is now a Cashier`, user });
@@ -241,7 +282,7 @@ exports.adminRemoveCashier = async (req, res) => {
 exports.adminListCashiers = async (req, res) => {
   try {
     const cashiers = await User.find({ role: 'cashier' })
-      .select('username email phone wallet createdAt')
+      .select('username email phone wallet createdAt cashierInfo referrals')
       .sort({ createdAt: -1 });
 
     return res.json({ success: true, cashiers });
@@ -265,3 +306,151 @@ exports.adminListCandidateUsers = async (req, res) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// =====================================================
+// ✅ CASHIER: GET MY REFERRAL LINK
+// =====================================================
+exports.cashierGetReferralLink = async (req, res) => {
+  try {
+    const cashierId = req.user.id;
+    const user = await User.findById(cashierId).select('username referralCode');
+
+    if (!user) return res.status(404).json({ success: false, message: 'Cashier not found' });
+
+    // If cashier has no referral code, generate one
+    if (!user.referralCode) {
+      let code = 'REF' + Math.random().toString(36).substring(2, 8).toUpperCase();
+      const exists = await User.findOne({ referralCode: code });
+      if (exists) {
+        code = 'REF' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 4).toUpperCase();
+      }
+      user.referralCode = code;
+      await user.save();
+    }
+
+    const baseUrl = process.env.FRONTEND_URL || 'https://asharabet.com';
+    const referralLink = `${baseUrl}/register?ref=${user.referralCode}`;
+
+    return res.json({
+      success: true,
+      data: {
+        referralCode: user.referralCode,
+        referralLink,
+        cashierUsername: user.username
+      }
+    });
+  } catch (error) {
+    console.error('Cashier referral link error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// =====================================================
+// ✅ CASHIER: GET USERS REGISTERED WITH MY REFERRAL
+// Returns each referred user with deposits, withdrawals, balance
+// =====================================================
+exports.cashierGetMyReferrals = async (req, res) => {
+  try {
+    const cashierId = req.user.id;
+
+    // Find all users who were referred by this cashier
+    const referredUsers = await User.find({ referredBy: cashierId })
+      .select('username email phone wallet referralCode referredBy createdAt status')
+      .sort({ createdAt: -1 });
+
+    // For each referred user, get deposits and withdrawals totals
+    const usersWithStats = await Promise.all(
+      referredUsers.map(async (u) => {
+        const deposits = await Deposit.find({ user: u._id, status: 'approved' });
+        const withdrawals = await Withdrawal.find({ user: u._id, status: 'approved' });
+
+        const totalDeposits = deposits.reduce((s, d) => s + Number(d.amount || 0), 0);
+        const totalWithdrawals = withdrawals.reduce((s, w) => s + Number(w.amount || 0), 0);
+
+        return {
+          _id: u._id,
+          username: u.username,
+          email: u.email,
+          phone: u.phone,
+          status: u.status,
+          joinedAt: u.createdAt,
+          balance: u.wallet?.balance || 0,
+          bonusBalance: u.wallet?.bonusBalance || 0,
+          totalDeposits,
+          totalWithdrawals,
+          depositCount: deposits.length,
+          withdrawalCount: withdrawals.length,
+          netDeposit: totalDeposits - totalWithdrawals
+        };
+      })
+    );
+
+    // Totals across all referred users
+    const grandTotalDeposits = usersWithStats.reduce((s, u) => s + u.totalDeposits, 0);
+    const grandTotalWithdrawals = usersWithStats.reduce((s, u) => s + u.totalWithdrawals, 0);
+    const grandTotalBalance = usersWithStats.reduce((s, u) => s + u.balance, 0);
+
+    return res.json({
+      success: true,
+      data: {
+        referralCount: usersWithStats.length,
+        grandTotalDeposits,
+        grandTotalWithdrawals,
+        grandTotalBalance,
+        users: usersWithStats
+      }
+    });
+  } catch (error) {
+    console.error('Cashier referrals error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// =====================================================
+// ✅ ADMIN: GET ANY CASHIER'S REFERRALS (for admin view)
+// =====================================================
+exports.adminGetCashierReferrals = async (req, res) => {
+  try {
+    const { cashierId } = req.params;
+
+    const cashier = await User.findById(cashierId).select('username email referralCode');
+    if (!cashier) return res.status(404).json({ success: false, message: 'Cashier not found' });
+
+    const referredUsers = await User.find({ referredBy: cashierId })
+      .select('username email phone wallet createdAt status')
+      .sort({ createdAt: -1 });
+
+    const usersWithStats = await Promise.all(
+      referredUsers.map(async (u) => {
+        const deposits = await Deposit.find({ user: u._id, status: 'approved' });
+        const withdrawals = await Withdrawal.find({ user: u._id, status: 'approved' });
+
+        return {
+          _id: u._id,
+          username: u.username,
+          email: u.email,
+          phone: u.phone,
+          status: u.status,
+          joinedAt: u.createdAt,
+          balance: u.wallet?.balance || 0,
+          totalDeposits: deposits.reduce((s, d) => s + Number(d.amount || 0), 0),
+          totalWithdrawals: withdrawals.reduce((s, w) => s + Number(w.amount || 0), 0)
+        };
+      })
+    );
+
+    return res.json({
+      success: true,
+      data: {
+        cashier,
+        referralCount: usersWithStats.length,
+        users: usersWithStats
+      }
+    });
+  } catch (error) {
+    console.error('Admin cashier referrals error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+console.log('✅ Cashier controller loaded with referral system');
