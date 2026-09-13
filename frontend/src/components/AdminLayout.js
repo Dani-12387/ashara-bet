@@ -56,18 +56,23 @@ const AdminLayout = () => {
               </Link>
             </li>
             <li>
-              <Link to="/admin/odds" className="nav-link">
-                <span className="icon">📈</span> Odds Management
+              <Link to="/admin/aviator" className="nav-link">
+                <span className="icon">✈️</span> Aviator Management
+              </Link>
+            </li>
+
+            {/* ✅ CASHIER MANAGEMENT (NEW) */}
+            <li>
+              <Link to="/admin/cashiers" className="nav-link">
+                <span className="icon">💰</span> Cashier Management
               </Link>
             </li>
 
             <li>
-  <Link to="/admin/aviator">
-    <span>✈️</span> Aviator Management
-  </Link>
-</li>
-
-
+              <Link to="/admin/odds" className="nav-link">
+                <span className="icon">📈</span> Odds Management
+              </Link>
+            </li>
             <li>
               <Link to="/admin/reports" className="nav-link">
                 <span className="icon">📋</span> Reports
