@@ -13,14 +13,29 @@ const CashierPage = () => {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
-  // Forms
-  const [depositForm, setDepositForm] = useState({ username: '', amount: '', notes: '' });
-  const [withdrawForm, setWithdrawForm] = useState({ username: '', amount: '', notes: '' });
-  const [userForm, setUserForm] = useState({ username: '', email: '', phone: '', password: '', initialBalance: '' });
+  // ===== FORMS (Deposit & Withdraw now use EMAIL + agentCode) =====
+  const [depositForm, setDepositForm] = useState({
+    email: '',
+    amount: '',
+    notes: ''   // ✅ Agent Code goes here
+  });
+  const [withdrawForm, setWithdrawForm] = useState({
+    email: '',
+    amount: '',
+    notes: ''   // ✅ Agent Code goes here
+  });
+  const [userForm, setUserForm] = useState({
+    username: '',
+    email: '',
+    phone: '',
+    password: '',
+    initialBalance: '',
+    agentCode: ''   // ✅ Agent Code for Add User
+  });
   const [report, setReport] = useState(null);
   const [reportRange, setReportRange] = useState({ startDate: '', endDate: '' });
 
-  // ✅ Referral state
+  // ===== REFERRAL STATE =====
   const [referral, setReferral] = useState(null);
   const [referrals, setReferrals] = useState(null);
   const [copied, setCopied] = useState(false);
@@ -45,7 +60,7 @@ const CashierPage = () => {
     setTimeout(() => { setMessage(''); setError(''); }, 4000);
   };
 
-  // === DEPOSIT ===
+  // ===== DEPOSIT =====
   const handleDeposit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -53,14 +68,14 @@ const CashierPage = () => {
       const res = await axios.post(`${API_URL}/api/cashier/deposit`, depositForm, authHeaders());
       if (res.data.success) {
         showMessage(res.data.message);
-        setDepositForm({ username: '', amount: '', notes: '' });
+        setDepositForm({ email: '', amount: '', notes: '' });
       }
     } catch (err) {
       showMessage(err.response?.data?.message || 'Deposit failed', true);
     } finally { setLoading(false); }
   };
 
-  // === WITHDRAW ===
+  // ===== WITHDRAW =====
   const handleWithdraw = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -68,14 +83,14 @@ const CashierPage = () => {
       const res = await axios.post(`${API_URL}/api/cashier/withdraw`, withdrawForm, authHeaders());
       if (res.data.success) {
         showMessage(res.data.message);
-        setWithdrawForm({ username: '', amount: '', notes: '' });
+        setWithdrawForm({ email: '', amount: '', notes: '' });
       }
     } catch (err) {
       showMessage(err.response?.data?.message || 'Withdrawal failed', true);
     } finally { setLoading(false); }
   };
 
-  // === ADD USER ===
+  // ===== ADD USER =====
   const handleAddUser = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -83,14 +98,14 @@ const CashierPage = () => {
       const res = await axios.post(`${API_URL}/api/cashier/add-user`, userForm, authHeaders());
       if (res.data.success) {
         showMessage(res.data.message);
-        setUserForm({ username: '', email: '', phone: '', password: '', initialBalance: '' });
+        setUserForm({ username: '', email: '', phone: '', password: '', initialBalance: '', agentCode: '' });
       }
     } catch (err) {
       showMessage(err.response?.data?.message || 'Failed to create user', true);
     } finally { setLoading(false); }
   };
 
-  // === REPORT ===
+  // ===== REPORT =====
   const handleGenerateReport = async () => {
     setLoading(true);
     try {
@@ -105,7 +120,7 @@ const CashierPage = () => {
     } finally { setLoading(false); }
   };
 
-  // === ✅ LOAD REFERRAL LINK ===
+  // ===== REFERRAL LINK =====
   const loadReferralLink = async () => {
     setLoading(true);
     try {
@@ -116,7 +131,7 @@ const CashierPage = () => {
     } finally { setLoading(false); }
   };
 
-  // === ✅ LOAD REFERRED USERS ===
+  // ===== MY REFERRALS =====
   const loadReferrals = async () => {
     setLoading(true);
     try {
@@ -127,7 +142,7 @@ const CashierPage = () => {
     } finally { setLoading(false); }
   };
 
-  // === ✅ COPY REFERRAL LINK ===
+  // ===== COPY REFERRAL LINK =====
   const copyReferralLink = () => {
     if (!referral) return;
     navigator.clipboard.writeText(referral.referralLink).then(() => {
@@ -172,46 +187,143 @@ const CashierPage = () => {
 
       {/* CONTENT */}
       <div className="cashier-content">
+
+        {/* ===== DEPOSIT TAB ===== */}
         {tab === 'deposit' && (
           <form className="cashier-form" onSubmit={handleDeposit}>
-            <h2>Deposit to User</h2>
-            <input placeholder="Username" value={depositForm.username}
-              onChange={e => setDepositForm({ ...depositForm, username: e.target.value })} required />
-            <input type="number" placeholder="Amount (ETB)" value={depositForm.amount}
-              onChange={e => setDepositForm({ ...depositForm, amount: e.target.value })} required />
-            <input placeholder="Notes (optional)" value={depositForm.notes}
-              onChange={e => setDepositForm({ ...depositForm, notes: e.target.value })} />
-            <button type="submit" disabled={loading}>{loading ? 'Processing...' : '💰 Deposit'}</button>
+            <h2>💵 Deposit to User</h2>
+
+            <label>User Email</label>
+            <input
+              type="email"
+              placeholder="user@example.com"
+              value={depositForm.email}
+              onChange={e => setDepositForm({ ...depositForm, email: e.target.value })}
+              required
+            />
+
+            <label>Amount (ETB)</label>
+            <input
+              type="number"
+              placeholder="Amount in ETB"
+              value={depositForm.amount}
+              onChange={e => setDepositForm({ ...depositForm, amount: e.target.value })}
+              required
+            />
+
+            {/* ✅ Notes → Agent Code */}
+            <label>Enter Agent Code</label>
+            <input
+              type="text"
+              placeholder="Enter agent code"
+              value={depositForm.notes}
+              onChange={e => setDepositForm({ ...depositForm, notes: e.target.value })}
+            />
+
+            <button type="submit" disabled={loading}>
+              {loading ? 'Processing...' : '💰 Deposit'}
+            </button>
           </form>
         )}
 
+        {/* ===== WITHDRAW TAB ===== */}
         {tab === 'withdraw' && (
           <form className="cashier-form" onSubmit={handleWithdraw}>
-            <h2>Withdraw from User</h2>
-            <input placeholder="Username" value={withdrawForm.username}
-              onChange={e => setWithdrawForm({ ...withdrawForm, username: e.target.value })} required />
-            <input type="number" placeholder="Amount (ETB)" value={withdrawForm.amount}
-              onChange={e => setWithdrawForm({ ...withdrawForm, amount: e.target.value })} required />
-            <input placeholder="Notes (optional)" value={withdrawForm.notes}
-              onChange={e => setWithdrawForm({ ...withdrawForm, notes: e.target.value })} />
-            <button type="submit" disabled={loading}>{loading ? 'Processing...' : '💸 Withdraw'}</button>
+            <h2>💸 Withdraw from User</h2>
+
+            <label>User Email</label>
+            <input
+              type="email"
+              placeholder="user@example.com"
+              value={withdrawForm.email}
+              onChange={e => setWithdrawForm({ ...withdrawForm, email: e.target.value })}
+              required
+            />
+
+            <label>Amount (ETB)</label>
+            <input
+              type="number"
+              placeholder="Amount in ETB"
+              value={withdrawForm.amount}
+              onChange={e => setWithdrawForm({ ...withdrawForm, amount: e.target.value })}
+              required
+            />
+
+            {/* ✅ Notes → Agent Code */}
+            <label>Enter Agent Code</label>
+            <input
+              type="text"
+              placeholder="Enter agent code"
+              value={withdrawForm.notes}
+              onChange={e => setWithdrawForm({ ...withdrawForm, notes: e.target.value })}
+            />
+
+            <button type="submit" disabled={loading}>
+              {loading ? 'Processing...' : '💸 Withdraw'}
+            </button>
           </form>
         )}
 
+        {/* ===== ADD USER TAB ===== */}
         {tab === 'addUser' && (
           <form className="cashier-form" onSubmit={handleAddUser}>
-            <h2>Create New User</h2>
-            <input placeholder="Username" value={userForm.username}
-              onChange={e => setUserForm({ ...userForm, username: e.target.value })} required />
-            <input type="email" placeholder="Email" value={userForm.email}
-              onChange={e => setUserForm({ ...userForm, email: e.target.value })} required />
-            <input placeholder="Phone (optional)" value={userForm.phone}
-              onChange={e => setUserForm({ ...userForm, phone: e.target.value })} />
-            <input type="password" placeholder="Password" value={userForm.password}
-              onChange={e => setUserForm({ ...userForm, password: e.target.value })} required />
-            <input type="number" placeholder="Initial Balance (optional)" value={userForm.initialBalance}
-              onChange={e => setUserForm({ ...userForm, initialBalance: e.target.value })} />
-            <button type="submit" disabled={loading}>{loading ? 'Creating...' : '➕ Create User'}</button>
+            <h2>➕ Create New User</h2>
+
+            <label>Username</label>
+            <input
+              type="text"
+              placeholder="Username"
+              value={userForm.username}
+              onChange={e => setUserForm({ ...userForm, username: e.target.value })}
+              required
+            />
+
+            <label>Email</label>
+            <input
+              type="email"
+              placeholder="user@example.com"
+              value={userForm.email}
+              onChange={e => setUserForm({ ...userForm, email: e.target.value })}
+              required
+            />
+
+            <label>Phone (optional)</label>
+            <input
+              type="text"
+              placeholder="09XXXXXXXX"
+              value={userForm.phone}
+              onChange={e => setUserForm({ ...userForm, phone: e.target.value })}
+            />
+
+            <label>Password</label>
+            <input
+              type="password"
+              placeholder="Password"
+              value={userForm.password}
+              onChange={e => setUserForm({ ...userForm, password: e.target.value })}
+              required
+            />
+
+            <label>Initial Balance (optional)</label>
+            <input
+              type="number"
+              placeholder="Initial balance in ETB"
+              value={userForm.initialBalance}
+              onChange={e => setUserForm({ ...userForm, initialBalance: e.target.value })}
+            />
+
+            {/* ✅ Agent Code */}
+            <label>Enter Agent Code</label>
+            <input
+              type="text"
+              placeholder="Enter agent code"
+              value={userForm.agentCode}
+              onChange={e => setUserForm({ ...userForm, agentCode: e.target.value })}
+            />
+
+            <button type="submit" disabled={loading}>
+              {loading ? 'Creating...' : '➕ Create User'}
+            </button>
           </form>
         )}
 

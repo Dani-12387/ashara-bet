@@ -5,19 +5,19 @@ const Withdrawal = require('../models/Withdrawal');
 const bcrypt = require('bcryptjs');
 
 // =====================================================
-// CASHIER: CREATE DEPOSIT FOR A USER
+// ✅ CASHIER: CREATE DEPOSIT FOR A USER (BY EMAIL)
 // =====================================================
 exports.cashierCreateDeposit = async (req, res) => {
   try {
-    const { username, amount, notes } = req.body;
+    const { email, amount, notes } = req.body;
     const cashierId = req.user.id;
 
-    if (!username || !amount || amount <= 0) {
-      return res.status(400).json({ success: false, message: 'Username and valid amount are required' });
+    if (!email || !amount || amount <= 0) {
+      return res.status(400).json({ success: false, message: 'Email and valid amount are required' });
     }
 
-    const user = await User.findOne({ username: username.trim() });
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    if (!user) return res.status(404).json({ success: false, message: 'User with this email not found' });
 
     const oldBalance = user.wallet?.balance || 0;
     user.wallet.balance = oldBalance + Number(amount);
@@ -28,15 +28,21 @@ exports.cashierCreateDeposit = async (req, res) => {
       amount: Number(amount),
       paymentMethod: 'CASHIER',
       transactionReference: `CASHIER-${Date.now()}`,
-      notes: notes || `Deposit by cashier ${req.user.username}`,
+      notes: notes || `Deposit by cashier ${req.user.username} to ${user.email}`,
       status: 'approved',
       processedBy: cashierId,
       processedAt: new Date()
     });
 
+    // Update cashier stats
+    await User.findByIdAndUpdate(cashierId, {
+      $inc: { 'cashierInfo.totalDepositsProcessed': Number(amount) },
+      $set: { 'cashierInfo.lastActivity': new Date() }
+    });
+
     return res.json({
       success: true,
-      message: `Deposited ETB ${amount} to ${username}`,
+      message: `Deposited ETB ${amount} to ${user.username} (${user.email})`,
       newBalance: user.wallet.balance,
       deposit
     });
@@ -47,23 +53,23 @@ exports.cashierCreateDeposit = async (req, res) => {
 };
 
 // =====================================================
-// CASHIER: WITHDRAW FROM A USER
+// ✅ CASHIER: WITHDRAW FROM A USER (BY EMAIL)
 // =====================================================
 exports.cashierCreateWithdrawal = async (req, res) => {
   try {
-    const { username, amount, notes } = req.body;
+    const { email, amount, notes } = req.body;
     const cashierId = req.user.id;
 
-    if (!username || !amount || amount <= 0) {
-      return res.status(400).json({ success: false, message: 'Username and valid amount are required' });
+    if (!email || !amount || amount <= 0) {
+      return res.status(400).json({ success: false, message: 'Email and valid amount are required' });
     }
 
-    const user = await User.findOne({ username: username.trim() });
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    if (!user) return res.status(404).json({ success: false, message: 'User with this email not found' });
 
     const currentBalance = user.wallet?.balance || 0;
     if (currentBalance < Number(amount)) {
-      return res.status(400).json({ success: false, message: 'User has insufficient balance' });
+      return res.status(400).json({ success: false, message: `User has insufficient balance (ETB ${currentBalance.toFixed(2)})` });
     }
 
     user.wallet.balance = currentBalance - Number(amount);
@@ -74,14 +80,20 @@ exports.cashierCreateWithdrawal = async (req, res) => {
       amount: Number(amount),
       paymentMethod: 'CASHIER',
       status: 'approved',
-      notes: notes || `Withdrawal by cashier ${req.user.username}`,
+      notes: notes || `Withdrawal by cashier ${req.user.username} from ${user.email}`,
       processedBy: cashierId,
       processedAt: new Date()
     });
 
+    // Update cashier stats
+    await User.findByIdAndUpdate(cashierId, {
+      $inc: { 'cashierInfo.totalWithdrawalsProcessed': Number(amount) },
+      $set: { 'cashierInfo.lastActivity': new Date() }
+    });
+
     return res.json({
       success: true,
-      message: `Withdrew ETB ${amount} from ${username}`,
+      message: `Withdrew ETB ${amount} from ${user.username} (${user.email})`,
       newBalance: user.wallet.balance,
       withdrawal
     });
@@ -102,13 +114,11 @@ exports.cashierAddUser = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Username, email and password are required' });
     }
 
-    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+    const existingUser = await User.findOne({ $or: [{ email: email.toLowerCase().trim() }, { username: username.trim() }] });
     if (existingUser) return res.status(400).json({ success: false, message: 'User already exists' });
 
-    // Auto-generate phone if not provided (required field, must be unique)
+    // Auto-generate phone if not provided (required & unique)
     let finalPhone = phone && phone.trim() ? phone.trim() : `CASH-${Date.now()}`;
-
-    // Ensure the auto-generated phone is unique
     if (!phone || !phone.trim()) {
       const phoneCheck = await User.findOne({ phone: finalPhone });
       if (phoneCheck) finalPhone = `CASH-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`;
@@ -132,7 +142,6 @@ exports.cashierAddUser = async (req, res) => {
       role: 'user',
       status: 'active',
       referralCode,
-      // ✅ Track that this cashier created this user
       referredBy: req.user.id,
       wallet: {
         balance: Number(initialBalance) || 0,
@@ -142,15 +151,12 @@ exports.cashierAddUser = async (req, res) => {
       }
     });
 
-    // ✅ Add this user to the cashier's referrals array so they appear in "My Referrals"
-    await User.findByIdAndUpdate(
-      req.user.id,
-      {
-        $push: { referrals: newUser._id },
-        $inc: { 'cashierInfo.totalUsersCreated': 1 },
-        $set: { 'cashierInfo.lastActivity': new Date() }
-      }
-    );
+    // Link user to cashier
+    await User.findByIdAndUpdate(req.user.id, {
+      $push: { referrals: newUser._id },
+      $inc: { 'cashierInfo.totalUsersCreated': 1 },
+      $set: { 'cashierInfo.lastActivity': new Date() }
+    });
 
     return res.json({
       success: true,
@@ -292,7 +298,7 @@ exports.adminListCashiers = async (req, res) => {
 };
 
 // =====================================================
-// ADMIN: LIST CANDIDATE USERS (to become cashiers)
+// ADMIN: LIST CANDIDATE USERS
 // =====================================================
 exports.adminListCandidateUsers = async (req, res) => {
   try {
@@ -308,7 +314,7 @@ exports.adminListCandidateUsers = async (req, res) => {
 };
 
 // =====================================================
-// ✅ CASHIER: GET MY REFERRAL LINK
+// CASHIER: GET MY REFERRAL LINK
 // =====================================================
 exports.cashierGetReferralLink = async (req, res) => {
   try {
@@ -317,7 +323,6 @@ exports.cashierGetReferralLink = async (req, res) => {
 
     if (!user) return res.status(404).json({ success: false, message: 'Cashier not found' });
 
-    // If cashier has no referral code, generate one
     if (!user.referralCode) {
       let code = 'REF' + Math.random().toString(36).substring(2, 8).toUpperCase();
       const exists = await User.findOne({ referralCode: code });
@@ -346,19 +351,16 @@ exports.cashierGetReferralLink = async (req, res) => {
 };
 
 // =====================================================
-// ✅ CASHIER: GET USERS REGISTERED WITH MY REFERRAL
-// Returns each referred user with deposits, withdrawals, balance
+// CASHIER: GET USERS REGISTERED WITH MY REFERRAL
 // =====================================================
 exports.cashierGetMyReferrals = async (req, res) => {
   try {
     const cashierId = req.user.id;
 
-    // Find all users who were referred by this cashier
     const referredUsers = await User.find({ referredBy: cashierId })
       .select('username email phone wallet referralCode referredBy createdAt status')
       .sort({ createdAt: -1 });
 
-    // For each referred user, get deposits and withdrawals totals
     const usersWithStats = await Promise.all(
       referredUsers.map(async (u) => {
         const deposits = await Deposit.find({ user: u._id, status: 'approved' });
@@ -385,7 +387,6 @@ exports.cashierGetMyReferrals = async (req, res) => {
       })
     );
 
-    // Totals across all referred users
     const grandTotalDeposits = usersWithStats.reduce((s, u) => s + u.totalDeposits, 0);
     const grandTotalWithdrawals = usersWithStats.reduce((s, u) => s + u.totalWithdrawals, 0);
     const grandTotalBalance = usersWithStats.reduce((s, u) => s + u.balance, 0);
@@ -407,7 +408,7 @@ exports.cashierGetMyReferrals = async (req, res) => {
 };
 
 // =====================================================
-// ✅ ADMIN: GET ANY CASHIER'S REFERRALS (for admin view)
+// ADMIN: GET ANY CASHIER'S REFERRALS
 // =====================================================
 exports.adminGetCashierReferrals = async (req, res) => {
   try {
