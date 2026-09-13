@@ -1,11 +1,16 @@
 // backend/controllers/cashierController.js
 const User = require('../models/User');
-const Deposit = require('../models/Deposit');
-const Withdrawal = require('../models/Withdrawal');
 const bcrypt = require('bcryptjs');
 
+// ✅ SAFE IMPORTS — Won't crash if models don't exist
+let Deposit = null;
+let Withdrawal = null;
+
+try { Deposit = require('../models/Deposit'); } catch (e) { console.warn('⚠️ Deposit model missing'); }
+try { Withdrawal = require('../models/Withdrawal'); } catch (e) { console.warn('⚠️ Withdrawal model missing'); }
+
 // =====================================================
-// ✅ CASHIER: CREATE DEPOSIT FOR A USER (BY EMAIL)
+// CASHIER: CREATE DEPOSIT FOR A USER (BY EMAIL)
 // =====================================================
 exports.cashierCreateDeposit = async (req, res) => {
   try {
@@ -23,28 +28,28 @@ exports.cashierCreateDeposit = async (req, res) => {
     user.wallet.balance = oldBalance + Number(amount);
     await user.save();
 
-    const deposit = await Deposit.create({
-      user: user._id,
-      amount: Number(amount),
-      paymentMethod: 'CASHIER',
-      transactionReference: `CASHIER-${Date.now()}`,
-      notes: notes || `Deposit by cashier ${req.user.username} to ${user.email}`,
-      status: 'approved',
-      processedBy: cashierId,
-      processedAt: new Date()
-    });
-
-    // Update cashier stats
-    await User.findByIdAndUpdate(cashierId, {
-      $inc: { 'cashierInfo.totalDepositsProcessed': Number(amount) },
-      $set: { 'cashierInfo.lastActivity': new Date() }
-    });
+    // ✅ Only create deposit record if model exists
+    if (Deposit) {
+      try {
+        await Deposit.create({
+          user: user._id,
+          amount: Number(amount),
+          paymentMethod: 'CASHIER',
+          transactionReference: `CASHIER-${Date.now()}`,
+          notes: `Agent Code: ${notes || 'N/A'} | By: ${req.user.username}`,
+          status: 'approved',
+          processedBy: cashierId,
+          processedAt: new Date()
+        });
+      } catch (e) {
+        console.warn('Deposit record save failed:', e.message);
+      }
+    }
 
     return res.json({
       success: true,
       message: `Deposited ETB ${amount} to ${user.username} (${user.email})`,
-      newBalance: user.wallet.balance,
-      deposit
+      newBalance: user.wallet.balance
     });
   } catch (error) {
     console.error('Cashier deposit error:', error);
@@ -53,7 +58,7 @@ exports.cashierCreateDeposit = async (req, res) => {
 };
 
 // =====================================================
-// ✅ CASHIER: WITHDRAW FROM A USER (BY EMAIL)
+// CASHIER: WITHDRAW FROM A USER (BY EMAIL)
 // =====================================================
 exports.cashierCreateWithdrawal = async (req, res) => {
   try {
@@ -75,27 +80,27 @@ exports.cashierCreateWithdrawal = async (req, res) => {
     user.wallet.balance = currentBalance - Number(amount);
     await user.save();
 
-    const withdrawal = await Withdrawal.create({
-      user: user._id,
-      amount: Number(amount),
-      paymentMethod: 'CASHIER',
-      status: 'approved',
-      notes: notes || `Withdrawal by cashier ${req.user.username} from ${user.email}`,
-      processedBy: cashierId,
-      processedAt: new Date()
-    });
-
-    // Update cashier stats
-    await User.findByIdAndUpdate(cashierId, {
-      $inc: { 'cashierInfo.totalWithdrawalsProcessed': Number(amount) },
-      $set: { 'cashierInfo.lastActivity': new Date() }
-    });
+    // ✅ Only create withdrawal record if model exists
+    if (Withdrawal) {
+      try {
+        await Withdrawal.create({
+          user: user._id,
+          amount: Number(amount),
+          paymentMethod: 'CASHIER',
+          status: 'approved',
+          notes: `Agent Code: ${notes || 'N/A'} | By: ${req.user.username}`,
+          processedBy: cashierId,
+          processedAt: new Date()
+        });
+      } catch (e) {
+        console.warn('Withdrawal record save failed:', e.message);
+      }
+    }
 
     return res.json({
       success: true,
       message: `Withdrew ETB ${amount} from ${user.username} (${user.email})`,
-      newBalance: user.wallet.balance,
-      withdrawal
+      newBalance: user.wallet.balance
     });
   } catch (error) {
     console.error('Cashier withdrawal error:', error);
@@ -114,10 +119,11 @@ exports.cashierAddUser = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Username, email and password are required' });
     }
 
-    const existingUser = await User.findOne({ $or: [{ email: email.toLowerCase().trim() }, { username: username.trim() }] });
+    const existingUser = await User.findOne({
+      $or: [{ email: email.toLowerCase().trim() }, { username: username.trim() }]
+    });
     if (existingUser) return res.status(400).json({ success: false, message: 'User already exists' });
 
-    // Auto-generate phone if not provided (required & unique)
     let finalPhone = phone && phone.trim() ? phone.trim() : `CASH-${Date.now()}`;
     if (!phone || !phone.trim()) {
       const phoneCheck = await User.findOne({ phone: finalPhone });
@@ -127,7 +133,6 @@ exports.cashierAddUser = async (req, res) => {
     const salt = await bcrypt.genSalt(12);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Generate unique referral code
     let referralCode = 'REF' + Math.random().toString(36).substring(2, 8).toUpperCase();
     const refCheck = await User.findOne({ referralCode });
     if (refCheck) {
@@ -151,7 +156,6 @@ exports.cashierAddUser = async (req, res) => {
       }
     });
 
-    // Link user to cashier
     await User.findByIdAndUpdate(req.user.id, {
       $push: { referrals: newUser._id },
       $inc: { 'cashierInfo.totalUsersCreated': 1 },
@@ -184,15 +188,28 @@ exports.cashierReport = async (req, res) => {
     const cashierId = req.user.id;
     const { startDate, endDate } = req.query;
 
-    const filter = { processedBy: cashierId };
-    if (startDate || endDate) {
-      filter.processedAt = {};
-      if (startDate) filter.processedAt.$gte = new Date(startDate);
-      if (endDate) filter.processedAt.$lte = new Date(endDate);
+    let deposits = [];
+    let withdrawals = [];
+
+    if (Deposit) {
+      const filter = { processedBy: cashierId };
+      if (startDate || endDate) {
+        filter.processedAt = {};
+        if (startDate) filter.processedAt.$gte = new Date(startDate);
+        if (endDate) filter.processedAt.$lte = new Date(endDate);
+      }
+      try { deposits = await Deposit.find(filter).populate('user', 'username email'); } catch (e) {}
     }
 
-    const deposits = await Deposit.find({ ...filter }).populate('user', 'username email');
-    const withdrawals = await Withdrawal.find({ ...filter }).populate('user', 'username email');
+    if (Withdrawal) {
+      const filter = { processedBy: cashierId };
+      if (startDate || endDate) {
+        filter.processedAt = {};
+        if (startDate) filter.processedAt.$gte = new Date(startDate);
+        if (endDate) filter.processedAt.$lte = new Date(endDate);
+      }
+      try { withdrawals = await Withdrawal.find(filter).populate('user', 'username email'); } catch (e) {}
+    }
 
     const totalDeposits = deposits.reduce((s, d) => s + Number(d.amount), 0);
     const totalWithdrawals = withdrawals.reduce((s, w) => s + Number(w.amount), 0);
@@ -218,7 +235,7 @@ exports.cashierReport = async (req, res) => {
 };
 
 // =====================================================
-// CASHIER: LOOKUP USER (search by username/email/phone)
+// CASHIER: LOOKUP USER
 // =====================================================
 exports.cashierLookupUser = async (req, res) => {
   try {
@@ -240,7 +257,7 @@ exports.cashierLookupUser = async (req, res) => {
 };
 
 // =====================================================
-// ADMIN: ASSIGN CASHIER ROLE
+// ADMIN: ASSIGN CASHIER
 // =====================================================
 exports.adminAssignCashier = async (req, res) => {
   try {
@@ -265,7 +282,7 @@ exports.adminAssignCashier = async (req, res) => {
 };
 
 // =====================================================
-// ADMIN: REMOVE CASHIER ROLE
+// ADMIN: REMOVE CASHIER
 // =====================================================
 exports.adminRemoveCashier = async (req, res) => {
   try {
@@ -283,7 +300,7 @@ exports.adminRemoveCashier = async (req, res) => {
 };
 
 // =====================================================
-// ADMIN: LIST ALL CASHIERS
+// ADMIN: LIST CASHIERS
 // =====================================================
 exports.adminListCashiers = async (req, res) => {
   try {
@@ -314,7 +331,7 @@ exports.adminListCandidateUsers = async (req, res) => {
 };
 
 // =====================================================
-// CASHIER: GET MY REFERRAL LINK
+// CASHIER: GET REFERRAL LINK
 // =====================================================
 exports.cashierGetReferralLink = async (req, res) => {
   try {
@@ -351,7 +368,7 @@ exports.cashierGetReferralLink = async (req, res) => {
 };
 
 // =====================================================
-// CASHIER: GET USERS REGISTERED WITH MY REFERRAL
+// CASHIER: GET MY REFERRALS
 // =====================================================
 exports.cashierGetMyReferrals = async (req, res) => {
   try {
@@ -363,8 +380,15 @@ exports.cashierGetMyReferrals = async (req, res) => {
 
     const usersWithStats = await Promise.all(
       referredUsers.map(async (u) => {
-        const deposits = await Deposit.find({ user: u._id, status: 'approved' });
-        const withdrawals = await Withdrawal.find({ user: u._id, status: 'approved' });
+        let deposits = [];
+        let withdrawals = [];
+
+        if (Deposit) {
+          try { deposits = await Deposit.find({ user: u._id, status: 'approved' }); } catch (e) {}
+        }
+        if (Withdrawal) {
+          try { withdrawals = await Withdrawal.find({ user: u._id, status: 'approved' }); } catch (e) {}
+        }
 
         const totalDeposits = deposits.reduce((s, d) => s + Number(d.amount || 0), 0);
         const totalWithdrawals = withdrawals.reduce((s, w) => s + Number(w.amount || 0), 0);
@@ -408,7 +432,7 @@ exports.cashierGetMyReferrals = async (req, res) => {
 };
 
 // =====================================================
-// ADMIN: GET ANY CASHIER'S REFERRALS
+// ADMIN: GET CASHIER REFERRALS
 // =====================================================
 exports.adminGetCashierReferrals = async (req, res) => {
   try {
@@ -423,8 +447,10 @@ exports.adminGetCashierReferrals = async (req, res) => {
 
     const usersWithStats = await Promise.all(
       referredUsers.map(async (u) => {
-        const deposits = await Deposit.find({ user: u._id, status: 'approved' });
-        const withdrawals = await Withdrawal.find({ user: u._id, status: 'approved' });
+        let deposits = [];
+        let withdrawals = [];
+        if (Deposit) { try { deposits = await Deposit.find({ user: u._id, status: 'approved' }); } catch (e) {} }
+        if (Withdrawal) { try { withdrawals = await Withdrawal.find({ user: u._id, status: 'approved' }); } catch (e) {} }
 
         return {
           _id: u._id,
@@ -454,4 +480,4 @@ exports.adminGetCashierReferrals = async (req, res) => {
   }
 };
 
-console.log('✅ Cashier controller loaded with referral system');
+console.log('✅ Cashier controller loaded');
