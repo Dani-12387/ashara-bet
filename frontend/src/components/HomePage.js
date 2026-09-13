@@ -862,6 +862,9 @@ const HomePage = () => {
     setCurrentSlide(index);
   };
 
+  // ✅ HELPER: Check if user can use Cashier features
+  const canUseCashier = user && (user.role === 'cashier' || user.role === 'admin');
+
   // Bottom Navigation
   const bottomNavItems = [
     { id: 'home', label: 'HOME', icon: '🏠', path: '/' },
@@ -896,6 +899,30 @@ const HomePage = () => {
                   <span className="balance-value-pro">{formatCurrency(balance)}</span>
                 </div>
                 <button className="deposit-btn-pro" onClick={() => navigate('/deposit')}>Deposit</button>
+                
+                {/* ✅ CASHIER BUTTON - Only visible to cashier/admin */}
+                {canUseCashier && (
+                  <button 
+                    className="cashier-btn-pro" 
+                    onClick={() => navigate('/cashier')}
+                    style={{
+                      background: 'linear-gradient(135deg, #f59f00, #ff8f00)',
+                      color: '#fff',
+                      border: 'none',
+                      padding: '8px 16px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      fontSize: '14px',
+                      marginLeft: '8px',
+                      boxShadow: '0 2px 6px rgba(245, 159, 0, 0.4)',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    💰 Cashier
+                  </button>
+                )}
+                
                 <div className="profile-pro" ref={dropdownRef}>
                   <button className="profile-btn-pro" onClick={() => setShowDropdown(!showDropdown)}>
                     <div className="profile-avatar-pro">{user.username?.charAt(0).toUpperCase() || 'U'}</div>
@@ -911,6 +938,17 @@ const HomePage = () => {
                         <button onClick={() => navigate('/deposit')}>💰 Deposit</button>
                         <button onClick={() => navigate('/withdraw')}>💸 Withdraw</button>
                         <button onClick={() => navigate('/bet-history')}>📊 Bet History</button>
+                        
+                        {/* ✅ CASHIER in dropdown */}
+                        {canUseCashier && (
+                          <button 
+                            onClick={() => navigate('/cashier')}
+                            style={{ color: '#f59f00', fontWeight: 'bold' }}
+                          >
+                            💰 Cashier Panel
+                          </button>
+                        )}
+                        
                         {user.role === 'admin' && (
                           <button onClick={() => navigate('/admin/dashboard')} className="admin-link-pro">⚙️ Admin</button>
                         )}
@@ -945,6 +983,18 @@ const HomePage = () => {
               <button className="mobile-link-pro" onClick={() => { navigate('/deposit'); setShowMobileMenu(false); }}>💰 Deposit</button>
               <button className="mobile-link-pro" onClick={() => { navigate('/withdraw'); setShowMobileMenu(false); }}>💸 Withdraw</button>
               <button className="mobile-link-pro" onClick={() => { navigate('/aviator'); setShowMobileMenu(false); }}>✈️ Aviator</button>
+              
+              {/* ✅ CASHIER in mobile menu */}
+              {canUseCashier && (
+                <button 
+                  className="mobile-link-pro" 
+                  onClick={() => { navigate('/cashier'); setShowMobileMenu(false); }}
+                  style={{ color: '#f59f00', fontWeight: 'bold' }}
+                >
+                  💰 Cashier Panel
+                </button>
+              )}
+              
               {user?.role === 'admin' && (
                 <button className="mobile-link-pro admin" onClick={() => { navigate('/admin/dashboard'); setShowMobileMenu(false); }}>⚙️ Admin</button>
               )}
@@ -1004,7 +1054,7 @@ const HomePage = () => {
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
               <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#333' }}>🏆 FILTER BY LEAGUE</span>
             </div>
-            {/* ✅ UPDATED: Single row horizontal scroll for ALL leagues */}
+            {/* ✅ Horizontal scroll for ALL leagues */}
             <div style={{ display: 'flex', overflowX: 'auto', gap: '6px', paddingBottom: '4px', whiteSpace: 'nowrap', WebkitOverflowScrolling: 'touch' }}>
               <button 
                 onClick={() => setSelectedLeague('')}

@@ -24,8 +24,9 @@ const userSchema = new mongoose.Schema({
         required: true
     },
     role: {
+        // ✅ ADDED 'cashier' to the allowed roles
         type: String,
-        enum: ['admin', 'user', 'manager', 'support'],
+        enum: ['admin', 'user', 'cashier', 'manager', 'support'],
         default: 'user'
     },
     status: {
@@ -95,6 +96,34 @@ const userSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    // ✅ CASHIER TRACKING
+    cashierInfo: {
+        assignedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            default: null
+        },
+        assignedAt: {
+            type: Date,
+            default: null
+        },
+        totalDepositsProcessed: {
+            type: Number,
+            default: 0
+        },
+        totalWithdrawalsProcessed: {
+            type: Number,
+            default: 0
+        },
+        totalUsersCreated: {
+            type: Number,
+            default: 0
+        },
+        lastActivity: {
+            type: Date,
+            default: null
+        }
+    },
     // Login tracking
     lastLogin: {
         type: Date
@@ -160,6 +189,21 @@ userSchema.methods.updateLogin = function() {
     this.lastLogin = new Date();
     this.loginCount = (this.loginCount || 0) + 1;
     return this.save();
+};
+
+// ✅ Check if user is cashier
+userSchema.methods.isCashier = function() {
+    return this.role === 'cashier';
+};
+
+// ✅ Check if user is admin
+userSchema.methods.isAdmin = function() {
+    return this.role === 'admin';
+};
+
+// ✅ Check if user can access cashier features (cashier OR admin)
+userSchema.methods.canUseCashier = function() {
+    return this.role === 'cashier' || this.role === 'admin';
 };
 
 module.exports = mongoose.model('User', userSchema);

@@ -1,0 +1,73 @@
+.cashier-page {
+  min-height: 100vh;
+  background: #f4f6f8;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+.cashier-header {
+  background: #0d2b22;
+  color: #fff;
+  padding: 15px 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.cashier-logo { font-size: 20px; font-weight: bold; }
+.cashier-user { display: flex; gap: 15px; align-items: center; }
+.btn-home {
+  background: #2e7d32; color: #fff; border: none;
+  padding: 6px 15px; border-radius: 5px; cursor: pointer;
+}
+.cashier-tabs {
+  display: flex; gap: 10px; padding: 15px 30px 0;
+  background: #fff; border-bottom: 2px solid #e5e5e5;
+}
+.cashier-tabs button {
+  padding: 10px 20px; border: none; background: transparent;
+  cursor: pointer; font-weight: 600; color: #666; border-bottom: 3px solid transparent;
+}
+.cashier-tabs button.active { color: #2e7d32; border-bottom-color: #2e7d32; }
+.cashier-content { padding: 30px; max-width: 800px; margin: 0 auto; }
+.cashier-msg { padding: 12px; margin: 15px 30px; border-radius: 6px; }
+.cashier-msg.success { background: #d4edda; color: #155724; }
+.cashier-msg.error { background: #f8d7da; color: #721c24; }
+.cashier-form {
+  background: #fff; padding: 25px; border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  display: flex; flex-direction: column; gap: 12px;
+}
+.cashier-form h2 { margin: 0 0 10px; color: #333; }
+.cashier-form input {
+  padding: 10px 14px; border: 1px solid #ddd;
+  border-radius: 6px; font-size: 14px;
+}
+.cashier-form button {
+  background: #2e7d32; color: #fff; border: none;
+  padding: 12px; border-radius: 6px; font-size: 15px;
+  cursor: pointer; font-weight: 600;
+}
+.cashier-form button:disabled { background: #aaa; cursor: wait; }
+.report-range {
+  display: flex; gap: 15px; flex-wrap: wrap;
+  background: #fff; padding: 15px; border-radius: 8px; align-items: end;
+}
+.report-range label {
+  display: flex; flex-direction: column; font-size: 13px; gap: 5px;
+}
+.report-range input { padding: 8px; border: 1px solid #ddd; border-radius: 5px; }
+.report-range button {
+  background: #2e7d32; color: #fff; border: none;
+  padding: 10px 20px; border-radius: 6px; cursor: pointer;
+}
+.report-cards {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 15px; margin-top: 20px;
+}
+.report-card {
+  padding: 20px; border-radius: 10px; color: #fff;
+}
+.report-card h3 { margin: 0 0 10px; font-size: 14px; opacity: 0.9; }
+.report-card p { margin: 0; font-size: 24px; font-weight: bold; }
+.report-card small { opacity: 0.8; }
+.report-card.green { background: linear-gradient(135deg, #2e7d32, #4caf50); }
+.report-card.red { background: linear-gradient(135deg, #c62828, #e53935); }
+.report-card.blue { background: linear-gradient(135deg, #1565c0, #1e88e5); }

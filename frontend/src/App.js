@@ -18,8 +18,16 @@ import BetHistory from './components/BetHistory';
 import AviatorManagement from './components/AviatorManagement';
 import Aviator from './components/Aviator';
 import AviatorPage from './pages/Aviator/AviatorPage';
+
+// ✅ CASHIER IMPORTS
+import CashierPage from './pages/Cashier/CashierPage';
+import CashierManagement from './components/CashierManagement';
+
 import './App.css';
 
+// =====================================================
+// PROTECTED ROUTE (Any logged-in user)
+// =====================================================
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
   if (!token) {
@@ -28,6 +36,9 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
+// =====================================================
+// ADMIN ROUTE (Only admin)
+// =====================================================
 const AdminRoute = ({ children }) => {
   const token = localStorage.getItem('token');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -43,18 +54,40 @@ const AdminRoute = ({ children }) => {
   return children;
 };
 
+// =====================================================
+// ✅ CASHIER ROUTE (cashier OR admin)
+// =====================================================
+const CashierRoute = ({ children }) => {
+  const token = localStorage.getItem('token');
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  if (user.role !== 'cashier' && user.role !== 'admin') {
+    return <Navigate to="/" replace />;
+  }
+  
+  return children;
+};
+
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* ===================================================== */}
         {/* Public Routes */}
+        {/* ===================================================== */}
         <Route path="/" element={<HomePage />} />
         <Route path="/home" element={<HomePage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         
+        {/* ===================================================== */}
         {/* Aviator Routes */}
+        {/* ===================================================== */}
         <Route path="/aviator" element={
           <ProtectedRoute>
             <AviatorPage />
@@ -67,6 +100,9 @@ function App() {
           </ProtectedRoute>
         } />
         
+        {/* ===================================================== */}
+        {/* User Routes */}
+        {/* ===================================================== */}
         <Route path="/MyAccount" element={
           <ProtectedRoute>
             <MyAccount />
@@ -97,7 +133,18 @@ function App() {
           </ProtectedRoute>
         } />
         
+        {/* ===================================================== */}
+        {/* ✅ CASHIER ROUTE (cashier OR admin only) */}
+        {/* ===================================================== */}
+        <Route path="/cashier" element={
+          <CashierRoute>
+            <CashierPage />
+          </CashierRoute>
+        } />
+        
+        {/* ===================================================== */}
         {/* Admin Routes */}
+        {/* ===================================================== */}
         <Route path="/admin" element={
           <AdminRoute>
             <AdminLayout />
@@ -111,6 +158,10 @@ function App() {
           <Route path="bets" element={<AdminBets />} />
           <Route path="matches" element={<MatchesManagement />} />
           <Route path="aviator" element={<AviatorManagement />} />
+          
+          {/* ✅ CASHIER MANAGEMENT (Admin only) */}
+          <Route path="cashiers" element={<CashierManagement />} />
+          
           <Route path="odds" element={<div style={{ padding: '20px', color: '#fff' }}>Odds Management Page</div>} />
           <Route path="reports" element={<div style={{ padding: '20px', color: '#fff' }}>Reports Page</div>} />
           <Route path="bonuses" element={<div style={{ padding: '20px', color: '#fff' }}>Bonuses Page</div>} />
@@ -119,6 +170,7 @@ function App() {
           <Route path="support" element={<div style={{ padding: '20px', color: '#fff' }}>Support Page</div>} />
         </Route>
 
+        {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

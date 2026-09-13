@@ -83,7 +83,8 @@ app.get("/", (req, res) => {
       matches: "/api/matches",
       bets: "/api/bets",
       auth: "/api/auth",
-      aviator: "/api/aviator"
+      aviator: "/api/aviator",
+      cashier: "/api/cashier"
     }
   });
 });
@@ -222,6 +223,11 @@ console.log('🔄 Loading aviator routes...');
 const aviatorRoutes = require('./routes/aviatorRoutes');
 console.log('✅ Aviator routes loaded');
 
+// ===== ✅ CASHIER ROUTES (NEW) =====
+console.log('🔄 Loading cashier routes...');
+const cashierRoutes = require('./routes/cashierRoutes');
+console.log('✅ Cashier routes loaded');
+
 app.use("/api/withdrawals", withdrawalRoutes);
 app.use("/api/admin", adminWithdrawalRoutes);
 app.use("/api/auth", authRoutes);
@@ -236,6 +242,10 @@ app.use('/api/bets', betRoutes);
 // ===== AVIATOR ROUTES REGISTERED =====
 app.use('/api/aviator', aviatorRoutes);
 console.log('✅ Aviator routes mounted at /api/aviator');
+
+// ===== ✅ CASHIER ROUTES REGISTERED =====
+app.use('/api/cashier', cashierRoutes);
+console.log('✅ Cashier routes mounted at /api/cashier');
 
 // =============================================
 // ===== ERROR HANDLING =====
@@ -357,6 +367,15 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`   - /api/user/balance (User Balance)`);
   console.log(`   - /api/matches (Matches)`);
   console.log(`   - /api/bets (Bets)`);
+  console.log(`   - /api/cashier/deposit (Cashier - Deposit)`);
+  console.log(`   - /api/cashier/withdraw (Cashier - Withdraw)`);
+  console.log(`   - /api/cashier/add-user (Cashier - Add User)`);
+  console.log(`   - /api/cashier/report (Cashier - Report)`);
+  console.log(`   - /api/cashier/lookup (Cashier - Lookup User)`);
+  console.log(`   - /api/cashier/admin/assign (Admin - Assign Cashier)`);
+  console.log(`   - /api/cashier/admin/remove (Admin - Remove Cashier)`);
+  console.log(`   - /api/cashier/admin/cashiers (Admin - List Cashiers)`);
+  console.log(`   - /api/cashier/admin/candidates (Admin - List Users)`);
   console.log(`📡 Socket.IO running on port ${PORT}`);
   console.log(`📡 Socket.IO endpoints:`);
   console.log(`   - round:state (Round State)`);

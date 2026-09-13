@@ -2784,3 +2784,13 @@
   border-color: #2e7d32;
   font-weight: bold;
 }
+
+/* Cashier button - sits next to Deposit button */
+.cashier-btn-pro {
+  background: #f59f00 !important;
+  margin-left: 8px;
+}
+
+.cashier-btn-pro:hover {
+  background: #ff8f00 !important;
+}
