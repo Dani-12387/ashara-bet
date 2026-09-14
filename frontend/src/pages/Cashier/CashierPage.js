@@ -44,6 +44,7 @@ const CashierPage = () => {
   const [historyModal, setHistoryModal] = useState(null);
   const [historyData, setHistoryData] = useState(null);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyFilter, setHistoryFilter] = useState('all'); // 'all' | 'deposit' | 'withdrawal'
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -163,14 +164,15 @@ const CashierPage = () => {
     });
   };
 
-  // ===== LOAD USER HISTORY (deposits / withdrawals) =====
-  const loadUserHistory = async (userId, type, username) => {
-    setHistoryModal({ userId, type, username });
+  // ===== LOAD USER HISTORY (all types) =====
+  const openUserHistory = async (userId, username) => {
+    setHistoryModal({ userId, username });
+    setHistoryFilter('all');
     setHistoryLoading(true);
     setHistoryData(null);
     try {
       const res = await axios.get(
-        `${API_URL}/api/cashier/referral-history/${userId}?type=${type}`,
+        `${API_URL}/api/cashier/referral-history/${userId}?type=all`,
         authHeaders()
       );
       if (res.data.success) setHistoryData(res.data.data);
@@ -188,9 +190,17 @@ const CashierPage = () => {
 
   if (!user) return null;
 
+  // Helper to get filtered history
+  const getFilteredHistory = () => {
+    if (!historyData) return [];
+    if (historyFilter === 'deposit') return historyData.deposits || [];
+    if (historyFilter === 'withdrawal') return historyData.withdrawals || [];
+    return historyData.combined || [];
+  };
+
   return (
     <div className="cashier-page">
-      {/* HEADER */}
+      {/* ===== HEADER ===== */}
       <header className="cashier-header">
         <div className="cashier-logo">💰 AsharaBet Cashier</div>
         <div className="cashier-user">
@@ -199,7 +209,7 @@ const CashierPage = () => {
         </div>
       </header>
 
-      {/* TABS */}
+      {/* ===== TABS ===== */}
       <div className="cashier-tabs">
         <button className={tab === 'deposit' ? 'active' : ''} onClick={() => setTab('deposit')}>💵 Deposit</button>
         <button className={tab === 'withdraw' ? 'active' : ''} onClick={() => setTab('withdraw')}>💸 Withdraw</button>
@@ -209,11 +219,11 @@ const CashierPage = () => {
         <button className={tab === 'report' ? 'active' : ''} onClick={() => setTab('report')}>📊 Report</button>
       </div>
 
-      {/* MESSAGES */}
+      {/* ===== MESSAGES ===== */}
       {message && <div className="cashier-msg success">{message}</div>}
       {error && <div className="cashier-msg error">{error}</div>}
 
-      {/* CONTENT */}
+      {/* ===== CONTENT ===== */}
       <div className="cashier-content">
 
         {/* ===== DEPOSIT TAB ===== */}
@@ -442,16 +452,23 @@ const CashierPage = () => {
                     <div className="summary-value">{referrals.referralCount}</div>
                   </div>
                   <div className="summary-card green">
-                    <div className="summary-label">Total Deposits</div>
-                    <div className="summary-value">ETB {referrals.grandTotalDeposits.toFixed(2)}</div>
+                    <div className="summary-label">Total Deposits (+)</div>
+                    <div className="summary-value">
+                      +ETB {referrals.grandTotalDeposits.toFixed(2)}
+                    </div>
                   </div>
                   <div className="summary-card red">
-                    <div className="summary-label">Total Withdrawals</div>
-                    <div className="summary-value">ETB {referrals.grandTotalWithdrawals.toFixed(2)}</div>
+                    <div className="summary-label">Total Withdrawals (-)</div>
+                    <div className="summary-value">
+                      -ETB {referrals.grandTotalWithdrawals.toFixed(2)}
+                    </div>
                   </div>
                   <div className="summary-card orange">
-                    <div className="summary-label">Total Balance</div>
-                    <div className="summary-value">ETB {referrals.grandTotalBalance.toFixed(2)}</div>
+                    <div className="summary-label">Net Flow</div>
+                    <div className="summary-value">
+                      {(referrals.grandTotalDeposits - referrals.grandTotalWithdrawals) >= 0 ? '+' : ''}
+                      ETB {(referrals.grandTotalDeposits - referrals.grandTotalWithdrawals).toFixed(2)}
+                    </div>
                   </div>
                 </div>
 
@@ -473,9 +490,10 @@ const CashierPage = () => {
                           <th>Email</th>
                           <th>Joined</th>
                           <th>Balance</th>
-                          <th>Deposits</th>
-                          <th>Withdrawals</th>
+                          <th>Deposits (+)</th>
+                          <th>Withdrawals (-)</th>
                           <th>Status</th>
+                          <th>History</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -489,36 +507,37 @@ const CashierPage = () => {
                               ETB {u.balance.toFixed(2)}
                             </td>
 
-                            {/* ✅ CLICKABLE DEPOSIT BUTTON */}
+                            {/* Deposits (green +) */}
                             <td className="cell-deposit">
-                              <button
-                                className="history-btn deposit-btn"
-                                onClick={() => loadUserHistory(u._id, 'deposit', u.username)}
-                                disabled={u.depositCount === 0}
-                                title={u.depositCount === 0 ? 'No deposits yet' : 'View deposit history'}
-                              >
-                                ETB {u.totalDeposits.toFixed(2)}
-                                <small> ({u.depositCount})</small>
-                              </button>
+                              <span className="amount-positive">
+                                +ETB {u.totalDeposits.toFixed(2)}
+                              </span>
+                              <small> ({u.depositCount})</small>
                             </td>
 
-                            {/* ✅ CLICKABLE WITHDRAW BUTTON */}
+                            {/* Withdrawals (red -) */}
                             <td className="cell-withdraw">
-                              <button
-                                className="history-btn withdraw-btn"
-                                onClick={() => loadUserHistory(u._id, 'withdrawal', u.username)}
-                                disabled={u.withdrawalCount === 0}
-                                title={u.withdrawalCount === 0 ? 'No withdrawals yet' : 'View withdrawal history'}
-                              >
-                                ETB {u.totalWithdrawals.toFixed(2)}
-                                <small> ({u.withdrawalCount})</small>
-                              </button>
+                              <span className="amount-negative">
+                                -ETB {u.totalWithdrawals.toFixed(2)}
+                              </span>
+                              <small> ({u.withdrawalCount})</small>
                             </td>
 
                             <td>
                               <span className={`status-badge status-${u.status}`}>
                                 {u.status}
                               </span>
+                            </td>
+
+                            {/* History View Button */}
+                            <td>
+                              <button
+                                className="history-view-btn"
+                                onClick={() => openUserHistory(u._id, u.username)}
+                                title="View full history"
+                              >
+                                📋 View
+                              </button>
                             </td>
                           </tr>
                         ))}
@@ -548,18 +567,21 @@ const CashierPage = () => {
             {report && (
               <div className="report-cards">
                 <div className="report-card green">
-                  <h3>Total Deposits</h3>
-                  <p>ETB {report.totalDeposits.toFixed(2)}</p>
+                  <h3>Total Deposits (+)</h3>
+                  <p>+ETB {report.totalDeposits.toFixed(2)}</p>
                   <small>{report.totalDepositCount} transactions</small>
                 </div>
                 <div className="report-card red">
-                  <h3>Total Withdrawals</h3>
-                  <p>ETB {report.totalWithdrawals.toFixed(2)}</p>
+                  <h3>Total Withdrawals (-)</h3>
+                  <p>-ETB {report.totalWithdrawals.toFixed(2)}</p>
                   <small>{report.totalWithdrawalCount} transactions</small>
                 </div>
                 <div className="report-card blue">
                   <h3>Net Flow</h3>
-                  <p>ETB {report.netFlow.toFixed(2)}</p>
+                  <p>
+                    {report.netFlow >= 0 ? '+' : ''}
+                    ETB {report.netFlow.toFixed(2)}
+                  </p>
                 </div>
               </div>
             )}
@@ -573,8 +595,7 @@ const CashierPage = () => {
           <div className="history-modal" onClick={e => e.stopPropagation()}>
             <div className="history-modal-header">
               <h3>
-                {historyModal.type === 'deposit' ? '💵 Deposit History' : '💸 Withdrawal History'}
-                <span className="history-user"> — {historyModal.username}</span>
+                📋 Full History — <span className="history-user">{historyModal.username}</span>
               </h3>
               <button className="modal-close" onClick={() => setHistoryModal(null)}>✕</button>
             </div>
@@ -583,33 +604,89 @@ const CashierPage = () => {
 
             {historyData && (
               <>
+                {/* Summary Cards */}
                 <div className="history-summary">
-                  <div>Total: <strong>ETB {historyData.total.toFixed(2)}</strong></div>
-                  <div>Records: <strong>{historyData.count}</strong></div>
-                  <div>Email: <strong>{historyData.user.email}</strong></div>
+                  <div className="hs-card green">
+                    <small>Total Deposits</small>
+                    <strong>+ETB {historyData.totalDeposits.toFixed(2)}</strong>
+                  </div>
+                  <div className="hs-card red">
+                    <small>Total Withdrawals</small>
+                    <strong>-ETB {historyData.totalWithdrawals.toFixed(2)}</strong>
+                  </div>
+                  <div className="hs-card blue">
+                    <small>Current Balance</small>
+                    <strong>ETB {historyData.user.balance.toFixed(2)}</strong>
+                  </div>
+                  <div className="hs-card orange">
+                    <small>Net Flow</small>
+                    <strong>
+                      {historyData.netFlow >= 0 ? '+' : ''}
+                      ETB {historyData.netFlow.toFixed(2)}
+                    </strong>
+                  </div>
                 </div>
 
-                {historyData.history.length === 0 ? (
-                  <p className="no-history">No {historyModal.type} records found.</p>
+                {/* Filter Tabs */}
+                <div className="history-filters">
+                  <button
+                    className={historyFilter === 'all' ? 'active' : ''}
+                    onClick={() => setHistoryFilter('all')}
+                  >
+                    All ({(historyData.combined || []).length})
+                  </button>
+                  <button
+                    className={historyFilter === 'deposit' ? 'active' : ''}
+                    onClick={() => setHistoryFilter('deposit')}
+                  >
+                    💵 Deposits ({(historyData.deposits || []).length})
+                  </button>
+                  <button
+                    className={historyFilter === 'withdrawal' ? 'active' : ''}
+                    onClick={() => setHistoryFilter('withdrawal')}
+                  >
+                    💸 Withdrawals ({(historyData.withdrawals || []).length})
+                  </button>
+                </div>
+
+                {/* History Table */}
+                {getFilteredHistory().length === 0 ? (
+                  <p className="no-history">No records found.</p>
                 ) : (
                   <div className="history-table-wrapper">
                     <table className="history-table">
                       <thead>
                         <tr>
                           <th>#</th>
+                          <th>Type</th>
                           <th>Amount</th>
                           <th>Email</th>
+                          <th>By</th>
                           <th>Agent Code</th>
                           <th>Date</th>
                           <th>Status</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {historyData.history.map((h, i) => (
+                        {getFilteredHistory().map((h, i) => (
                           <tr key={h._id}>
                             <td>{i + 1}</td>
-                            <td className="cell-amount">ETB {Number(h.amount).toFixed(2)}</td>
+                            <td>
+                              {h.transactionType === 'deposit' ? (
+                                <span className="type-badge deposit-badge">💵 Deposit</span>
+                              ) : (
+                                <span className="type-badge withdraw-badge">💸 Withdraw</span>
+                              )}
+                            </td>
+                            <td className={`cell-amount ${h.transactionType === 'deposit' ? 'positive' : 'negative'}`}>
+                              {h.transactionType === 'deposit' ? '+' : '-'}ETB {Number(h.amount).toFixed(2)}
+                            </td>
                             <td className="cell-email">{h.email}</td>
+                            <td>
+                              <span className={`by-badge ${h.createdBy === 'Cashier' ? 'by-cashier' : 'by-self'}`}>
+                                {h.createdBy || 'Self'}
+                              </span>
+                            </td>
                             <td className="cell-notes">{h.agentCode || 'N/A'}</td>
                             <td>{new Date(h.date).toLocaleString()}</td>
                             <td>
