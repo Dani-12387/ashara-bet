@@ -1,34 +1,64 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import './Register.css';
 
 const Register = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [formData, setFormData] = useState({
     username: '',
     email: '',
     phone: '',
     password: '',
     confirmPassword: '',
-    referralCode: ''  // ✅ NEW – added
+    referralCode: ''
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [referrerName, setReferrerName] = useState('');
+  const [referralLocked, setReferralLocked] = useState(false);
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
   const { username, email, phone, password, confirmPassword, referralCode } = formData;
+
+  // ✅ AUTO-CAPTURE referral code from URL: /register?ref=SOSI1SARIS
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const refCode = params.get('ref');
+
+    if (refCode && refCode.trim()) {
+      const cleanCode = refCode.trim().toUpperCase();
+      setFormData((prev) => ({ ...prev, referralCode: cleanCode }));
+      setReferralLocked(true);
+
+      // ✅ Validate the referral code with backend (optional but helpful)
+      axios
+        .get(`${API_URL}/api/auth/check-referral/${cleanCode}`)
+        .then((res) => {
+          if (res.data.success && res.data.username) {
+            setReferrerName(res.data.username);
+            console.log(`✅ Referral code valid: ${res.data.username}`);
+          } else {
+            setReferrerName('');
+            console.log(`⚠️ Referral code invalid: ${cleanCode}`);
+          }
+        })
+        .catch(() => {
+          console.log('⚠️ Could not validate referral code');
+        });
+    }
+  }, [location.search, API_URL]);
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
-    // Clear errors when user starts typing
     setError('');
   };
 
@@ -54,7 +84,6 @@ const Register = () => {
       return false;
     }
 
-    // Phone validation - Ethiopian phone numbers
     const phoneRegex = /^(09|07)\d{8}$/;
     if (!phoneRegex.test(phone)) {
       setError('Please enter a valid Ethiopian phone number (09xxxxxxxx or 07xxxxxxxx)');
@@ -86,20 +115,26 @@ const Register = () => {
     setLoading(true);
 
     try {
-      // ✅ Send referralCode if provided
+      // ✅ Send referralCode + referredBy (both for max compatibility)
       const payload = {
-        username,
-        email,
-        phone,
+        username: username.trim(),
+        email: email.toLowerCase().trim(),
+        phone: phone.trim(),
         password,
-        referralCode: referralCode.trim() || undefined
+        referralCode: referralCode ? referralCode.trim().toUpperCase() : undefined,
+        referredBy: referralCode ? referralCode.trim().toUpperCase() : undefined
       };
+
+      console.log('📤 Register payload:', payload);
 
       const response = await axios.post(`${API_URL}/api/auth/register`, payload);
 
       if (response.data.success) {
-        setSuccess('Registration successful! Redirecting to login...');
-        
+        setSuccess(
+          response.data.message ||
+          'Registration successful! Redirecting to login...'
+        );
+
         setFormData({
           username: '',
           email: '',
@@ -151,6 +186,18 @@ const Register = () => {
         </div>
 
         <h2>Create Account</h2>
+
+        {/* ✅ Referral banner if code came from URL */}
+        {referrerName && (
+          <div className="referral-banner">
+            🎉 You were invited by <strong>{referrerName}</strong>
+          </div>
+        )}
+        {referralCode && !referrerName && (
+          <div className="referral-banner">
+            🎁 Using referral code: <strong>{referralCode}</strong>
+          </div>
+        )}
 
         {error && (
           <div className="error-message">
@@ -247,7 +294,9 @@ const Register = () => {
             {phone && phone.length === 10 && !/^(09|07)\d{8}$/.test(phone) && (
               <div className="input-hint">Must start with 09 or 07</div>
             )}
-            <small className="phone-hint">Ethiopian phone number (09 or 07 followed by 8 digits)</small>
+            <small className="phone-hint">
+              Ethiopian phone number (09 or 07 followed by 8 digits)
+            </small>
           </div>
 
           {/* Password */}
@@ -279,14 +328,14 @@ const Register = () => {
             {password && (
               <div className={`password-length ${password.length >= 6 ? 'valid' : 'invalid'}`}>
                 <div className="length-bar">
-                  <div 
-                    className="length-fill" 
+                  <div
+                    className="length-fill"
                     style={{ width: `${Math.min((password.length / 6) * 100, 100)}%` }}
                   ></div>
                 </div>
                 <span className="length-text">
-                  {password.length >= 6 
-                    ? '✓ Password length ok' 
+                  {password.length >= 6
+                    ? '✓ Password length ok'
                     : `${password.length}/6 characters`}
                 </span>
               </div>
@@ -327,11 +376,14 @@ const Register = () => {
             )}
           </div>
 
-          {/* ✅ REFERRAL CODE FIELD - ADDED (nothing removed) */}
+          {/* ✅ REFERRAL CODE FIELD — Auto-filled from URL */}
           <div className="form-group">
             <label htmlFor="referralCode">
               <span className="label-icon">🎁</span>
-              Referral Code <span style={{ fontWeight: 'normal', color: '#888', fontSize: '0.8rem' }}>(optional)</span>
+              Referral Code{' '}
+              <span style={{ fontWeight: 'normal', color: '#888', fontSize: '0.8rem' }}>
+                (optional)
+              </span>
             </label>
             <div className="input-wrapper">
               <input
@@ -342,23 +394,31 @@ const Register = () => {
                 onChange={handleChange}
                 placeholder="Enter referral code if you have one"
                 className={error && !referralCode ? 'error' : ''}
-                disabled={loading}
+                disabled={loading || referralLocked}
+                style={{ textTransform: 'uppercase' }}
               />
+              {referralLocked && (
+                <span className="input-valid" title="Auto-filled from invite link">🔒</span>
+              )}
             </div>
-            <small className="phone-hint">Enter the code of the person who referred you</small>
+            <small className="phone-hint">
+              {referralLocked
+                ? '✅ Code captured from your invite link'
+                : 'Enter the code of the person who referred you'}
+            </small>
           </div>
 
           <div className="simple-requirements">
             <ul>
               <li className={password.length >= 6 ? 'met' : ''}>
                 <span>{password.length >= 6 ? '✓' : '○'}</span>
-                Password At least 6 characters
+                Password: at least 6 characters
               </li>
             </ul>
           </div>
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             className="register-submit-btn"
             disabled={loading}
           >
@@ -378,8 +438,13 @@ const Register = () => {
 
           <p className="terms-text">
             By creating an account, you agree to our{' '}
-            <a href="/terms" onClick={(e) => { e.preventDefault(); alert('Terms of Service - Coming soon'); }}>Terms of Service</a> and{' '}
-            <a href="/privacy" onClick={(e) => { e.preventDefault(); alert('Privacy Policy - Coming soon'); }}>Privacy Policy</a>
+            <a href="/terms" onClick={(e) => { e.preventDefault(); alert('Terms of Service - Coming soon'); }}>
+              Terms of Service
+            </a>{' '}
+            and{' '}
+            <a href="/privacy" onClick={(e) => { e.preventDefault(); alert('Privacy Policy - Coming soon'); }}>
+              Privacy Policy
+            </a>
           </p>
         </form>
       </div>
