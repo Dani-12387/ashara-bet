@@ -99,6 +99,28 @@ const AdminTransactions = () => {
     return phone;
   };
 
+  // ✅ Extract Agent Code from notes field
+  const extractAgentCode = (notes) => {
+    if (!notes) return 'N/A';
+    if (notes.includes('Agent Code:')) {
+      const parts = notes.split('|')[0];
+      return parts.replace('Agent Code:', '').trim();
+    }
+    return notes;
+  };
+
+  // ✅ Extract cashier name from notes
+  const extractCashierName = (transaction) => {
+    if (transaction.processedBy?.username) {
+      return transaction.processedBy.username;
+    }
+    if (transaction.notes && transaction.notes.includes('By:')) {
+      const parts = transaction.notes.split('By:');
+      return parts[1]?.trim() || 'Unknown';
+    }
+    return null;
+  };
+
   const getStatusBadge = (status) => {
     const badges = {
       pending: { class: 'status-pending', text: '⏳ Pending' },
@@ -151,101 +173,132 @@ const AdminTransactions = () => {
         </div>
       ) : (
         <div className="transactions-grid">
-          {transactions.map(transaction => (
-            <div key={transaction._id} className={`transaction-card ${transaction.status}`}>
-              <div className="card-header">
-                <div className="user-info">
-                  <h3>{transaction.user?.username || 'Unknown User'}</h3>
-                  <span className="transaction-id">ID: {transaction._id.slice(-6)}</span>
-                </div>
-              </div>
-              
-              <div className="card-body">
-                {/* Contact Information */}
-                <div className="contact-section">
-                  <h4>📞 User Contact</h4>
-                  <div className="info-row">
-                    <span className="label">Email:</span>
-                    <span className="value email">{transaction.user?.email || 'Not provided'}</span>
-                  </div>
-                  <div className="info-row">
-                    <span className="label">Phone:</span>
-                    <span className="value phone">📱 {formatPhone(transaction.user?.phone)}</span>
-                  </div>
-                </div>
+          {transactions.map(transaction => {
+            const isCashier = transaction.source === 'cashier';
+            const cashierName = extractCashierName(transaction);
+            const agentCode = extractAgentCode(transaction.notes);
 
-                {/* Transaction Details */}
-                <div className="transaction-details">
-                  <h4>💳 Transaction Details</h4>
-                  <div className="info-row">
-                    <span className="label">Amount:</span>
-                    <span className="value amount">ETB {transaction.amount}</span>
+            return (
+              <div key={transaction._id} className={`transaction-card ${transaction.status}`}>
+                <div className="card-header">
+                  <div className="user-info">
+                    <h3>{transaction.user?.username || 'Unknown User'}</h3>
+                    <span className="transaction-id">ID: {transaction._id.slice(-6)}</span>
                   </div>
-                  <div className="info-row">
-                    <span className="label">Method:</span>
-                    <span className="value">{transaction.paymentMethod}</span>
-                  </div>
-                  {/* ✅ DISPLAY TELEBIRR ACCOUNT USED */}
-                  {transaction.accountName && transaction.accountNumber && (
+                  {/* ✅ Source badge */}
+                  {isCashier ? (
+                    <span className="source-badge cashier-badge">💰 Cashier</span>
+                  ) : (
+                    <span className="source-badge user-badge">👤 User</span>
+                  )}
+                </div>
+                
+                <div className="card-body">
+                  {/* Contact Information */}
+                  <div className="contact-section">
+                    <h4>📞 User Contact</h4>
                     <div className="info-row">
-                      <span className="label">Tele Birr Account:</span>
-                      <span className="value telebirr-account">
-                        {transaction.accountName} ({transaction.accountNumber})
-                      </span>
+                      <span className="label">Email:</span>
+                      <span className="value email">{transaction.user?.email || 'Not provided'}</span>
                     </div>
-                  )}
-                  <div className="info-row">
-                    <span className="label">Reference:</span>
-                    <span className="value">{transaction.transactionReference || 'N/A'}</span>
-                  </div>
-                  <div className="info-row">
-                    <span className="label">Date:</span>
-                    <span className="value">{formatDate(transaction.createdAt)}</span>
-                  </div>
-                  <div className="info-row">
-                    <span className="label">Status:</span>
-                    <span className="value">{getStatusBadge(transaction.status)}</span>
-                  </div>
-                  {transaction.rejectionReason && (
-                    <div className="info-row rejection">
-                      <span className="label">Reason:</span>
-                      <span className="value">{transaction.rejectionReason}</span>
+                    <div className="info-row">
+                      <span className="label">Phone:</span>
+                      <span className="value phone">📱 {formatPhone(transaction.user?.phone)}</span>
                     </div>
-                  )}
+                  </div>
+
+                  {/* Transaction Details */}
+                  <div className="transaction-details">
+                    <h4>💳 Transaction Details</h4>
+                    <div className="info-row">
+                      <span className="label">Amount:</span>
+                      <span className="value amount">ETB {transaction.amount}</span>
+                    </div>
+                    <div className="info-row">
+                      <span className="label">Method:</span>
+                      <span className="value">{transaction.paymentMethod}</span>
+                    </div>
+
+                    {/* ✅ DISPLAY TELEBIRR ACCOUNT USED (for user deposits) */}
+                    {transaction.accountName && transaction.accountNumber && (
+                      <div className="info-row">
+                        <span className="label">Tele Birr Account:</span>
+                        <span className="value telebirr-account">
+                          {transaction.accountName} ({transaction.accountNumber})
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="info-row">
+                      <span className="label">Reference:</span>
+                      <span className="value">{transaction.transactionReference || 'N/A'}</span>
+                    </div>
+
+                    {/* ✅ NEW: Show cashier name if created by cashier */}
+                    {isCashier && cashierName && (
+                      <div className="info-row cashier-info">
+                        <span className="label">💰 Cashier:</span>
+                        <span className="value cashier-name">{cashierName}</span>
+                      </div>
+                    )}
+
+                    {/* ✅ NEW: Show Agent Code if present */}
+                    {transaction.notes && (
+                      <div className="info-row agent-code-row">
+                        <span className="label">🔑 Agent Code:</span>
+                        <span className="value agent-code">{agentCode}</span>
+                      </div>
+                    )}
+
+                    <div className="info-row">
+                      <span className="label">Date:</span>
+                      <span className="value">{formatDate(transaction.createdAt)}</span>
+                    </div>
+                    <div className="info-row">
+                      <span className="label">Status:</span>
+                      <span className="value">{getStatusBadge(transaction.status)}</span>
+                    </div>
+                    {transaction.rejectionReason && (
+                      <div className="info-row rejection">
+                        <span className="label">Reason:</span>
+                        <span className="value">{transaction.rejectionReason}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
+
+                {transaction.screenshot && (
+                  <div className="screenshot-section">
+                    <button 
+                      className="view-screenshot-btn"
+                      onClick={() => setSelectedImage(transaction.screenshot)}
+                    >
+                      📸 View Screenshot
+                    </button>
+                  </div>
+                )}
+
+                {transaction.status === 'pending' && (
+                  <div className="card-actions">
+                    <button 
+                      className="approve-btn"
+                      onClick={() => handleApprove(transaction._id)}
+                      disabled={processingId === transaction._id}
+                    >
+                      {processingId === transaction._id ? 'Processing...' : '✓ Approve'}
+                    </button>
+                    <button 
+                      className="reject-btn"
+                      onClick={() => handleReject(transaction._id)}
+                      disabled={processingId === transaction._id}
+                    >
+                      ✗ Reject
+                    </button>
+                  </div>
+                )}
               </div>
-
-              {transaction.screenshot && (
-                <div className="screenshot-section">
-                  <button 
-                    className="view-screenshot-btn"
-                    onClick={() => setSelectedImage(transaction.screenshot)}
-                  >
-                    📸 View Screenshot
-                  </button>
-                </div>
-              )}
-
-              {transaction.status === 'pending' && (
-                <div className="card-actions">
-                  <button 
-                    className="approve-btn"
-                    onClick={() => handleApprove(transaction._id)}
-                    disabled={processingId === transaction._id}
-                  >
-                    {processingId === transaction._id ? 'Processing...' : '✓ Approve'}
-                  </button>
-                  <button 
-                    className="reject-btn"
-                    onClick={() => handleReject(transaction._id)}
-                    disabled={processingId === transaction._id}
-                  >
-                    ✗ Reject
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

@@ -8,14 +8,12 @@ const AdminWithdrawals = () => {
   const [filter, setFilter] = useState('pending');
   const [processingId, setProcessingId] = useState(null);
 
-  // ✅ API URL from environment variable
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
   useEffect(() => {
     fetchWithdrawals();
   }, [filter]);
 
-  // ✅ FIXED: Use API_URL
   const fetchWithdrawals = async () => {
     try {
       setLoading(true);
@@ -35,7 +33,6 @@ const AdminWithdrawals = () => {
     }
   };
 
-  // ✅ FIXED: Use API_URL
   const handleApprove = async (withdrawalId) => {
     if (!window.confirm('Approve this withdrawal? User will be notified.')) return;
 
@@ -60,7 +57,6 @@ const AdminWithdrawals = () => {
     }
   };
 
-  // ✅ FIXED: Use API_URL
   const handleComplete = async (withdrawalId) => {
     if (!window.confirm('Mark this withdrawal as paid? This will deduct from user balance.')) return;
 
@@ -85,7 +81,6 @@ const AdminWithdrawals = () => {
     }
   };
 
-  // ✅ FIXED: Use API_URL
   const handleReject = async (withdrawalId) => {
     const reason = prompt('Enter reason for rejection:');
     if (!reason) return;
@@ -127,6 +122,28 @@ const AdminWithdrawals = () => {
       return `${phone.slice(0,3)}-${phone.slice(3,6)}-${phone.slice(6)}`;
     }
     return phone;
+  };
+
+  // ✅ Extract Agent Code from notes field
+  const extractAgentCode = (notes) => {
+    if (!notes) return 'N/A';
+    if (notes.includes('Agent Code:')) {
+      const parts = notes.split('|')[0];
+      return parts.replace('Agent Code:', '').trim();
+    }
+    return notes;
+  };
+
+  // ✅ Extract cashier name from processedBy or notes
+  const extractCashierName = (withdrawal) => {
+    if (withdrawal.processedBy?.username) {
+      return withdrawal.processedBy.username;
+    }
+    if (withdrawal.notes && withdrawal.notes.includes('By:')) {
+      const parts = withdrawal.notes.split('By:');
+      return parts[1]?.trim() || 'Unknown';
+    }
+    return null;
   };
 
   const getStatusBadge = (status) => {
@@ -188,109 +205,144 @@ const AdminWithdrawals = () => {
         </div>
       ) : (
         <div className="withdrawals-grid">
-          {withdrawals.map(withdrawal => (
-            <div key={withdrawal._id} className={`withdrawal-card ${withdrawal.status}`}>
-              <div className="card-header">
-                <div className="user-info">
-                  <h3>{withdrawal.user?.username || 'Unknown User'}</h3>
-                  <span className="withdrawal-id">ID: {withdrawal._id.slice(-6)}</span>
-                </div>
-              </div>
-              
-              <div className="card-body">
-                {/* User Contact */}
-                <div className="contact-section">
-                  <h4>📞 User Contact</h4>
-                  <div className="info-row">
-                    <span className="label">Email:</span>
-                    <span className="value email">{withdrawal.user?.email || 'Not provided'}</span>
-                  </div>
-                  <div className="info-row">
-                    <span className="label">Phone:</span>
-                    <span className="value phone">📱 {formatPhone(withdrawal.user?.phone)}</span>
-                  </div>
-                </div>
+          {withdrawals.map(withdrawal => {
+            const isCashier = withdrawal.source === 'cashier';
+            const cashierName = extractCashierName(withdrawal);
+            const agentCode = extractAgentCode(withdrawal.notes);
 
-                {/* Withdrawal Details */}
-                <div className="withdrawal-details">
-                  <h4>💳 Withdrawal Details</h4>
-                  <div className="info-row">
-                    <span className="label">Amount:</span>
-                    <span className="value amount">ETB {withdrawal.amount}</span>
+            return (
+              <div key={withdrawal._id} className={`withdrawal-card ${withdrawal.status}`}>
+                <div className="card-header">
+                  <div className="user-info">
+                    <h3>{withdrawal.user?.username || 'Unknown User'}</h3>
+                    <span className="withdrawal-id">ID: {withdrawal._id.slice(-6)}</span>
                   </div>
-                  <div className="info-row">
-                    <span className="label">Method:</span>
-                    <span className="value">{withdrawal.paymentMethod}</span>
-                  </div>
-                  <div className="info-row">
-                    <span className="label">Account Name:</span>
-                    <span className="value">{withdrawal.accountName}</span>
-                  </div>
-                  <div className="info-row">
-                    <span className="label">Account Number:</span>
-                    <span className="value">{withdrawal.accountNumber}</span>
-                  </div>
-                  {withdrawal.bankName && (
-                    <div className="info-row">
-                      <span className="label">Bank Name:</span>
-                      <span className="value">{withdrawal.bankName}</span>
-                    </div>
+                  {/* ✅ Source badge */}
+                  {isCashier ? (
+                    <span className="source-badge cashier-badge">💰 Cashier</span>
+                  ) : (
+                    <span className="source-badge user-badge">👤 User</span>
                   )}
-                  {withdrawal.phoneNumber && (
+                </div>
+                
+                <div className="card-body">
+                  {/* User Contact */}
+                  <div className="contact-section">
+                    <h4>📞 User Contact</h4>
+                    <div className="info-row">
+                      <span className="label">Email:</span>
+                      <span className="value email">{withdrawal.user?.email || 'Not provided'}</span>
+                    </div>
                     <div className="info-row">
                       <span className="label">Phone:</span>
-                      <span className="value">{withdrawal.phoneNumber}</span>
+                      <span className="value phone">📱 {formatPhone(withdrawal.user?.phone)}</span>
                     </div>
+                  </div>
+
+                  {/* Withdrawal Details */}
+                  <div className="withdrawal-details">
+                    <h4>💳 Withdrawal Details</h4>
+                    <div className="info-row">
+                      <span className="label">Amount:</span>
+                      <span className="value amount">ETB {withdrawal.amount}</span>
+                    </div>
+                    <div className="info-row">
+                      <span className="label">Method:</span>
+                      <span className="value">{withdrawal.paymentMethod}</span>
+                    </div>
+
+                    {/* Only show account details for regular users (not cashier) */}
+                    {!isCashier && withdrawal.accountName && (
+                      <div className="info-row">
+                        <span className="label">Account Name:</span>
+                        <span className="value">{withdrawal.accountName}</span>
+                      </div>
+                    )}
+                    {!isCashier && withdrawal.accountNumber && (
+                      <div className="info-row">
+                        <span className="label">Account Number:</span>
+                        <span className="value">{withdrawal.accountNumber}</span>
+                      </div>
+                    )}
+                    {!isCashier && withdrawal.bankName && (
+                      <div className="info-row">
+                        <span className="label">Bank Name:</span>
+                        <span className="value">{withdrawal.bankName}</span>
+                      </div>
+                    )}
+                    {!isCashier && withdrawal.phoneNumber && (
+                      <div className="info-row">
+                        <span className="label">Phone:</span>
+                        <span className="value">{withdrawal.phoneNumber}</span>
+                      </div>
+                    )}
+
+                    {/* ✅ NEW: Show cashier name if created by cashier */}
+                    {isCashier && cashierName && (
+                      <div className="info-row cashier-info">
+                        <span className="label">💰 Cashier:</span>
+                        <span className="value cashier-name">{cashierName}</span>
+                      </div>
+                    )}
+
+                    {/* ✅ NEW: Show Agent Code if present */}
+                    {withdrawal.notes && (
+                      <div className="info-row agent-code-row">
+                        <span className="label">🔑 Agent Code:</span>
+                        <span className="value agent-code">{agentCode}</span>
+                      </div>
+                    )}
+
+                    <div className="info-row">
+                      <span className="label">Date:</span>
+                      <span className="value">{formatDate(withdrawal.createdAt)}</span>
+                    </div>
+                    <div className="info-row">
+                      <span className="label">Status:</span>
+                      <span className="value">{getStatusBadge(withdrawal.status)}</span>
+                    </div>
+                    {withdrawal.rejectionReason && (
+                      <div className="info-row rejection">
+                        <span className="label">Reason:</span>
+                        <span className="value">{withdrawal.rejectionReason}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="card-actions">
+                  {withdrawal.status === 'pending' && (
+                    <>
+                      <button 
+                        className="approve-btn"
+                        onClick={() => handleApprove(withdrawal._id)}
+                        disabled={processingId === withdrawal._id}
+                      >
+                        {processingId === withdrawal._id ? 'Processing...' : '✓ Approve'}
+                      </button>
+                      <button 
+                        className="reject-btn"
+                        onClick={() => handleReject(withdrawal._id)}
+                        disabled={processingId === withdrawal._id}
+                      >
+                        ✗ Reject
+                      </button>
+                    </>
                   )}
-                  <div className="info-row">
-                    <span className="label">Date:</span>
-                    <span className="value">{formatDate(withdrawal.createdAt)}</span>
-                  </div>
-                  <div className="info-row">
-                    <span className="label">Status:</span>
-                    <span className="value">{getStatusBadge(withdrawal.status)}</span>
-                  </div>
-                  {withdrawal.rejectionReason && (
-                    <div className="info-row rejection">
-                      <span className="label">Reason:</span>
-                      <span className="value">{withdrawal.rejectionReason}</span>
-                    </div>
+                  {withdrawal.status === 'approved' && (
+                    <button 
+                      className="complete-btn"
+                      onClick={() => handleComplete(withdrawal._id)}
+                      disabled={processingId === withdrawal._id}
+                    >
+                      {processingId === withdrawal._id ? 'Processing...' : '💰 Mark as Paid'}
+                    </button>
                   )}
                 </div>
               </div>
-
-              {/* Action Buttons */}
-              <div className="card-actions">
-                {withdrawal.status === 'pending' && (
-                  <>
-                    <button 
-                      className="approve-btn"
-                      onClick={() => handleApprove(withdrawal._id)}
-                      disabled={processingId === withdrawal._id}
-                    >
-                      {processingId === withdrawal._id ? 'Processing...' : '✓ Approve'}
-                    </button>
-                    <button 
-                      className="reject-btn"
-                      onClick={() => handleReject(withdrawal._id)}
-                      disabled={processingId === withdrawal._id}
-                    >
-                      ✗ Reject
-                    </button>
-                  </>
-                )}
-                {withdrawal.status === 'approved' && (
-                  <button 
-                    className="complete-btn"
-                    onClick={() => handleComplete(withdrawal._id)}
-                    disabled={processingId === withdrawal._id}
-                  >
-                    {processingId === withdrawal._id ? 'Processing...' : '💰 Mark as Paid'}
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
