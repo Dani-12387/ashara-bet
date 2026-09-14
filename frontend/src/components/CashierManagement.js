@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './CashierManagement.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 const CashierManagement = () => {
+  const navigate = useNavigate();
   const [cashiers, setCashiers] = useState([]);
   const [candidates, setCandidates] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -120,6 +122,7 @@ const CashierManagement = () => {
                     <div className="card-small">{c.email}</div>
                   </div>
                 </div>
+
                 <div className="card-body">
                   <div className="card-small">📞 {c.phone || 'N/A'}</div>
                   <div className="card-small">
@@ -128,7 +131,21 @@ const CashierManagement = () => {
                   <div className="card-small">
                     📅 Joined: {new Date(c.createdAt).toLocaleDateString()}
                   </div>
+                  {c.referralCode && (
+                    <div className="card-small">
+                      🎁 Code: <strong>{c.referralCode}</strong>
+                    </div>
+                  )}
                 </div>
+
+                {/* ✅ VIEW DETAILS BUTTON — opens cashier history page */}
+                <button
+                  className="btn-view-history"
+                  onClick={() => navigate(`/admin/cashier/${c._id}`)}
+                >
+                  📊 View Details
+                </button>
+
                 <button className="btn-remove" onClick={() => remove(c._id)}>
                   ❌ Remove Cashier
                 </button>
