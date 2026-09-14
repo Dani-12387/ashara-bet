@@ -13,11 +13,9 @@ const withdrawalSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    // ✅ Added 'CASHIER' for cashier-created withdrawals
-    enum: ['TELE_BIRR', 'BANK_TRANSFER', 'MOBILE_MONEY', 'CASHIER'],
+    enum: ['TELE_BIRR', 'BANK_TRANSFER', 'MOBILE_MONEY', 'CBE_BIRR', 'CASHIER'],
     required: true
   },
-  // ✅ Only required for regular users, not cashiers
   accountName: {
     type: String,
     required: function () { return this.paymentMethod !== 'CASHIER'; },
@@ -49,19 +47,26 @@ const withdrawalSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
-  // ✅ NEW: Tracks whether this was created by a cashier or a user
+
+  // ✅ Tracks whether created by 'user' or 'cashier' (NEVER changed by admin)
   source: {
     type: String,
     enum: ['user', 'cashier'],
     default: 'user'
   },
-  // ✅ NEW: The cashier who created this request
+
+  // ✅ The CREATOR — cashier or user. NEVER overwritten by admin!
   processedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     default: null
   },
-  // ✅ NEW: Admin who approved/rejected
+  processedAt: {
+    type: Date,
+    default: null
+  },
+
+  // ✅ Admin who APPROVED
   approvedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -71,6 +76,8 @@ const withdrawalSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+
+  // ✅ Admin who REJECTED
   rejectedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -80,6 +87,18 @@ const withdrawalSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+
+  // ✅ Admin who marked as PAID — NEW
+  completedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  completedAt: {
+    type: Date,
+    default: null
+  },
+
   createdAt: {
     type: Date,
     default: Date.now
