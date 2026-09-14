@@ -94,7 +94,7 @@ const CashierPage = () => {
     try {
       const res = await axios.post(`${API_URL}/api/cashier/withdraw`, withdrawForm, authHeaders());
       if (res.data.success) {
-        showMessage(res.data.message || '✅ Withdraw request sent to admin for approval');
+        showMessage(res.data.message || '✅ ');
         setWithdrawForm({ email: '', amount: '', notes: '' });
       }
     } catch (err) {
@@ -231,7 +231,7 @@ const CashierPage = () => {
           <form className="cashier-form" onSubmit={handleDeposit}>
             <h2>💵 Deposit Request</h2>
             <p className="form-note">
-              ⚠️ Deposit request will be sent to admin for approval. User balance updates only after admin approves.
+              ⚠️Minimum deposit amount is ETB 50. 
             </p>
 
             <label>User Email</label>
@@ -271,7 +271,7 @@ const CashierPage = () => {
           <form className="cashier-form" onSubmit={handleWithdraw}>
             <h2>💸 Withdraw Request</h2>
             <p className="form-note">
-              ⚠️ Minimum withdrawal: ETB 50. Request will be sent to admin for approval.
+              ⚠️ Minimum withdrawal: ETB 50. 
             </p>
 
             <label>User Email</label>
