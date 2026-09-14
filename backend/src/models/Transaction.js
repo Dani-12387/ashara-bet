@@ -18,21 +18,27 @@ const transactionSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['BANK_TRANSFER', 'TELE_BIRR', 'MOBILE_MONEY'],
+    // ✅ Added 'CASHIER' for cashier-created deposits
+    enum: ['BANK_TRANSFER', 'TELE_BIRR', 'MOBILE_MONEY', 'CASHIER'],
     required: true
   },
   transactionReference: {
     type: String,
-    trim: true
+    trim: true,
+    default: ''
   },
   screenshot: {
     type: String,
-    required: function() { return this.type === 'deposit'; }
+    // ✅ Required ONLY for user deposits (not cashier deposits)
+    required: function () {
+      return this.type === 'deposit' && this.paymentMethod !== 'CASHIER';
+    },
+    default: ''
   },
   notes: {
-    type: String
+    type: String,
+    default: ''
   },
-  // ✅ NEW: Store the account used for payment
   accountName: {
     type: String,
     default: ''
@@ -47,14 +53,38 @@ const transactionSchema = new mongoose.Schema({
     default: 'pending'
   },
   rejectionReason: {
-    type: String
+    type: String,
+    default: ''
+  },
+  // ✅ NEW: Tracks whether this was created by a cashier or a user
+  source: {
+    type: String,
+    enum: ['user', 'cashier'],
+    default: 'user'
+  },
+  // ✅ NEW: The cashier who created this deposit
+  processedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
   },
   approvedBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+    ref: 'User',
+    default: null
   },
   approvedAt: {
-    type: Date
+    type: Date,
+    default: null
+  },
+  rejectedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  rejectedAt: {
+    type: Date,
+    default: null
   },
   createdAt: {
     type: Date,
