@@ -22,6 +22,7 @@ import AviatorPage from './pages/Aviator/AviatorPage';
 // ✅ CASHIER IMPORTS
 import CashierPage from './pages/Cashier/CashierPage';
 import CashierManagement from './components/CashierManagement';
+import AdminCashierHistory from './components/AdminCashierHistory'; // ✅ NEW
 
 import './App.css';
 
@@ -161,6 +162,9 @@ function App() {
           
           {/* ✅ CASHIER MANAGEMENT (Admin only) */}
           <Route path="cashiers" element={<CashierManagement />} />
+          
+          {/* ✅ CASHIER HISTORY PAGE — THIS WAS MISSING! */}
+          <Route path="cashier/:cashierId" element={<AdminCashierHistory />} />
           
           <Route path="odds" element={<div style={{ padding: '20px', color: '#fff' }}>Odds Management Page</div>} />
           <Route path="reports" element={<div style={{ padding: '20px', color: '#fff' }}>Reports Page</div>} />
