@@ -73,7 +73,7 @@ const CashierPage = () => {
     try {
       const res = await axios.post(`${API_URL}/api/cashier/deposit`, depositForm, authHeaders());
       if (res.data.success) {
-        showMessage(res.data.message || '✅ Deposit request sent to admin for approval');
+        showMessage(res.data.message || '✅ ');
         setDepositForm({ email: '', amount: '', notes: '' });
       }
     } catch (err) {
