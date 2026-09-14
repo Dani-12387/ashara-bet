@@ -168,7 +168,8 @@ exports.cashierAddUser = async (req, res) => {
 
 // =====================================================
 // CASHIER: GET MY REFERRALS WITH STATS
-// (deposits + withdrawals - both self-made AND cashier-made)
+// ✅ Counts BOTH self-made AND cashier-made transactions
+// ✅ Counts withdrawals with status 'approved' OR 'completed'
 // =====================================================
 exports.cashierGetMyReferrals = async (req, res) => {
   try {
@@ -187,13 +188,13 @@ exports.cashierGetMyReferrals = async (req, res) => {
           status: 'approved'
         });
 
-        // ✅ Get ALL approved withdrawals (self-made OR cashier-made)
+        // ✅ Get ALL withdrawals with status 'approved' OR 'completed' (self OR cashier)
         const withdrawals = await Withdrawal.find({
           user: u._id,
-          status: 'approved'
+          status: { $in: ['approved', 'completed'] }
         });
 
-        // Pending counts
+        // Pending counts (for reference)
         const pendingDeposits = await Transaction.countDocuments({
           user: u._id,
           type: 'deposit',
@@ -208,6 +209,8 @@ exports.cashierGetMyReferrals = async (req, res) => {
         const totalDeposits = deposits.reduce((s, d) => s + Number(d.amount || 0), 0);
         const totalWithdrawals = withdrawals.reduce((s, w) => s + Number(w.amount || 0), 0);
 
+        console.log(`📊 Referral ${u.username}: +${totalDeposits} / -${totalWithdrawals} (dep:${deposits.length}, wd:${withdrawals.length})`);
+
         return {
           _id: u._id,
           username: u.username,
@@ -216,8 +219,8 @@ exports.cashierGetMyReferrals = async (req, res) => {
           status: u.status,
           joinedAt: u.createdAt,
           balance: u.wallet?.balance || 0,
-          totalDeposits,           // ✅ always positive
-          totalWithdrawals,        // ✅ always positive (shown as -ETB on frontend)
+          totalDeposits,
+          totalWithdrawals,
           depositCount: deposits.length,
           withdrawalCount: withdrawals.length,
           pendingDeposits,
@@ -230,6 +233,8 @@ exports.cashierGetMyReferrals = async (req, res) => {
     const grandTotalDeposits = usersWithStats.reduce((s, u) => s + u.totalDeposits, 0);
     const grandTotalWithdrawals = usersWithStats.reduce((s, u) => s + u.totalWithdrawals, 0);
     const grandTotalBalance = usersWithStats.reduce((s, u) => s + u.balance, 0);
+
+    console.log(`💰 Grand totals → Deposits: ${grandTotalDeposits} | Withdrawals: ${grandTotalWithdrawals} | Net: ${grandTotalDeposits - grandTotalWithdrawals}`);
 
     return res.json({
       success: true,
@@ -250,7 +255,8 @@ exports.cashierGetMyReferrals = async (req, res) => {
 
 // =====================================================
 // CASHIER: GET REFERRAL HISTORY
-// Returns deposits + withdrawals (self + cashier made)
+// ✅ Includes BOTH self-made AND cashier-made transactions
+// ✅ Includes withdrawals with 'approved' OR 'completed' status
 // =====================================================
 exports.cashierGetReferralHistory = async (req, res) => {
   try {
@@ -258,7 +264,6 @@ exports.cashierGetReferralHistory = async (req, res) => {
     const { userId } = req.params;
     const { type } = req.query; // 'deposit' | 'withdrawal' | 'all'
 
-    // Verify user is in this cashier's referrals
     const user = await User.findOne({ _id: userId, referredBy: cashierId })
       .select('username email phone wallet');
 
@@ -312,13 +317,17 @@ exports.cashierGetReferralHistory = async (req, res) => {
       }));
     }
 
-    // Combined list sorted by date (newest first)
     const combined = [...deposits, ...withdrawals].sort(
       (a, b) => new Date(b.date) - new Date(a.date)
     );
 
+    // ✅ Deposits: only 'approved'
     const approvedDeposits = deposits.filter(d => d.status === 'approved');
-    const approvedWithdrawals = withdrawals.filter(w => w.status === 'approved');
+
+    // ✅ Withdrawals: 'approved' OR 'completed'
+    const approvedWithdrawals = withdrawals.filter(
+      w => w.status === 'approved' || w.status === 'completed'
+    );
 
     const totalDeposits = approvedDeposits.reduce((s, d) => s + Number(d.amount), 0);
     const totalWithdrawals = approvedWithdrawals.reduce((s, w) => s + Number(w.amount), 0);
@@ -335,8 +344,8 @@ exports.cashierGetReferralHistory = async (req, res) => {
         deposits,
         withdrawals,
         combined,
-        totalDeposits,           // ✅ always positive
-        totalWithdrawals,        // ✅ always positive
+        totalDeposits,
+        totalWithdrawals,
         netFlow: totalDeposits - totalWithdrawals,
         depositCount: deposits.length,
         withdrawalCount: withdrawals.length,
@@ -389,6 +398,7 @@ exports.cashierGetReferralLink = async (req, res) => {
 
 // =====================================================
 // CASHIER: GENERATE REPORT
+// ✅ Counts withdrawals with 'approved' OR 'completed'
 // =====================================================
 exports.cashierReport = async (req, res) => {
   try {
@@ -408,8 +418,14 @@ exports.cashierReport = async (req, res) => {
     const deposits = await Transaction.find(buildFilter()).populate('user', 'username email');
     const withdrawals = await Withdrawal.find(buildFilter()).populate('user', 'username email');
 
-    const totalDeposits = deposits.filter(d => d.status === 'approved').reduce((s, d) => s + Number(d.amount), 0);
-    const totalWithdrawals = withdrawals.filter(w => w.status === 'approved').reduce((s, w) => s + Number(w.amount), 0);
+    const totalDeposits = deposits
+      .filter(d => d.status === 'approved')
+      .reduce((s, d) => s + Number(d.amount), 0);
+
+    // ✅ Withdrawals: approved OR completed
+    const totalWithdrawals = withdrawals
+      .filter(w => w.status === 'approved' || w.status === 'completed')
+      .reduce((s, w) => s + Number(w.amount), 0);
 
     return res.json({
       success: true,
@@ -482,7 +498,6 @@ exports.adminApproveCashierDeposit = async (req, res) => {
     transaction.approvedAt = new Date();
     await transaction.save();
 
-    // Update cashier stats
     if (transaction.processedBy) {
       await User.findByIdAndUpdate(transaction.processedBy, {
         $inc: { 'cashierInfo.totalDepositsProcessed': Number(transaction.amount) },
@@ -535,7 +550,7 @@ exports.adminApproveCashierWithdrawal = async (req, res) => {
     const withdrawal = await Withdrawal.findById(withdrawalId);
     if (!withdrawal) return res.status(404).json({ success: false, message: 'Withdrawal not found' });
 
-    if (withdrawal.status === 'approved') {
+    if (withdrawal.status === 'approved' || withdrawal.status === 'completed') {
       return res.status(400).json({ success: false, message: 'Already approved' });
     }
 
@@ -719,7 +734,10 @@ exports.adminGetCashierReferrals = async (req, res) => {
     const usersWithStats = await Promise.all(
       referredUsers.map(async (u) => {
         const deposits = await Transaction.find({ user: u._id, type: 'deposit', status: 'approved' });
-        const withdrawals = await Withdrawal.find({ user: u._id, status: 'approved' });
+        const withdrawals = await Withdrawal.find({
+          user: u._id,
+          status: { $in: ['approved', 'completed'] }
+        });
 
         return {
           _id: u._id,
@@ -749,4 +767,4 @@ exports.adminGetCashierReferrals = async (req, res) => {
   }
 };
 
-console.log('✅ Cashier controller loaded with referral system + history tracking');
+console.log('✅ Cashier controller loaded with full referral + history tracking');

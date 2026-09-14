@@ -164,7 +164,7 @@ const CashierPage = () => {
     });
   };
 
-  // ===== LOAD USER HISTORY (all types) =====
+  // ===== LOAD USER HISTORY =====
   const openUserHistory = async (userId, username) => {
     setHistoryModal({ userId, username });
     setHistoryFilter('all');
@@ -445,29 +445,36 @@ const CashierPage = () => {
 
             {referrals && (
               <>
-                {/* Summary Cards */}
+                {/* Summary Cards — Real values only */}
                 <div className="referral-summary">
                   <div className="summary-card blue">
                     <div className="summary-label">Total Referrals</div>
                     <div className="summary-value">{referrals.referralCount}</div>
                   </div>
+
                   <div className="summary-card green">
-                    <div className="summary-label">Total Deposits (+)</div>
+                    <div className="summary-label">Total Deposits</div>
                     <div className="summary-value">
-                      +ETB {referrals.grandTotalDeposits.toFixed(2)}
+                      ETB {referrals.grandTotalDeposits.toFixed(2)}
                     </div>
                   </div>
+
                   <div className="summary-card red">
-                    <div className="summary-label">Total Withdrawals (-)</div>
+                    <div className="summary-label">Total Withdrawals</div>
                     <div className="summary-value">
                       -ETB {referrals.grandTotalWithdrawals.toFixed(2)}
                     </div>
                   </div>
+
                   <div className="summary-card orange">
                     <div className="summary-label">Net Flow</div>
                     <div className="summary-value">
-                      {(referrals.grandTotalDeposits - referrals.grandTotalWithdrawals) >= 0 ? '+' : ''}
-                      ETB {(referrals.grandTotalDeposits - referrals.grandTotalWithdrawals).toFixed(2)}
+                      {(() => {
+                        const net = referrals.grandTotalDeposits - referrals.grandTotalWithdrawals;
+                        return net >= 0
+                          ? `ETB ${net.toFixed(2)}`
+                          : `-ETB ${Math.abs(net).toFixed(2)}`;
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -490,8 +497,8 @@ const CashierPage = () => {
                           <th>Email</th>
                           <th>Joined</th>
                           <th>Balance</th>
-                          <th>Deposits (+)</th>
-                          <th>Withdrawals (-)</th>
+                          <th>Deposits</th>
+                          <th>Withdrawals</th>
                           <th>Status</th>
                           <th>History</th>
                         </tr>
@@ -507,15 +514,15 @@ const CashierPage = () => {
                               ETB {u.balance.toFixed(2)}
                             </td>
 
-                            {/* Deposits (green +) */}
+                            {/* Deposits — real value */}
                             <td className="cell-deposit">
                               <span className="amount-positive">
-                                +ETB {u.totalDeposits.toFixed(2)}
+                                ETB {u.totalDeposits.toFixed(2)}
                               </span>
                               <small> ({u.depositCount})</small>
                             </td>
 
-                            {/* Withdrawals (red -) */}
+                            {/* Withdrawals — real minus */}
                             <td className="cell-withdraw">
                               <span className="amount-negative">
                                 -ETB {u.totalWithdrawals.toFixed(2)}
@@ -529,7 +536,6 @@ const CashierPage = () => {
                               </span>
                             </td>
 
-                            {/* History View Button */}
                             <td>
                               <button
                                 className="history-view-btn"
@@ -567,20 +573,24 @@ const CashierPage = () => {
             {report && (
               <div className="report-cards">
                 <div className="report-card green">
-                  <h3>Total Deposits (+)</h3>
-                  <p>+ETB {report.totalDeposits.toFixed(2)}</p>
+                  <h3>Total Deposits</h3>
+                  <p>ETB {report.totalDeposits.toFixed(2)}</p>
                   <small>{report.totalDepositCount} transactions</small>
                 </div>
                 <div className="report-card red">
-                  <h3>Total Withdrawals (-)</h3>
+                  <h3>Total Withdrawals</h3>
                   <p>-ETB {report.totalWithdrawals.toFixed(2)}</p>
                   <small>{report.totalWithdrawalCount} transactions</small>
                 </div>
                 <div className="report-card blue">
                   <h3>Net Flow</h3>
                   <p>
-                    {report.netFlow >= 0 ? '+' : ''}
-                    ETB {report.netFlow.toFixed(2)}
+                    {(() => {
+                      const net = report.totalDeposits - report.totalWithdrawals;
+                      return net >= 0
+                        ? `ETB ${net.toFixed(2)}`
+                        : `-ETB ${Math.abs(net).toFixed(2)}`;
+                    })()}
                   </p>
                 </div>
               </div>
@@ -604,11 +614,11 @@ const CashierPage = () => {
 
             {historyData && (
               <>
-                {/* Summary Cards */}
+                {/* Summary Cards — Real values */}
                 <div className="history-summary">
                   <div className="hs-card green">
                     <small>Total Deposits</small>
-                    <strong>+ETB {historyData.totalDeposits.toFixed(2)}</strong>
+                    <strong>ETB {historyData.totalDeposits.toFixed(2)}</strong>
                   </div>
                   <div className="hs-card red">
                     <small>Total Withdrawals</small>
@@ -621,8 +631,12 @@ const CashierPage = () => {
                   <div className="hs-card orange">
                     <small>Net Flow</small>
                     <strong>
-                      {historyData.netFlow >= 0 ? '+' : ''}
-                      ETB {historyData.netFlow.toFixed(2)}
+                      {(() => {
+                        const net = historyData.totalDeposits - historyData.totalWithdrawals;
+                        return net >= 0
+                          ? `ETB ${net.toFixed(2)}`
+                          : `-ETB ${Math.abs(net).toFixed(2)}`;
+                      })()}
                     </strong>
                   </div>
                 </div>
@@ -679,7 +693,9 @@ const CashierPage = () => {
                               )}
                             </td>
                             <td className={`cell-amount ${h.transactionType === 'deposit' ? 'positive' : 'negative'}`}>
-                              {h.transactionType === 'deposit' ? '+' : '-'}ETB {Number(h.amount).toFixed(2)}
+                              {h.transactionType === 'deposit'
+                                ? `ETB ${Number(h.amount).toFixed(2)}`
+                                : `-ETB ${Number(h.amount).toFixed(2)}`}
                             </td>
                             <td className="cell-email">{h.email}</td>
                             <td>
