@@ -13,16 +13,16 @@ const CashierPage = () => {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
-  // ===== FORMS (Deposit & Withdraw now use EMAIL + agentCode) =====
+  // ===== FORMS =====
   const [depositForm, setDepositForm] = useState({
     email: '',
     amount: '',
-    notes: ''   // ✅ Agent Code goes here
+    notes: ''
   });
   const [withdrawForm, setWithdrawForm] = useState({
     email: '',
     amount: '',
-    notes: ''   // ✅ Agent Code goes here
+    notes: ''
   });
   const [userForm, setUserForm] = useState({
     username: '',
@@ -30,7 +30,7 @@ const CashierPage = () => {
     phone: '',
     password: '',
     initialBalance: '',
-    agentCode: ''   // ✅ Agent Code for Add User
+    agentCode: ''
   });
   const [report, setReport] = useState(null);
   const [reportRange, setReportRange] = useState({ startDate: '', endDate: '' });
@@ -39,6 +39,11 @@ const CashierPage = () => {
   const [referral, setReferral] = useState(null);
   const [referrals, setReferrals] = useState(null);
   const [copied, setCopied] = useState(false);
+
+  // ===== HISTORY MODAL STATE =====
+  const [historyModal, setHistoryModal] = useState(null);
+  const [historyData, setHistoryData] = useState(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -57,7 +62,7 @@ const CashierPage = () => {
 
   const showMessage = (msg, isError = false) => {
     if (isError) setError(msg); else setMessage(msg);
-    setTimeout(() => { setMessage(''); setError(''); }, 4000);
+    setTimeout(() => { setMessage(''); setError(''); }, 5000);
   };
 
   // ===== DEPOSIT =====
@@ -67,7 +72,7 @@ const CashierPage = () => {
     try {
       const res = await axios.post(`${API_URL}/api/cashier/deposit`, depositForm, authHeaders());
       if (res.data.success) {
-        showMessage(res.data.message);
+        showMessage(res.data.message || '✅ Deposit request sent to admin for approval');
         setDepositForm({ email: '', amount: '', notes: '' });
       }
     } catch (err) {
@@ -75,14 +80,20 @@ const CashierPage = () => {
     } finally { setLoading(false); }
   };
 
-  // ===== WITHDRAW =====
+  // ===== WITHDRAW (min 50) =====
   const handleWithdraw = async (e) => {
     e.preventDefault();
+
+    if (Number(withdrawForm.amount) < 50) {
+      showMessage('Minimum withdrawal amount is ETB 50', true);
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await axios.post(`${API_URL}/api/cashier/withdraw`, withdrawForm, authHeaders());
       if (res.data.success) {
-        showMessage(res.data.message);
+        showMessage(res.data.message || '✅ Withdraw request sent to admin for approval');
         setWithdrawForm({ email: '', amount: '', notes: '' });
       }
     } catch (err) {
@@ -152,6 +163,23 @@ const CashierPage = () => {
     });
   };
 
+  // ===== LOAD USER HISTORY (deposits / withdrawals) =====
+  const loadUserHistory = async (userId, type, username) => {
+    setHistoryModal({ userId, type, username });
+    setHistoryLoading(true);
+    setHistoryData(null);
+    try {
+      const res = await axios.get(
+        `${API_URL}/api/cashier/referral-history/${userId}?type=${type}`,
+        authHeaders()
+      );
+      if (res.data.success) setHistoryData(res.data.data);
+    } catch (err) {
+      showMessage(err.response?.data?.message || 'Failed to load history', true);
+      setHistoryModal(null);
+    } finally { setHistoryLoading(false); }
+  };
+
   // Load referral data when those tabs are opened
   useEffect(() => {
     if (tab === 'invite' && !referral) loadReferralLink();
@@ -191,7 +219,10 @@ const CashierPage = () => {
         {/* ===== DEPOSIT TAB ===== */}
         {tab === 'deposit' && (
           <form className="cashier-form" onSubmit={handleDeposit}>
-            <h2>💵 Deposit to User</h2>
+            <h2>💵 Deposit Request</h2>
+            <p className="form-note">
+              ⚠️ Deposit request will be sent to admin for approval. User balance updates only after admin approves.
+            </p>
 
             <label>User Email</label>
             <input
@@ -211,7 +242,6 @@ const CashierPage = () => {
               required
             />
 
-            {/* ✅ Notes → Agent Code */}
             <label>Enter Agent Code</label>
             <input
               type="text"
@@ -221,7 +251,7 @@ const CashierPage = () => {
             />
 
             <button type="submit" disabled={loading}>
-              {loading ? 'Processing...' : '💰 Deposit'}
+              {loading ? 'Sending...' : '📤 Send Deposit Request'}
             </button>
           </form>
         )}
@@ -229,7 +259,10 @@ const CashierPage = () => {
         {/* ===== WITHDRAW TAB ===== */}
         {tab === 'withdraw' && (
           <form className="cashier-form" onSubmit={handleWithdraw}>
-            <h2>💸 Withdraw from User</h2>
+            <h2>💸 Withdraw Request</h2>
+            <p className="form-note">
+              ⚠️ Minimum withdrawal: ETB 50. Request will be sent to admin for approval.
+            </p>
 
             <label>User Email</label>
             <input
@@ -240,16 +273,16 @@ const CashierPage = () => {
               required
             />
 
-            <label>Amount (ETB)</label>
+            <label>Amount (ETB) — Minimum 50</label>
             <input
               type="number"
-              placeholder="Amount in ETB"
+              placeholder="Min ETB 50"
               value={withdrawForm.amount}
               onChange={e => setWithdrawForm({ ...withdrawForm, amount: e.target.value })}
+              min="50"
               required
             />
 
-            {/* ✅ Notes → Agent Code */}
             <label>Enter Agent Code</label>
             <input
               type="text"
@@ -259,7 +292,7 @@ const CashierPage = () => {
             />
 
             <button type="submit" disabled={loading}>
-              {loading ? 'Processing...' : '💸 Withdraw'}
+              {loading ? 'Sending...' : '📤 Send Withdraw Request'}
             </button>
           </form>
         )}
@@ -312,7 +345,6 @@ const CashierPage = () => {
               onChange={e => setUserForm({ ...userForm, initialBalance: e.target.value })}
             />
 
-            {/* ✅ Agent Code */}
             <label>Enter Agent Code</label>
             <input
               type="text"
@@ -332,7 +364,7 @@ const CashierPage = () => {
           <div className="cashier-invite">
             <h2>🔗 Your Invitation Link</h2>
             <p className="invite-subtitle">
-              Share this link. Anyone who registers with it becomes your referral.
+              Share this link. Anyone who registers with it becomes your referral and appears in "My Referrals".
             </p>
 
             {!referral && loading && <p>Loading your link...</p>}
@@ -456,14 +488,33 @@ const CashierPage = () => {
                             <td className="cell-balance">
                               ETB {u.balance.toFixed(2)}
                             </td>
+
+                            {/* ✅ CLICKABLE DEPOSIT BUTTON */}
                             <td className="cell-deposit">
-                              ETB {u.totalDeposits.toFixed(2)}
-                              <small> ({u.depositCount})</small>
+                              <button
+                                className="history-btn deposit-btn"
+                                onClick={() => loadUserHistory(u._id, 'deposit', u.username)}
+                                disabled={u.depositCount === 0}
+                                title={u.depositCount === 0 ? 'No deposits yet' : 'View deposit history'}
+                              >
+                                ETB {u.totalDeposits.toFixed(2)}
+                                <small> ({u.depositCount})</small>
+                              </button>
                             </td>
+
+                            {/* ✅ CLICKABLE WITHDRAW BUTTON */}
                             <td className="cell-withdraw">
-                              ETB {u.totalWithdrawals.toFixed(2)}
-                              <small> ({u.withdrawalCount})</small>
+                              <button
+                                className="history-btn withdraw-btn"
+                                onClick={() => loadUserHistory(u._id, 'withdrawal', u.username)}
+                                disabled={u.withdrawalCount === 0}
+                                title={u.withdrawalCount === 0 ? 'No withdrawals yet' : 'View withdrawal history'}
+                              >
+                                ETB {u.totalWithdrawals.toFixed(2)}
+                                <small> ({u.withdrawalCount})</small>
+                              </button>
                             </td>
+
                             <td>
                               <span className={`status-badge status-${u.status}`}>
                                 {u.status}
@@ -515,6 +566,66 @@ const CashierPage = () => {
           </div>
         )}
       </div>
+
+      {/* ===== HISTORY MODAL ===== */}
+      {historyModal && (
+        <div className="history-modal-overlay" onClick={() => setHistoryModal(null)}>
+          <div className="history-modal" onClick={e => e.stopPropagation()}>
+            <div className="history-modal-header">
+              <h3>
+                {historyModal.type === 'deposit' ? '💵 Deposit History' : '💸 Withdrawal History'}
+                <span className="history-user"> — {historyModal.username}</span>
+              </h3>
+              <button className="modal-close" onClick={() => setHistoryModal(null)}>✕</button>
+            </div>
+
+            {historyLoading && <p className="history-loading">Loading history...</p>}
+
+            {historyData && (
+              <>
+                <div className="history-summary">
+                  <div>Total: <strong>ETB {historyData.total.toFixed(2)}</strong></div>
+                  <div>Records: <strong>{historyData.count}</strong></div>
+                  <div>Email: <strong>{historyData.user.email}</strong></div>
+                </div>
+
+                {historyData.history.length === 0 ? (
+                  <p className="no-history">No {historyModal.type} records found.</p>
+                ) : (
+                  <div className="history-table-wrapper">
+                    <table className="history-table">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Amount</th>
+                          <th>Email</th>
+                          <th>Agent Code</th>
+                          <th>Date</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {historyData.history.map((h, i) => (
+                          <tr key={h._id}>
+                            <td>{i + 1}</td>
+                            <td className="cell-amount">ETB {Number(h.amount).toFixed(2)}</td>
+                            <td className="cell-email">{h.email}</td>
+                            <td className="cell-notes">{h.agentCode || 'N/A'}</td>
+                            <td>{new Date(h.date).toLocaleString()}</td>
+                            <td>
+                              <span className={`status-badge status-${h.status}`}>{h.status}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
