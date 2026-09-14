@@ -11,16 +11,14 @@ const AdminCashierHistory = () => {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
-  const [tab, setTab] = useState('users'); // users | deposits | withdrawals
+  const [tab, setTab] = useState('users');
 
   const authHeaders = () => ({
     headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
   });
 
   useEffect(() => {
-    if (cashierId) {
-      fetchCashierDetails();
-    }
+    if (cashierId) fetchCashierDetails();
   }, [cashierId]);
 
   const fetchCashierDetails = async () => {
@@ -32,6 +30,7 @@ const AdminCashierHistory = () => {
         authHeaders()
       );
       if (res.data.success) {
+        console.log('📊 Cashier details loaded:', res.data.data);
         setData(res.data.data);
       } else {
         setError(res.data.message || 'Failed to load cashier details');
@@ -47,20 +46,15 @@ const AdminCashierHistory = () => {
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
     });
   };
 
   const formatDateShort = (dateString) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+      year: 'numeric', month: 'short', day: 'numeric'
     });
   };
 
@@ -84,11 +78,41 @@ const AdminCashierHistory = () => {
     );
   }
 
-  const { cashier, summary, users, deposits, withdrawals } = data;
+  // ✅ NORMALIZE DATA — handle both old and new backend response shapes
+  const cashier = data.cashier || {};
+  const users = data.users || [];
+
+  // If backend sent summary, use it; otherwise compute from users array
+  const summary = data.summary || (() => {
+    const grandTotalDeposits = users.reduce((s, u) => s + Number(u.totalDeposits || 0), 0);
+    const grandTotalWithdrawals = users.reduce((s, u) => s + Number(u.totalWithdrawals || 0), 0);
+    const grandTotalBalance = users.reduce((s, u) => s + Number(u.balance || 0), 0);
+
+    return {
+      totalReferrals: users.length,
+      grandTotalDeposits,
+      grandTotalWithdrawals,
+      grandTotalBalance,
+      netFlow: grandTotalDeposits - grandTotalWithdrawals,
+      totalDepositsProcessed: users.reduce((s, u) => s + Number(u.depositCount || 0), 0),
+      totalWithdrawalsProcessed: users.reduce((s, u) => s + Number(u.withdrawalCount || 0), 0)
+    };
+  })();
+
+  // ✅ These may be missing on old backend — default to []
+  const deposits = data.deposits || [];
+  const withdrawals = data.withdrawals || [];
+
+  // Add computed netFlow to each user if missing
+  const usersWithNetFlow = users.map(u => ({
+    ...u,
+    netFlow: u.netFlow !== undefined
+      ? u.netFlow
+      : (Number(u.totalDeposits || 0) - Number(u.totalWithdrawals || 0))
+  }));
 
   return (
     <div className="admin-cashier-history">
-      {/* Header */}
       <div className="history-page-header">
         <button className="back-btn" onClick={() => navigate('/admin/cashiers')}>
           ← Back
@@ -96,22 +120,22 @@ const AdminCashierHistory = () => {
         <h1>💰 Cashier Details</h1>
       </div>
 
-      {/* Cashier Profile Card */}
+      {/* Profile Card */}
       <div className="cashier-profile-card">
         <div className="profile-header">
           <div className="profile-avatar">
             {cashier.username?.charAt(0).toUpperCase() || 'C'}
           </div>
           <div className="profile-info">
-            <h2>{cashier.username}</h2>
-            <p className="profile-email">📧 {cashier.email}</p>
+            <h2>{cashier.username || 'Unknown'}</h2>
+            <p className="profile-email">📧 {cashier.email || 'N/A'}</p>
             <p className="profile-phone">📱 {cashier.phone || 'N/A'}</p>
             <div className="profile-badges">
               <span className="badge role-badge">
                 {cashier.role === 'admin' ? '👑 Admin' : '💰 Cashier'}
               </span>
-              <span className={`badge status-${cashier.status}`}>
-                {cashier.status}
+              <span className={`badge status-${cashier.status || 'active'}`}>
+                {cashier.status || 'active'}
               </span>
               <span className="badge code-badge">
                 🎁 {cashier.referralCode || 'N/A'}
@@ -131,7 +155,7 @@ const AdminCashierHistory = () => {
         </div>
       </div>
 
-      {/* Summary Stats */}
+      {/* Summary Grid */}
       <div className="summary-grid">
         <div className="stat-card blue">
           <div className="stat-icon">👥</div>
@@ -145,7 +169,7 @@ const AdminCashierHistory = () => {
           <div className="stat-icon">💵</div>
           <div className="stat-content">
             <small>Total Deposits</small>
-            <strong>ETB {summary.grandTotalDeposits.toFixed(2)}</strong>
+            <strong>ETB {Number(summary.grandTotalDeposits || 0).toFixed(2)}</strong>
           </div>
         </div>
 
@@ -153,7 +177,7 @@ const AdminCashierHistory = () => {
           <div className="stat-icon">💸</div>
           <div className="stat-content">
             <small>Total Withdrawals</small>
-            <strong>-ETB {summary.grandTotalWithdrawals.toFixed(2)}</strong>
+            <strong>-ETB {Number(summary.grandTotalWithdrawals || 0).toFixed(2)}</strong>
           </div>
         </div>
 
@@ -163,7 +187,7 @@ const AdminCashierHistory = () => {
             <small>Net Flow</small>
             <strong>
               {(() => {
-                const net = summary.netFlow;
+                const net = Number(summary.netFlow || 0);
                 return net >= 0
                   ? `ETB ${net.toFixed(2)}`
                   : `-ETB ${Math.abs(net).toFixed(2)}`;
@@ -176,7 +200,7 @@ const AdminCashierHistory = () => {
           <div className="stat-icon">💼</div>
           <div className="stat-content">
             <small>Total Balance</small>
-            <strong>ETB {summary.grandTotalBalance.toFixed(2)}</strong>
+            <strong>ETB {Number(summary.grandTotalBalance || 0).toFixed(2)}</strong>
           </div>
         </div>
 
@@ -185,7 +209,7 @@ const AdminCashierHistory = () => {
           <div className="stat-content">
             <small>Processed</small>
             <strong>
-              {summary.totalDepositsProcessed} dep / {summary.totalWithdrawalsProcessed} wd
+              {summary.totalDepositsProcessed || 0} dep / {summary.totalWithdrawalsProcessed || 0} wd
             </strong>
           </div>
         </div>
@@ -197,29 +221,28 @@ const AdminCashierHistory = () => {
           className={tab === 'users' ? 'active' : ''}
           onClick={() => setTab('users')}
         >
-          👥 Referred Users ({(users || []).length})
+          👥 Referred Users ({usersWithNetFlow.length})
         </button>
         <button
           className={tab === 'deposits' ? 'active' : ''}
           onClick={() => setTab('deposits')}
         >
-          💵 Deposits Created ({(deposits || []).length})
+          💵 Deposits Created ({deposits.length})
         </button>
         <button
           className={tab === 'withdrawals' ? 'active' : ''}
           onClick={() => setTab('withdrawals')}
         >
-          💸 Withdrawals Created ({(withdrawals || []).length})
+          💸 Withdrawals Created ({withdrawals.length})
         </button>
       </div>
 
-      {/* Tab Content */}
       <div className="history-tab-content">
 
-        {/* ===== REFERRED USERS ===== */}
+        {/* REFERRED USERS */}
         {tab === 'users' && (
           <>
-            {(!users || users.length === 0) ? (
+            {usersWithNetFlow.length === 0 ? (
               <div className="empty-state">
                 <p>No users have registered with this cashier's referral link yet.</p>
               </div>
@@ -241,23 +264,21 @@ const AdminCashierHistory = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {users.map((u, i) => (
+                    {usersWithNetFlow.map((u, i) => (
                       <tr key={u._id}>
                         <td>{i + 1}</td>
                         <td className="cell-username">{u.username}</td>
                         <td className="cell-email">{u.email}</td>
                         <td>{u.phone || 'N/A'}</td>
                         <td>{formatDateShort(u.joinedAt)}</td>
-                        <td className="cell-balance">
-                          ETB {u.balance.toFixed(2)}
-                        </td>
+                        <td className="cell-balance">ETB {Number(u.balance || 0).toFixed(2)}</td>
                         <td className="cell-deposit">
-                          ETB {u.totalDeposits.toFixed(2)}
-                          <small> ({u.depositCount})</small>
+                          ETB {Number(u.totalDeposits || 0).toFixed(2)}
+                          <small> ({u.depositCount || 0})</small>
                         </td>
                         <td className="cell-withdraw">
-                          -ETB {u.totalWithdrawals.toFixed(2)}
-                          <small> ({u.withdrawalCount})</small>
+                          -ETB {Number(u.totalWithdrawals || 0).toFixed(2)}
+                          <small> ({u.withdrawalCount || 0})</small>
                         </td>
                         <td className={`cell-netflow ${u.netFlow >= 0 ? 'positive' : 'negative'}`}>
                           {u.netFlow >= 0
@@ -265,8 +286,8 @@ const AdminCashierHistory = () => {
                             : `-ETB ${Math.abs(u.netFlow).toFixed(2)}`}
                         </td>
                         <td>
-                          <span className={`status-badge status-${u.status}`}>
-                            {u.status}
+                          <span className={`status-badge status-${u.status || 'active'}`}>
+                            {u.status || 'active'}
                           </span>
                         </td>
                       </tr>
@@ -278,12 +299,16 @@ const AdminCashierHistory = () => {
           </>
         )}
 
-        {/* ===== DEPOSITS CREATED ===== */}
+        {/* DEPOSITS */}
         {tab === 'deposits' && (
           <>
-            {(!deposits || deposits.length === 0) ? (
+            {deposits.length === 0 ? (
               <div className="empty-state">
-                <p>This cashier hasn't created any deposits yet.</p>
+                <p>
+                  {data.deposits === undefined
+                    ? 'Deposit history is not available for this backend version.'
+                    : 'This cashier hasn\'t created any deposits yet.'}
+                </p>
               </div>
             ) : (
               <div className="table-wrapper">
@@ -306,18 +331,14 @@ const AdminCashierHistory = () => {
                         <td>{i + 1}</td>
                         <td className="cell-username">{d.user?.username || 'N/A'}</td>
                         <td className="cell-email">{d.user?.email || 'N/A'}</td>
-                        <td className="cell-deposit">
-                          ETB {Number(d.amount).toFixed(2)}
-                        </td>
+                        <td className="cell-deposit">ETB {Number(d.amount).toFixed(2)}</td>
                         <td className="cell-ref">{d.transactionReference || 'N/A'}</td>
                         <td className="cell-notes">
                           {d.notes ? d.notes.replace('Agent Code: ', '').split(' | ')[0] : 'N/A'}
                         </td>
                         <td>{formatDate(d.createdAt)}</td>
                         <td>
-                          <span className={`status-badge status-${d.status}`}>
-                            {d.status}
-                          </span>
+                          <span className={`status-badge status-${d.status}`}>{d.status}</span>
                         </td>
                       </tr>
                     ))}
@@ -328,12 +349,16 @@ const AdminCashierHistory = () => {
           </>
         )}
 
-        {/* ===== WITHDRAWALS CREATED ===== */}
+        {/* WITHDRAWALS */}
         {tab === 'withdrawals' && (
           <>
-            {(!withdrawals || withdrawals.length === 0) ? (
+            {withdrawals.length === 0 ? (
               <div className="empty-state">
-                <p>This cashier hasn't created any withdrawals yet.</p>
+                <p>
+                  {data.withdrawals === undefined
+                    ? 'Withdrawal history is not available for this backend version.'
+                    : 'This cashier hasn\'t created any withdrawals yet.'}
+                </p>
               </div>
             ) : (
               <div className="table-wrapper">
@@ -355,17 +380,13 @@ const AdminCashierHistory = () => {
                         <td>{i + 1}</td>
                         <td className="cell-username">{w.user?.username || 'N/A'}</td>
                         <td className="cell-email">{w.user?.email || 'N/A'}</td>
-                        <td className="cell-withdraw">
-                          -ETB {Number(w.amount).toFixed(2)}
-                        </td>
+                        <td className="cell-withdraw">-ETB {Number(w.amount).toFixed(2)}</td>
                         <td className="cell-notes">
                           {w.notes ? w.notes.replace('Agent Code: ', '').split(' | ')[0] : 'N/A'}
                         </td>
                         <td>{formatDate(w.createdAt)}</td>
                         <td>
-                          <span className={`status-badge status-${w.status}`}>
-                            {w.status}
-                          </span>
+                          <span className={`status-badge status-${w.status}`}>{w.status}</span>
                         </td>
                       </tr>
                     ))}
