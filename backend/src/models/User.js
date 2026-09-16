@@ -24,7 +24,6 @@ const userSchema = new mongoose.Schema({
         required: true
     },
     role: {
-        // ✅ ADDED 'cashier' to the allowed roles
         type: String,
         enum: ['admin', 'user', 'cashier', 'manager', 'support'],
         default: 'user'
@@ -59,14 +58,18 @@ const userSchema = new mongoose.Schema({
             verifiedAt: Date
         }]
     },
+
+    // =====================================================
+    // ✅ WALLET — Real balance starts at 0, bonus starts at 20
+    // =====================================================
     wallet: {
         balance: {
             type: Number,
-            default: 0
+            default: 0            // ✅ Real balance
         },
         bonusBalance: {
             type: Number,
-            default: 20
+            default: 20           // ✅ Bonus balance
         },
         lockedBalance: {
             type: Number,
@@ -74,9 +77,10 @@ const userSchema = new mongoose.Schema({
         },
         welcomeBonusClaimed: {
             type: Boolean,
-            default: false
+            default: true
         }
     },
+
     // ✅ REFERRAL FIELDS
     referralCode: {
         type: String,
@@ -96,6 +100,7 @@ const userSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+
     // ✅ CASHIER TRACKING
     cashierInfo: {
         assignedBy: {
@@ -124,6 +129,7 @@ const userSchema = new mongoose.Schema({
             default: null
         }
     },
+
     // Login tracking
     lastLogin: {
         type: Date
@@ -138,15 +144,18 @@ const userSchema = new mongoose.Schema({
     }
 });
 
-// ✅ Generate unique referral code for new users
+// =====================================================
+// ✅ PRE-SAVE HOOK — Fixed to match the schema
+// Real balance = 0, Bonus balance = 20
+// =====================================================
 userSchema.pre('save', async function(next) {
-    // Only generate if new or referralCode is missing
+    // Generate unique referral code
     if (this.isNew || !this.referralCode) {
         let code;
         let exists = true;
         let attempts = 0;
         const User = mongoose.model('User');
-        
+
         while (exists && attempts < 10) {
             code = 'REF' + Math.random().toString(36).substring(2, 8).toUpperCase();
             const existing = await User.findOne({ referralCode: code });
@@ -156,33 +165,24 @@ userSchema.pre('save', async function(next) {
         if (!exists) {
             this.referralCode = code;
         } else {
-            // Fallback: use timestamp + random
             this.referralCode = 'REF' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 4).toUpperCase();
         }
     }
-    
-    // Set wallet defaults for new users
+
+    // ✅ CORRECTED WALLET DEFAULTS:
+    // Real balance = 0 (deposits only)
+    // Bonus balance = 20 (welcome bonus, restricted)
     if (this.isNew) {
         this.wallet = this.wallet || {};
-        this.wallet.balance = 20;
-        this.wallet.bonusBalance = 0;
+        this.wallet.balance = 0;                // ✅ FIXED — was 20
+        this.wallet.bonusBalance = 20;           // ✅ FIXED — was 0
         this.wallet.lockedBalance = 0;
         this.wallet.welcomeBonusClaimed = true;
         this.loginCount = 0;
     }
+
     next();
 });
-
-// ✅ Claim welcome bonus
-userSchema.methods.claimWelcomeBonus = function() {
-    if (!this.wallet.welcomeBonusClaimed) {
-        this.wallet.balance += 10;
-        this.wallet.bonusBalance += 10;
-        this.wallet.welcomeBonusClaimed = true;
-        return true;
-    }
-    return false;
-};
 
 // ✅ Update login timestamp
 userSchema.methods.updateLogin = function() {
@@ -204,6 +204,11 @@ userSchema.methods.isAdmin = function() {
 // ✅ Check if user can access cashier features (cashier OR admin)
 userSchema.methods.canUseCashier = function() {
     return this.role === 'cashier' || this.role === 'admin';
+};
+
+// ✅ Total available balance
+userSchema.methods.getTotalBalance = function() {
+    return (this.wallet?.balance || 0) + (this.wallet?.bonusBalance || 0);
 };
 
 module.exports = mongoose.model('User', userSchema);
