@@ -40,7 +40,7 @@ exports.validateBonusBet = (bets, totalStake) => {
   // 4. Blocked markets
   if (bets && bets.length > 0) {
     for (const sel of bets) {
-      if (bonusRules.blockedMarkets.includes(sel.market)) {
+      if (bonusRules.blockedMarkets && bonusRules.blockedMarkets.includes(sel.market)) {
         errors.push(`Market "${sel.market}" is not allowed with bonus balance`);
       }
     }
@@ -53,21 +53,30 @@ exports.validateBonusBet = (bets, totalStake) => {
 };
 
 // =====================================================
-// Calculate funding split (bonus first, real second)
+// ✅ FIXED: Calculate funding split — includes BOTH balances
 // =====================================================
 exports.calculateFundingSplit = (user, stake) => {
+  // ✅ Read BOTH balances
   const bonusAvailable = user.wallet?.bonusBalance || 0;
   const realAvailable = user.wallet?.balance || 0;
   const totalAvailable = bonusAvailable + realAvailable;
 
+  // ✅ Debug logging so you can see in Render logs
+  console.log('💰 calculateFundingSplit:', {
+    realAvailable,
+    bonusAvailable,
+    totalAvailable,
+    requestedStake: stake,
+  });
+
   if (stake > totalAvailable) {
     return {
       valid: false,
-      message: `Insufficient balance. Available: ETB ${totalAvailable.toFixed(2)}`,
+      message: `Insufficient balance. Available: ETB ${totalAvailable.toFixed(2)} (real: ${realAvailable.toFixed(2)}, bonus: ${bonusAvailable.toFixed(2)})`,
     };
   }
 
-  // Bonus is used FIRST
+  // ✅ Bonus is used FIRST, then real balance
   const bonusPortion = Math.min(stake, bonusAvailable);
   const realPortion = stake - bonusPortion;
 
@@ -77,6 +86,7 @@ exports.calculateFundingSplit = (user, stake) => {
     realPortion,
     usesBonus: bonusPortion > 0,
     usesReal: realPortion > 0,
+    totalAvailable,
   };
 };
 
@@ -84,26 +94,42 @@ exports.calculateFundingSplit = (user, stake) => {
 // Deduct balance after placing bet
 // =====================================================
 exports.deductBetBalance = (user, split) => {
-  user.wallet.balance = (user.wallet?.balance || 0) - split.realPortion;
-  user.wallet.bonusBalance = (user.wallet?.bonusBalance || 0) - split.bonusPortion;
+  const oldBalance = user.wallet?.balance || 0;
+  const oldBonus = user.wallet?.bonusBalance || 0;
 
-  // Track wagered bonus (for rollover)
+  user.wallet.balance = oldBalance - split.realPortion;
+  user.wallet.bonusBalance = oldBonus - split.bonusPortion;
+
+  // Track wagered bonus (for rollover) — optional
   if (split.bonusPortion > 0) {
     user.wallet.bonusWagered = (user.wallet?.bonusWagered || 0) + split.bonusPortion;
-
-    // Check rollover complete
-    const target = user.wallet.bonusRolloverTarget || 0;
-    if (user.wallet.bonusWagered >= target && !user.wallet.bonusConvertedToReal) {
-      const remaining = user.wallet.bonusBalance || 0;
-      if (remaining > 0) {
-        user.wallet.balance += remaining;
-        user.wallet.bonusBalance = 0;
-      }
-      user.wallet.bonusConvertedToReal = true;
-    }
   }
+
+  console.log('💸 deductBetBalance:', {
+    oldBalance,
+    oldBonus,
+    newBalance: user.wallet.balance,
+    newBonus: user.wallet.bonusBalance,
+  });
 
   return user;
 };
 
-module.exports = exports;
+// =====================================================
+// Credit winnings after a bet wins
+// =====================================================
+exports.creditBetWinnings = (user, split, winAmount) => {
+  const totalStake = split.bonusPortion + split.realPortion;
+  if (totalStake === 0) return user;
+
+  const bonusRatio = split.bonusPortion / totalStake;
+  const realRatio = split.realPortion / totalStake;
+
+  const bonusWinnings = winAmount * bonusRatio;
+  const realWinnings = winAmount * realRatio;
+
+  user.wallet.bonusBalance += bonusWinnings;
+  user.wallet.balance += realWinnings;
+
+  return user;
+};
