@@ -21,7 +21,7 @@ const HomePage = () => {
   const [selectedSport, setSelectedSport] = useState('FOOTBALL');
   const [betSlip, setBetSlip] = useState([]);
   const [balance, setBalance] = useState(0);
-  const [bonusBalance, setBonusBalance] = useState(0); // ✅ NEW
+  const [bonusBalance, setBonusBalance] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showBetSlip, setShowBetSlip] = useState(true);
@@ -39,6 +39,12 @@ const HomePage = () => {
   // ✅ BONUS RULES MODAL STATE
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [rulesToShow, setRulesToShow] = useState([]);
+
+  // ✅ DUPLICATE PROTECTION STATE
+  const placingBetRef = useRef(false);
+  const lastBetTimeRef = useRef(0);
+  const [placingBet, setPlacingBet] = useState(false);
+  const [pendingMatchIds, setPendingMatchIds] = useState([]);
 
   // ===== CAROUSEL STATE (10 images, 2 per slide = 5 slides) =====
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -525,7 +531,7 @@ const HomePage = () => {
           headers: { Authorization: `Bearer ${token}` }
         });
         setBalance(response.data.balance || 0);
-        setBonusBalance(response.data.bonusBalance || 0); // ✅ NEW
+        setBonusBalance(response.data.bonusBalance || 0);
 
         // ✅ Update local user object with wallet
         const userData = localStorage.getItem('user');
@@ -542,6 +548,23 @@ const HomePage = () => {
       }
     } catch (error) {
       console.error('Error fetching balance:', error);
+    }
+  }, [API_URL]);
+
+  // ✅ NEW: Fetch pending match IDs (for duplicate protection)
+  const fetchPendingMatches = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const res = await axios.get(`${API_URL}/api/bets/pending-matches`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data.success) {
+        console.log('📋 Pending match IDs:', res.data.matchIds);
+        setPendingMatchIds(res.data.matchIds || []);
+      }
+    } catch (err) {
+      console.error('Error fetching pending matches:', err);
     }
   }, [API_URL]);
 
@@ -613,13 +636,9 @@ const HomePage = () => {
           const indexA = preferredLeagueOrder.indexOf(a);
           const indexB = preferredLeagueOrder.indexOf(b);
 
-          // If both are in the list, sort by their position in the list
           if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-          // If only A is in the list, A comes first
           if (indexA !== -1) return -1;
-          // If only B is in the list, B comes first
           if (indexB !== -1) return 1;
-          // If neither, sort alphabetically
           return a.localeCompare(b);
         });
 
@@ -661,8 +680,9 @@ const HomePage = () => {
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
         setBalance(parsedUser.wallet?.balance || 0);
-        setBonusBalance(parsedUser.wallet?.bonusBalance || 0); // ✅ NEW
+        setBonusBalance(parsedUser.wallet?.bonusBalance || 0);
         fetchBalance();
+        fetchPendingMatches(); // ✅ NEW
       } catch (e) {
         console.error('Error parsing user data:', e);
       }
@@ -676,7 +696,7 @@ const HomePage = () => {
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [fetchMatches, fetchBalance]);
+  }, [fetchMatches, fetchBalance, fetchPendingMatches]);
 
   useEffect(() => {
     localStorage.setItem('betSlip', JSON.stringify(betSlip));
@@ -705,6 +725,12 @@ const HomePage = () => {
 
     if (hasMatchStarted(match.date)) {
       alert('This match has already started!');
+      return;
+    }
+
+    // ✅ NEW: Block if user already has a pending bet on this match
+    if (pendingMatchIds.includes(match._id.toString())) {
+      alert(`⚠️ You already have a pending bet on this match.\n\nWait for it to settle before betting again.`);
       return;
     }
 
@@ -801,75 +827,101 @@ const HomePage = () => {
   };
 
   // =====================================================
-  // ✅ PLACE BETS — always enabled; checks rules on click
+  // ✅ PLACE BETS — with sync lock + duplicate protection
   // =====================================================
   const placeBets = async () => {
-    if (betSlip.length === 0) {
-      alert('Your bet slip is empty!');
-      return;
-    }
-    
-    if (!totalStake || totalStake <= 0) {
-      alert('Please enter a stake amount');
+    // ✅ SYNCHRONOUS LOCK — blocks duplicate clicks INSTANTLY
+    if (placingBetRef.current) {
+      console.log('⚠️ Already placing bet — blocked');
       return;
     }
 
-    const stake = parseFloat(totalStake) || 0;
-    const totalAvailable = balance + bonusBalance;
-
-    if (stake > totalAvailable) {
-      alert(`Insufficient balance! Total available: ETB ${totalAvailable.toFixed(2)}`);
+    // ✅ 5-second cooldown between bets
+    const now = Date.now();
+    if (now - lastBetTimeRef.current < 5000) {
+      console.log('⚠️ Cooldown active');
       return;
     }
 
-    // ✅ Check bonus rules ONLY if bonus is being used
-    const willUseBonus = bonusBalance > 0;
+    placingBetRef.current = true;
+    lastBetTimeRef.current = now;
+    setPlacingBet(true);
 
-    if (willUseBonus) {
-      const { allPass, rules } = checkBonusRules();
-
-      if (!allPass) {
-        // Show modal with failed rules — DO NOT place bet
-        setRulesToShow(rules);
-        setShowRulesModal(true);
+    try {
+      if (betSlip.length === 0) {
+        alert('Your bet slip is empty!');
         return;
       }
-    }
 
-    // ===== All good → place bet =====
-    try {
+      if (!totalStake || totalStake <= 0) {
+        alert('Please enter a stake amount');
+        return;
+      }
+
+      const stake = parseFloat(totalStake) || 0;
+      const totalAvailable = balance + bonusBalance;
+
+      if (stake > totalAvailable) {
+        alert(`Insufficient balance! Total available: ETB ${totalAvailable.toFixed(2)}`);
+        return;
+      }
+
+      const willUseBonus = bonusBalance > 0;
+
+      if (willUseBonus) {
+        const { allPass, rules } = checkBonusRules();
+        if (!allPass) {
+          setRulesToShow(rules);
+          setShowRulesModal(true);
+          return;
+        }
+      }
+
+      // ✅ Snapshot bet data BEFORE clearing
+      const betSnapshot = [...betSlip];
+      const stakeSnapshot = stake;
+      const totalOddsSnapshot = parseFloat(calculateTotalOdds());
+
+      // ✅ Clear bet slip IMMEDIATELY so duplicates are impossible
+      setBetSlip([]);
+      setTotalStake(0);
+
       const token = localStorage.getItem('token');
-      const response = await axios.post(`${API_URL}/api/bets/place`, {
-        bets: betSlip,
-        totalStake: stake,
-        totalOdds: parseFloat(calculateTotalOdds())
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axios.post(
+        `${API_URL}/api/bets/place`,
+        {
+          bets: betSnapshot,
+          totalStake: stakeSnapshot,
+          totalOdds: totalOddsSnapshot
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
       if (response.data.success) {
         const ticketId = response.data.ticketId || generateTicketId();
-        
+
         const betData = {
-          selections: betSlip.map(b => ({
+          selections: betSnapshot.map(b => ({
             match: b.match,
             market: b.market,
             betType: b.betType,
             odds: b.odds
           })),
-          totalStake: stake,
-          totalOdds: parseFloat(calculateTotalOdds()),
-          potentialWin: parseFloat(calculatePotentialWinnings()),
+          totalStake: stakeSnapshot,
+          totalOdds: totalOddsSnapshot,
+          potentialWin: stakeSnapshot * totalOddsSnapshot,
           ticketId: ticketId
         };
 
         printTicket(betData);
-        alert('🎉 Bets placed successfully!');
-        setBetSlip([]);
-        setTotalStake(0);
+        alert('🎉 Bet placed successfully!');
         fetchBalance();
+        fetchPendingMatches(); // ✅ Refresh pending match list
       } else {
-        // Backend rejected — possibly bonus rules
+        // Restore bet slip if backend rejected
+        setBetSlip(betSnapshot);
+        setTotalStake(stakeSnapshot);
+
         if (response.data.errors && response.data.errors.length > 0) {
           setRulesToShow(response.data.errors.map(msg => ({
             rule: msg, pass: false, detail: ''
@@ -882,14 +934,24 @@ const HomePage = () => {
     } catch (error) {
       console.error('Error placing bets:', error);
       const errorData = error.response?.data;
+
+      // Restore bet slip on error
+      setBetSlip(betSlip);
+
       if (errorData?.errors && errorData.errors.length > 0) {
         setRulesToShow(errorData.errors.map(msg => ({
           rule: msg, pass: false, detail: ''
         })));
         setShowRulesModal(true);
+      } else if (error.response?.status === 429) {
+        alert(errorData?.message || 'Duplicate bet detected. Please wait.');
       } else {
         alert(errorData?.message || 'Failed to place bets');
       }
+    } finally {
+      // ✅ ALWAYS release lock
+      placingBetRef.current = false;
+      setPlacingBet(false);
     }
   };
 
@@ -902,7 +964,8 @@ const HomePage = () => {
     localStorage.removeItem('hasJoinedTelegram');
     setUser(null);
     setBalance(0);
-    setBonusBalance(0); // ✅ NEW
+    setBonusBalance(0);
+    setPendingMatchIds([]); // ✅ Clear pending match IDs
     setShowDropdown(false);
     navigate('/');
   };
@@ -1144,7 +1207,7 @@ const HomePage = () => {
             ))}
           </div>
 
-          {/* ===== CAROUSEL – 2 IMAGES AT A TIME (10 images = 5 slides) ===== */}
+          {/* ===== CAROUSEL – 2 IMAGES AT A TIME ===== */}
           <div className="promo-carousel-container">
             <div 
               className="promo-carousel-track" 
@@ -1167,12 +1230,11 @@ const HomePage = () => {
             </div>
           </div>
 
-          {/* ===== COMPACT LEAGUE FILTER - BETWEEN PROMOTIONS AND MATCHES ===== */}
+          {/* ===== COMPACT LEAGUE FILTER ===== */}
           <div style={{ margin: '15px 0', padding: '8px', background: '#fff', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
               <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#333' }}>🏆 FILTER BY LEAGUE</span>
             </div>
-            {/* ✅ Horizontal scroll for ALL leagues */}
             <div style={{ display: 'flex', overflowX: 'auto', gap: '6px', paddingBottom: '4px', whiteSpace: 'nowrap', WebkitOverflowScrolling: 'touch' }}>
               <button 
                 onClick={() => setSelectedLeague('')}
@@ -1239,6 +1301,7 @@ const HomePage = () => {
                     const isExpanded = expandedMatch === match._id;
                     const availableMarkets = getAvailableMarkets(match);
                     const timeLeft = getTimeLeft(match.date);
+                    const isAlreadyBet = pendingMatchIds.includes(match._id.toString()); // ✅ NEW
                     
                     return (
                       <div key={match._id} className={`match-card-pro ${isExpanded ? 'expanded' : ''}`}>
@@ -1263,11 +1326,28 @@ const HomePage = () => {
                           </button>
                         </div>
 
+                        {/* ✅ Already Bet indicator banner */}
+                        {isAlreadyBet && (
+                          <div style={{
+                            background: '#fff3e0',
+                            border: '1px solid #ffb74d',
+                            borderRadius: '6px',
+                            padding: '8px 12px',
+                            margin: '8px 0',
+                            fontSize: '13px',
+                            color: '#e65100',
+                            fontWeight: '600',
+                            textAlign: 'center'
+                          }}>
+                            ✅ Already placed a bet on this match — wait for it to settle
+                          </div>
+                        )}
+
                         <div className="result-odds-pro">
                           <button 
                             className={`result-odd-btn ${isInBetSlip(match._id, '1', 'Result') ? 'selected' : ''}`}
                             onClick={() => addToBetSlip(match, '1', match.odds?.home || 'N/A', 'Result')}
-                            disabled={match.status === 'FINISHED' || match.status === 'finished' || hasMatchStarted(match.date)}
+                            disabled={match.status === 'FINISHED' || match.status === 'finished' || hasMatchStarted(match.date) || isAlreadyBet}
                           >
                             <span className="result-label">1</span>
                             <span className="result-odd">{match.odds?.home || 'N/A'}</span>
@@ -1275,7 +1355,7 @@ const HomePage = () => {
                           <button 
                             className={`result-odd-btn ${isInBetSlip(match._id, 'X', 'Result') ? 'selected' : ''}`}
                             onClick={() => addToBetSlip(match, 'X', match.odds?.draw || 'N/A', 'Result')}
-                            disabled={match.status === 'FINISHED' || match.status === 'finished' || hasMatchStarted(match.date)}
+                            disabled={match.status === 'FINISHED' || match.status === 'finished' || hasMatchStarted(match.date) || isAlreadyBet}
                           >
                             <span className="result-label">X</span>
                             <span className="result-odd">{match.odds?.draw || 'N/A'}</span>
@@ -1283,7 +1363,7 @@ const HomePage = () => {
                           <button 
                             className={`result-odd-btn ${isInBetSlip(match._id, '2', 'Result') ? 'selected' : ''}`}
                             onClick={() => addToBetSlip(match, '2', match.odds?.away || 'N/A', 'Result')}
-                            disabled={match.status === 'FINISHED' || match.status === 'finished' || hasMatchStarted(match.date)}
+                            disabled={match.status === 'FINISHED' || match.status === 'finished' || hasMatchStarted(match.date) || isAlreadyBet}
                           >
                             <span className="result-label">2</span>
                             <span className="result-odd">{match.odds?.away || 'N/A'}</span>
@@ -1314,6 +1394,7 @@ const HomePage = () => {
                                             key={label} 
                                             className={`market-option-pro ${isSelected ? 'selected' : ''}`}
                                             onClick={() => addToBetSlip(match, label, odds, marketDisplay)}
+                                            disabled={isAlreadyBet}
                                           >
                                             <span className="option-label">{label}</span>
                                             <span className="option-odds">{odds}</span>
@@ -1413,7 +1494,7 @@ const HomePage = () => {
                   />
                 </div>
 
-                {/* ✅ BONUS RULES PREVIEW — shows live status when user has bonus */}
+                {/* ✅ BONUS RULES PREVIEW */}
                 {willUseBonus && (
                   <div className="bonus-rules-panel">
                     <div className="bonus-rules-header">
@@ -1452,9 +1533,14 @@ const HomePage = () => {
                   </div>
                 </div>
 
-                {/* ✅ PLACE BET — ALWAYS ENABLED */}
-                <button className="place-bet-pro" onClick={placeBets}>
-                  Place Bet
+                {/* ✅ PLACE BET — shows loading state */}
+                <button 
+                  className="place-bet-pro" 
+                  onClick={placeBets}
+                  disabled={placingBet}
+                  style={placingBet ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
+                >
+                  {placingBet ? '⏳ Placing bet...' : 'Place Bet'}
                 </button>
               </>
             )}

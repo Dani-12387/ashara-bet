@@ -36,7 +36,67 @@ exports.placeBets = async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    // ===== CALCULATE FUNDING SPLIT (bonus first, then real) =====
+    // =====================================================
+    // ✅ DUPLICATE CHECK #1 — Same matchId already in a pending bet
+    // =====================================================
+    const matchIds = bets.map(b => b.matchId).filter(id => id);
+
+    if (matchIds.length > 0) {
+      const existingBets = await Bet.find({
+        user: userId,
+        status: 'pending',
+        'selections.matchId': { $in: matchIds }
+      });
+
+      if (existingBets.length > 0) {
+        const existingMatchIds = new Set();
+        existingBets.forEach(bet => {
+          bet.selections.forEach(sel => {
+            if (sel.matchId && matchIds.includes(sel.matchId.toString())) {
+              existingMatchIds.add(sel.matchId.toString());
+            }
+          });
+        });
+
+        const duplicateMatches = bets
+          .filter(b => b.matchId && existingMatchIds.has(b.matchId.toString()))
+          .map(b => b.match);
+
+        console.log('⚠️ Duplicate match bet blocked:', duplicateMatches);
+
+        return res.status(400).json({
+          success: false,
+          message: `You already have a pending bet on: ${duplicateMatches.join(', ')}`,
+          errors: [
+            `You already placed a bet on these matches. Wait for them to settle before betting again.`,
+            ...duplicateMatches.map(m => `• ${m}`)
+          ]
+        });
+      }
+    }
+
+    // =====================================================
+    // ✅ DUPLICATE CHECK #2 — Same bet in last 30 seconds
+    // =====================================================
+    const thirtySecondsAgo = new Date(Date.now() - 30 * 1000);
+
+    const recentBet = await Bet.findOne({
+      user: userId,
+      totalStake: stake,
+      totalOdds: Number(totalOdds),
+      createdAt: { $gte: thirtySecondsAgo }
+    });
+
+    if (recentBet) {
+      console.log('⚠️ Duplicate bet blocked:', recentBet.ticketId);
+      return res.status(429).json({
+        success: false,
+        message: '⚠️ You just placed this bet. Please wait 30 seconds.',
+        ticketId: recentBet.ticketId,
+      });
+    }
+
+    // ===== CALCULATE FUNDING SPLIT =====
     const split = calculateFundingSplit(user, stake);
 
     if (!split.valid) {
@@ -47,7 +107,7 @@ exports.placeBets = async (req, res) => {
       });
     }
 
-    // ===== IF USING BONUS → CHECK BONUS RULES =====
+    // ===== BONUS RULES CHECK =====
     if (split.usesBonus) {
       const bonusCheck = validateBonusBet(bets, stake);
 
@@ -64,7 +124,7 @@ exports.placeBets = async (req, res) => {
     deductBetBalance(user, split);
     await user.save();
 
-    // ===== PREPARE SELECTIONS (map frontend 'bets' → model 'selections') =====
+    // ===== PREPARE SELECTIONS =====
     const selections = bets.map(b => ({
       matchId: b.matchId,
       match: b.match,
@@ -75,14 +135,13 @@ exports.placeBets = async (req, res) => {
       status: 'pending'
     }));
 
-    // ===== GENERATE TICKET ID =====
+    // ===== SAVE BET =====
     const ticketId = generateTicketId();
 
-    // ===== SAVE BET RECORD =====
     const betRecord = await Bet.create({
       user: userId,
       ticketId: ticketId,
-      selections: selections,           // ✅ Correct field name
+      selections: selections,
       totalStake: stake,
       totalOdds: Number(totalOdds),
       potentialWin: stake * Number(totalOdds),
@@ -94,6 +153,8 @@ exports.placeBets = async (req, res) => {
       bonusPortion: split.bonusPortion,
       realPortion: split.realPortion,
     });
+
+    console.log('✅ Bet placed:', { ticketId, selections: selections.length });
 
     return res.json({
       success: true,
@@ -111,6 +172,41 @@ exports.placeBets = async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Place bets error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// =====================================================
+// ✅ GET PENDING MATCH IDS — matches user already bet on
+// Used by frontend to disable those matches
+// =====================================================
+exports.getPendingMatchIds = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Find all pending bets for this user
+    const pendingBets = await Bet.find({
+      user: userId,
+      status: 'pending'
+    }).select('selections.matchId');
+
+    // Extract match IDs into a flat array
+    const matchIds = [];
+    pendingBets.forEach(bet => {
+      bet.selections.forEach(sel => {
+        if (sel.matchId) {
+          matchIds.push(sel.matchId.toString());
+        }
+      });
+    });
+
+    res.json({
+      success: true,
+      matchIds: [...new Set(matchIds)],   // unique
+      count: matchIds.length
+    });
+  } catch (error) {
+    console.error('❌ getPendingMatchIds error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };

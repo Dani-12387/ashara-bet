@@ -3,15 +3,16 @@ const router = express.Router();
 const { protect, authorize } = require('../middleware/authMiddleware');
 const Bet = require('../models/Bet');
 const User = require('../models/User');
-
-// ✅ Import the bet controller (which uses bonusHelper)
 const betController = require('../controllers/betController');
 
 // ============================================
 // USER ROUTES
 // ============================================
 
-// ✅ Place bet — now uses the controller with full bonus support
+// ✅ Get pending match IDs (for duplicate protection)
+router.get('/pending-matches', protect, betController.getPendingMatchIds);
+
+// ✅ Place bet — uses controller with bonus + duplicate protection
 router.post('/place', protect, betController.placeBets);
 
 // Get user's bet history
@@ -72,7 +73,6 @@ router.get('/:id', protect, async (req, res) => {
 // ADMIN ROUTES
 // ============================================
 
-// Get all bets (admin)
 router.get('/admin/all', protect, authorize('admin'), async (req, res) => {
   try {
     const { status, limit = 50, page = 1 } = req.query;
@@ -105,7 +105,6 @@ router.get('/admin/all', protect, authorize('admin'), async (req, res) => {
   }
 });
 
-// Update individual selection status (admin)
 router.put('/admin/:betId/selection/:selectionIndex', protect, authorize('admin'), async (req, res) => {
   try {
     const { betId, selectionIndex } = req.params;
@@ -154,7 +153,7 @@ router.put('/admin/:betId/selection/:selectionIndex', protect, authorize('admin'
             await user.save();
             console.log(`✅ Bet ${bet._id} WON! Credited ETB ${bet.potentialWin}`);
           } else {
-            console.log(`❌ Bet ${bet._id} LOST! Stake already deducted`);
+            console.log(`❌ Bet ${bet._id} LOST!`);
           }
         }
         await bet.save();
@@ -176,7 +175,6 @@ router.put('/admin/:betId/selection/:selectionIndex', protect, authorize('admin'
   }
 });
 
-// Update entire bet status (admin)
 router.put('/admin/:id/status', protect, authorize('admin'), async (req, res) => {
   try {
     const { status, adminNotes } = req.body;
@@ -220,13 +218,9 @@ router.put('/admin/:id/status', protect, authorize('admin'), async (req, res) =>
       if (status === 'won') {
         user.wallet.balance += bet.potentialWin;
         await user.save();
-        console.log(`✅ Bet ${bet._id} WON! Credited ETB ${bet.potentialWin}`);
-      } else if (status === 'lost') {
-        console.log(`❌ Bet ${bet._id} LOST!`);
       } else if (status === 'cancelled') {
         user.wallet.balance += bet.totalStake;
         await user.save();
-        console.log(`🚫 Bet ${bet._id} CANCELLED! Refunded ETB ${bet.totalStake}`);
       }
     }
 
@@ -245,7 +239,6 @@ router.put('/admin/:id/status', protect, authorize('admin'), async (req, res) =>
   }
 });
 
-// Get bet statistics (admin)
 router.get('/admin/stats', protect, authorize('admin'), async (req, res) => {
   try {
     const totalBets = await Bet.countDocuments();
@@ -293,7 +286,6 @@ router.get('/admin/stats', protect, authorize('admin'), async (req, res) => {
   }
 });
 
-// Bulk update bet status (admin)
 router.post('/admin/bulk-update', protect, authorize('admin'), async (req, res) => {
   try {
     const { betIds, status, adminNotes } = req.body;
