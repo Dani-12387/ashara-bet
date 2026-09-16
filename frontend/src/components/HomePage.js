@@ -3,6 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './HomePage.css';
 
+// =====================================================
+// ✅ BONUS RULES — must match backend config
+// =====================================================
+const BONUS_RULES = {
+  minSelections: 7,
+  minOddsPerSelection: 1.60,
+  maxStakePerBet: 20,
+};
+
 const HomePage = () => {
   const navigate = useNavigate();
   const [matches, setMatches] = useState([]);
@@ -12,6 +21,7 @@ const HomePage = () => {
   const [selectedSport, setSelectedSport] = useState('FOOTBALL');
   const [betSlip, setBetSlip] = useState([]);
   const [balance, setBalance] = useState(0);
+  const [bonusBalance, setBonusBalance] = useState(0); // ✅ NEW
   const [showDropdown, setShowDropdown] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showBetSlip, setShowBetSlip] = useState(true);
@@ -25,6 +35,10 @@ const HomePage = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 1024);
   const [showTelegramPopup, setShowTelegramPopup] = useState(false);
   const dropdownRef = useRef(null);
+
+  // ✅ BONUS RULES MODAL STATE
+  const [showRulesModal, setShowRulesModal] = useState(false);
+  const [rulesToShow, setRulesToShow] = useState([]);
 
   // ===== CAROUSEL STATE (10 images, 2 per slide = 5 slides) =====
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -502,7 +516,7 @@ const HomePage = () => {
     }, 500);
   };
 
-  // Fetch balance
+  // ✅ Fetch balance — now also fetches bonusBalance
   const fetchBalance = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
@@ -511,6 +525,20 @@ const HomePage = () => {
           headers: { Authorization: `Bearer ${token}` }
         });
         setBalance(response.data.balance || 0);
+        setBonusBalance(response.data.bonusBalance || 0); // ✅ NEW
+
+        // ✅ Update local user object with wallet
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          const parsed = JSON.parse(userData);
+          parsed.wallet = {
+            ...(parsed.wallet || {}),
+            balance: response.data.balance || 0,
+            bonusBalance: response.data.bonusBalance || 0,
+          };
+          localStorage.setItem('user', JSON.stringify(parsed));
+          setUser(parsed);
+        }
       }
     } catch (error) {
       console.error('Error fetching balance:', error);
@@ -632,6 +660,8 @@ const HomePage = () => {
       try {
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
+        setBalance(parsedUser.wallet?.balance || 0);
+        setBonusBalance(parsedUser.wallet?.bonusBalance || 0); // ✅ NEW
         fetchBalance();
       } catch (e) {
         console.error('Error parsing user data:', e);
@@ -732,7 +762,47 @@ const HomePage = () => {
     return (stake * odds).toFixed(2);
   };
 
-  // Place bets
+  // =====================================================
+  // ✅ BONUS RULES CHECKER (live, for UI preview)
+  // =====================================================
+  const checkBonusRules = () => {
+    const rules = [];
+
+    // 1. Minimum 7 selections
+    const selectionsOk = betSlip.length >= BONUS_RULES.minSelections;
+    rules.push({
+      rule: `Minimum ${BONUS_RULES.minSelections} selections`,
+      pass: selectionsOk,
+      detail: `${betSlip.length}/${BONUS_RULES.minSelections}`
+    });
+
+    // 2. Each selection odds ≥ 1.60
+    const badSelections = betSlip.filter(b => Number(b.odds) < BONUS_RULES.minOddsPerSelection);
+    const oddsOk = badSelections.length === 0;
+    rules.push({
+      rule: `Each selection odds ≥ ${BONUS_RULES.minOddsPerSelection}`,
+      pass: oddsOk,
+      detail: oddsOk ? 'All OK' : `${badSelections.length} too low`
+    });
+
+    // 3. Stake ≤ 20
+    const stake = parseFloat(totalStake) || 0;
+    const stakeOk = stake > 0 && stake <= BONUS_RULES.maxStakePerBet;
+    rules.push({
+      rule: `Stake ≤ ETB ${BONUS_RULES.maxStakePerBet}`,
+      pass: stakeOk,
+      detail: stake > 0 ? `ETB ${stake}` : 'Enter stake'
+    });
+
+    return {
+      allPass: rules.every(r => r.pass),
+      rules
+    };
+  };
+
+  // =====================================================
+  // ✅ PLACE BETS — always enabled; checks rules on click
+  // =====================================================
   const placeBets = async () => {
     if (betSlip.length === 0) {
       alert('Your bet slip is empty!');
@@ -744,16 +814,34 @@ const HomePage = () => {
       return;
     }
 
-    if (totalStake > balance) {
-      alert(`Insufficient balance! Your balance is ETB ${balance.toFixed(2)}`);
+    const stake = parseFloat(totalStake) || 0;
+    const totalAvailable = balance + bonusBalance;
+
+    if (stake > totalAvailable) {
+      alert(`Insufficient balance! Total available: ETB ${totalAvailable.toFixed(2)}`);
       return;
     }
 
+    // ✅ Check bonus rules ONLY if bonus is being used
+    const willUseBonus = bonusBalance > 0;
+
+    if (willUseBonus) {
+      const { allPass, rules } = checkBonusRules();
+
+      if (!allPass) {
+        // Show modal with failed rules — DO NOT place bet
+        setRulesToShow(rules);
+        setShowRulesModal(true);
+        return;
+      }
+    }
+
+    // ===== All good → place bet =====
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(`${API_URL}/api/bets/place`, {
         bets: betSlip,
-        totalStake: totalStake,
+        totalStake: stake,
         totalOdds: parseFloat(calculateTotalOdds())
       }, {
         headers: { Authorization: `Bearer ${token}` }
@@ -769,7 +857,7 @@ const HomePage = () => {
             betType: b.betType,
             odds: b.odds
           })),
-          totalStake: totalStake,
+          totalStake: stake,
           totalOdds: parseFloat(calculateTotalOdds()),
           potentialWin: parseFloat(calculatePotentialWinnings()),
           ticketId: ticketId
@@ -781,11 +869,27 @@ const HomePage = () => {
         setTotalStake(0);
         fetchBalance();
       } else {
-        alert(response.data.message || 'Failed to place bets');
+        // Backend rejected — possibly bonus rules
+        if (response.data.errors && response.data.errors.length > 0) {
+          setRulesToShow(response.data.errors.map(msg => ({
+            rule: msg, pass: false, detail: ''
+          })));
+          setShowRulesModal(true);
+        } else {
+          alert(response.data.message || 'Failed to place bets');
+        }
       }
     } catch (error) {
       console.error('Error placing bets:', error);
-      alert(error.response?.data?.message || 'Failed to place bets');
+      const errorData = error.response?.data;
+      if (errorData?.errors && errorData.errors.length > 0) {
+        setRulesToShow(errorData.errors.map(msg => ({
+          rule: msg, pass: false, detail: ''
+        })));
+        setShowRulesModal(true);
+      } else {
+        alert(errorData?.message || 'Failed to place bets');
+      }
     }
   };
 
@@ -798,6 +902,7 @@ const HomePage = () => {
     localStorage.removeItem('hasJoinedTelegram');
     setUser(null);
     setBalance(0);
+    setBonusBalance(0); // ✅ NEW
     setShowDropdown(false);
     navigate('/');
   };
@@ -814,7 +919,7 @@ const HomePage = () => {
     setShowTelegramPopup(false);
   };
 
-  const formatCurrency = (amount) => `ETB ${parseFloat(amount).toFixed(2)}`;
+  const formatCurrency = (amount) => `ETB ${parseFloat(amount || 0).toFixed(2)}`;
 
   const toggleMatchExpand = (matchId) => {
     setExpandedMatch(expandedMatch === matchId ? null : matchId);
@@ -865,6 +970,10 @@ const HomePage = () => {
   // ✅ HELPER: Check if user can use Cashier features
   const canUseCashier = user && (user.role === 'cashier' || user.role === 'admin');
 
+  // ✅ Bonus check for UI preview
+  const bonusCheck = checkBonusRules();
+  const willUseBonus = bonusBalance > 0 && betSlip.length > 0;
+
   // Bottom Navigation
   const bottomNavItems = [
     { id: 'home', label: 'HOME', icon: '🏠', path: '/' },
@@ -898,6 +1007,15 @@ const HomePage = () => {
                   <span className="balance-icon-pro">💰</span>
                   <span className="balance-value-pro">{formatCurrency(balance)}</span>
                 </div>
+
+                {/* ✅ BONUS BALANCE BADGE */}
+                {bonusBalance > 0 && (
+                  <div className="balance-pro bonus-balance-pro">
+                    <span className="balance-icon-pro">🎁</span>
+                    <span className="balance-value-pro">Bonus: {formatCurrency(bonusBalance)}</span>
+                  </div>
+                )}
+
                 <button className="deposit-btn-pro" onClick={() => navigate('/deposit')}>Deposit</button>
                 
                 {/* ✅ CASHIER BUTTON - Only visible to cashier/admin */}
@@ -1259,21 +1377,27 @@ const HomePage = () => {
             ) : (
               <>
                 <div className="betslip-list-pro">
-                  {betSlip.map((bet, index) => (
-                    <div key={index} className="betslip-item-pro">
-                      <div className="betslip-header-pro">
-                        <div className="betslip-match-pro">
-                          <p className="betslip-match-name-pro">{bet.match}</p>
-                          <span className="betslip-league-pro">{bet.league}</span>
-                          <span className="betslip-market-pro">{bet.market}</span>
+                  {betSlip.map((bet, index) => {
+                    const oddsTooLow = Number(bet.odds) < BONUS_RULES.minOddsPerSelection;
+                    return (
+                      <div key={index} className={`betslip-item-pro ${oddsTooLow && willUseBonus ? 'betslip-item-warning' : ''}`}>
+                        <div className="betslip-header-pro">
+                          <div className="betslip-match-pro">
+                            <p className="betslip-match-name-pro">{bet.match}</p>
+                            <span className="betslip-league-pro">{bet.league}</span>
+                            <span className="betslip-market-pro">{bet.market}</span>
+                          </div>
+                          <button className="betslip-remove-pro" onClick={() => removeFromBetSlip(index)}>✕</button>
                         </div>
-                        <button className="betslip-remove-pro" onClick={() => removeFromBetSlip(index)}>✕</button>
+                        <div className="betslip-body-pro">
+                          <span className="betslip-selection-pro">{bet.betType}    ..................... {bet.odds}  odd</span>
+                          {oddsTooLow && willUseBonus && (
+                            <span className="betslip-odds-warning">⚠️ Odds below {BONUS_RULES.minOddsPerSelection}</span>
+                          )}
+                        </div>
                       </div>
-                      <div className="betslip-body-pro">
-                        <span className="betslip-selection-pro">{bet.betType}    ..................... {bet.odds}  odd</span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <div className="betslip-total-stake-pro">
@@ -1288,6 +1412,30 @@ const HomePage = () => {
                     step="0.01"
                   />
                 </div>
+
+                {/* ✅ BONUS RULES PREVIEW — shows live status when user has bonus */}
+                {willUseBonus && (
+                  <div className="bonus-rules-panel">
+                    <div className="bonus-rules-header">
+                      🎁 <strong>Bonus Bet Rules</strong>
+                      <span className="bonus-amount-badge">ETB {bonusBalance.toFixed(2)}</span>
+                    </div>
+                    <div className="bonus-rules-list">
+                      {bonusCheck.rules.map((r, i) => (
+                        <div key={i} className={`bonus-rule-row ${r.pass ? 'pass' : 'fail'}`}>
+                          <span className="bonus-rule-icon">{r.pass ? '✅' : '❌'}</span>
+                          <span className="bonus-rule-text">{r.rule}</span>
+                          <span className="bonus-rule-detail">{r.detail}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {bonusCheck.allPass ? (
+                      <div className="bonus-rules-status ok">✅ All rules satisfied</div>
+                    ) : (
+                      <div className="bonus-rules-status warn">⚠️ Rules not met — click Place Bet for details</div>
+                    )}
+                  </div>
+                )}
 
                 <div className="betslip-summary-pro">
                   <div className="summary-row-pro">
@@ -1304,6 +1452,7 @@ const HomePage = () => {
                   </div>
                 </div>
 
+                {/* ✅ PLACE BET — ALWAYS ENABLED */}
                 <button className="place-bet-pro" onClick={placeBets}>
                   Place Bet
                 </button>
@@ -1341,6 +1490,40 @@ const HomePage = () => {
         <button className="mobile-betslip-pro" onClick={toggleBetSlip}>
           🎫 {betSlip.length}
         </button>
+      )}
+
+      {/* ✅ BONUS RULES MODAL */}
+      {showRulesModal && (
+        <div className="rules-modal-overlay" onClick={() => setShowRulesModal(false)}>
+          <div className="rules-modal" onClick={e => e.stopPropagation()}>
+            <div className="rules-modal-header">
+              <h3>🎁 Bonus Bet Rules Not Satisfied</h3>
+              <button className="rules-modal-close" onClick={() => setShowRulesModal(false)}>✕</button>
+            </div>
+            <p className="rules-modal-subtitle">
+              Your bet slip uses <strong>bonus balance</strong>. The following rules must be met:
+            </p>
+            <div className="rules-modal-list">
+              {rulesToShow.map((r, i) => (
+                <div key={i} className={`rules-modal-row ${r.pass ? 'pass' : 'fail'}`}>
+                  <span className="rules-modal-icon">{r.pass ? '✅' : '❌'}</span>
+                  <span className="rules-modal-text">{r.rule}</span>
+                  {r.detail && <span className="rules-modal-detail">{r.detail}</span>}
+                </div>
+              ))}
+            </div>
+            <div className="rules-modal-hint">
+              <strong>💡 Tips:</strong>
+              <ul>
+                <li>Add more selections to reach {BONUS_RULES.minSelections} total</li>
+                <li>Ensure each selection has odds ≥ {BONUS_RULES.minOddsPerSelection}</li>
+                <li>Keep stake at or below ETB {BONUS_RULES.maxStakePerBet}</li>
+                <li>Or use only real balance (deposit more) to bypass these rules</li>
+              </ul>
+            </div>
+            <button className="rules-modal-btn" onClick={() => setShowRulesModal(false)}>Got it</button>
+          </div>
+        </div>
       )}
 
       {showTelegramPopup && (
