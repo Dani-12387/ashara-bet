@@ -1,4 +1,4 @@
-// backend/models/Bet.js
+// backend/src/models/Bet.js
 const mongoose = require('mongoose');
 
 const betSchema = new mongoose.Schema({
@@ -55,6 +55,24 @@ const betSchema = new mongoose.Schema({
     enum: ['pending', 'won', 'lost', 'cancelled'],
     default: 'pending'
   },
+
+  // =====================================================
+  // ✅ NEW: BONUS TRACKING FIELDS
+  // =====================================================
+  fundedBy: {
+    type: String,
+    enum: ['bonus', 'real', 'mixed'],
+    default: 'real'
+  },
+  bonusPortion: {
+    type: Number,
+    default: 0    // How much of the stake came from bonus balance
+  },
+  realPortion: {
+    type: Number,
+    default: 0    // How much of the stake came from real balance
+  },
+
   settledAt: {
     type: Date
   },

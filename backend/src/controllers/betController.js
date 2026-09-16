@@ -7,6 +7,11 @@ const {
   deductBetBalance,
 } = require('../utils/bonusHelper');
 
+// ✅ Generate unique 10-digit ticket ID
+const generateTicketId = () => {
+  return Math.floor(1000000000 + Math.random() * 9000000000).toString();
+};
+
 // =====================================================
 // PLACE BETS
 // =====================================================
@@ -55,20 +60,34 @@ exports.placeBets = async (req, res) => {
       }
     }
 
-    // ✅ If only using real balance → NO restrictions
-
     // ===== DEDUCT BALANCE =====
     deductBetBalance(user, split);
     await user.save();
 
+    // ===== PREPARE SELECTIONS (map frontend 'bets' → model 'selections') =====
+    const selections = bets.map(b => ({
+      matchId: b.matchId,
+      match: b.match,
+      league: b.league || 'Unknown',
+      betType: b.betType,
+      market: b.market || 'Result',
+      odds: Number(b.odds),
+      status: 'pending'
+    }));
+
+    // ===== GENERATE TICKET ID =====
+    const ticketId = generateTicketId();
+
     // ===== SAVE BET RECORD =====
     const betRecord = await Bet.create({
       user: userId,
-      bets,
+      ticketId: ticketId,
+      selections: selections,           // ✅ Correct field name
       totalStake: stake,
       totalOdds: Number(totalOdds),
       potentialWin: stake * Number(totalOdds),
       status: 'pending',
+      result: 'pending',
       fundedBy: split.usesBonus && split.usesReal ? 'mixed'
                : split.usesBonus ? 'bonus'
                : 'real',
@@ -82,14 +101,13 @@ exports.placeBets = async (req, res) => {
         ? `✅ Bet placed with ETB ${split.bonusPortion.toFixed(2)} bonus${split.realPortion > 0 ? ` + ETB ${split.realPortion.toFixed(2)} real` : ''}`
         : `✅ Bet placed with real balance`,
       betId: betRecord._id,
+      ticketId: ticketId,
       fundingBreakdown: {
         fromBonus: split.bonusPortion,
         fromReal: split.realPortion,
       },
       newBalance: user.wallet.balance,
       newBonusBalance: user.wallet.bonusBalance,
-      bonusWagered: user.wallet.bonusWagered,
-      rolloverTarget: user.wallet.bonusRolloverTarget,
     });
   } catch (error) {
     console.error('❌ Place bets error:', error);
